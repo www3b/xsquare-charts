@@ -8,6 +8,7 @@ import registry from './core.registry.js';
 import Config, {determineAxis, getIndexAxis} from './core.config.js';
 import {each, callback as callCallback, uid, valueOrDefault, _elementsEqual, isNullOrUndef, setsEqual, defined, isFunction, _isClickEvent} from '../helpers/helpers.core.js';
 import {clearCanvas, clipArea, createContext, unclipArea, _isPointInArea, _isDomSupported, retinaScale, getDatasetClipArea} from '../helpers/index.js';
+import {beginSvgRender, endSvgRender, removeSvgRoot} from '../helpers/helpers.svg.js';
 // @ts-ignore
 import {version} from '../../package.json';
 import {debounce} from '../helpers/helpers.extras.js';
@@ -704,12 +705,15 @@ class Chart {
       this._resize(width, height);
     }
     this.clear();
+    beginSvgRender(this);
 
     if (this.width <= 0 || this.height <= 0) {
+      endSvgRender(this);
       return;
     }
 
     if (this.notifyPlugins('beforeDraw', {cancelable: true}) === false) {
+      endSvgRender(this);
       return;
     }
 
@@ -728,6 +732,7 @@ class Chart {
       layers[i].draw(this.chartArea);
     }
 
+    endSvgRender(this);
     this.notifyPlugins('afterDraw');
   }
 
@@ -939,6 +944,7 @@ class Chart {
     const {canvas, ctx} = this;
 
     this._stop();
+    removeSvgRoot(this);
     this.config.clearCache();
 
     if (canvas) {

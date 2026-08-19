@@ -4,6 +4,8 @@ import {_computeSegments, _boundSegments} from '../helpers/helpers.segment.js';
 import {_steppedLineTo, _bezierCurveTo} from '../helpers/helpers.canvas.js';
 import {_updateBezierControlPoints} from '../helpers/helpers.curve.js';
 import {valueOrDefault} from '../helpers/index.js';
+import {Path} from '../helpers/helpers.path.js';
+import {getOrCreateSvgDatasetGroup, getOrCreateSvgPath, removeExtraSvgPaths, removeSvgDataset} from '../helpers/helpers.svg.js';
 
 /**
  * @typedef { import('./element.point.js').default } PointElement
@@ -240,6 +242,42 @@ function draw(ctx, line, start, count) {
   }
 }
 
+function setSvgStyle(path, options, style = options) {
+  path.setAttribute('fill', 'none');
+  path.setAttribute('stroke', valueOrDefault(style.borderColor, options.borderColor));
+  path.setAttribute('stroke-width', valueOrDefault(style.borderWidth, options.borderWidth));
+  path.setAttribute('stroke-linecap', valueOrDefault(style.borderCapStyle, options.borderCapStyle));
+  path.setAttribute('stroke-linejoin', valueOrDefault(style.borderJoinStyle, options.borderJoinStyle));
+  path.setAttribute('stroke-dasharray', valueOrDefault(style.borderDash, options.borderDash));
+  path.setAttribute('stroke-dashoffset', valueOrDefault(style.borderDashOffset, options.borderDashOffset));
+}
+
+function drawSvg(line, start, count) {
+  const {options, segments, _chart: chart, _datasetIndex: datasetIndex} = line;
+  const group = getOrCreateSvgDatasetGroup(chart, datasetIndex);
+  const segmentMethod = _getSegmentMethod(line);
+  const params = {start, end: start + count - 1};
+  const paths = options.segment ? segments : [undefined];
+
+  for (let i = 0; i < paths.length; ++i) {
+    const segment = paths[i];
+    const path = new Path();
+    const loop = segment
+      ? segmentMethod(path, line, segment, params)
+      : line.path(path, start, count);
+    if (loop) {
+      path.closePath();
+    }
+
+    const element = getOrCreateSvgPath(group, i);
+    element.setAttribute('data-dataset-index', datasetIndex.toString());
+    element.setAttribute('d', path.toString());
+    setSvgStyle(element, options, segment && segment.style);
+  }
+
+  removeExtraSvgPaths(group, paths.length);
+}
+
 export default class LineElement extends Element {
 
   static id = 'line';
@@ -429,11 +467,15 @@ export default class LineElement extends Element {
     const points = this.points || [];
 
     if (points.length && options.borderWidth) {
-      ctx.save();
-
-      draw(ctx, this, start, count);
-
-      ctx.restore();
+      if (this._chart.options.renderer === 'svg') {
+        drawSvg(this, start, count);
+      } else {
+        ctx.save();
+        draw(ctx, this, start, count);
+        ctx.restore();
+      }
+    } else if (this._chart && this._chart.options.renderer === 'svg') {
+      removeSvgDataset(this._chart, this._datasetIndex);
     }
 
     if (this.animated) {

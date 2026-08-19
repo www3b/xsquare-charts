@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chart.js SVG Line demo</title>
+    <style>
+      :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #101828; color: #f8fafc; }
+      body { margin: 0; padding: 32px; }
+      main { max-width: 960px; margin: 0 auto; }
+      h1 { margin: 0 0 8px; font-size: 24px; }
+      p { color: #b6c2d3; }
+      .toolbar { display: flex; gap: 10px; margin: 24px 0 16px; }
+      button { border: 1px solid #44546a; border-radius: 6px; padding: 8px 13px; background: #1d2939; color: inherit; cursor: pointer; }
+      button.active { background: #2563eb; border-color: #60a5fa; }
+      .chart-frame { position: relative; height: 440px; padding: 18px; border: 1px solid #344054; border-radius: 12px; background: #182230; }
+      canvas { max-width: 100%; }
+      code { color: #93c5fd; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>LineElement: Canvas → SVG</h1>
+      <p>Only the dataset line is switched. Points, axes, grid, legend and tooltip remain on Canvas.</p>
+      <div class="toolbar" aria-label="Renderer">
+        <button class="active" data-renderer="canvas">Canvas</button>
+        <button data-renderer="svg">SVG</button>
+      </div>
+      <div class="chart-frame">
+        <canvas id="chart"></canvas>
+      </div>
+      <p>Resize the page or hover points to verify that normal Chart.js interactions still work.</p>
+    </main>
+    <script type="module" src="/demo/main.js"></script>
+  </body>
+</html>

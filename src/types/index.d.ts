@@ -1628,6 +1628,12 @@ export interface CoreInteractionOptions {
 
 export interface CoreChartOptions<TType extends ChartType> extends ParsingOptions, AnimationOptions<TType> {
 
+  /**
+   * Renderer used for dataset lines. Other chart parts continue to use Canvas.
+   * @default 'canvas'
+   */
+  renderer?: 'canvas' | 'svg';
+
   datasets: {
     [key in ChartType]: ChartTypeRegistry[key]['datasetOptions']
   }
