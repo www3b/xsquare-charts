@@ -41,8 +41,18 @@ const chart = new Chart(document.getElementById('chart'), {
       legend: {labels: {color: '#f8fafc'}},
     },
     scales: {
-      x: {ticks: {color: '#b6c2d3'}, grid: {color: '#344054'}},
-      y: {ticks: {color: '#b6c2d3'}, grid: {color: '#344054'}},
+      x: {
+        backgroundColor: 'rgba(15, 23, 42, 0.25)',
+        ticks: {color: '#b6c2d3'},
+        grid: {color: '#344054', tickColor: '#667085', tickWidth: 1},
+        border: {color: '#667085', width: 2},
+      },
+      y: {
+        backgroundColor: 'rgba(15, 23, 42, 0.25)',
+        ticks: {color: '#b6c2d3'},
+        grid: {color: '#344054', tickColor: '#667085', tickWidth: 1},
+        border: {color: '#667085', width: 2},
+      },
     },
   },
 });

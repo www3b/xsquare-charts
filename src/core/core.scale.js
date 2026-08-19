@@ -4,11 +4,21 @@ import {callback as call, each, finiteOrDefault, isArray, isFinite, isNullOrUnde
 import {toDegrees, toRadians, _int16Range, _limitValue, HALF_PI} from '../helpers/helpers.math.js';
 import {_alignStartEnd, _toLeftRightCenter} from '../helpers/helpers.extras.js';
 import {createContext, toFont, toPadding, _addGrace} from '../helpers/helpers.options.js';
+import {getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart} from '../helpers/helpers.svg.js';
 import {autoSkip} from './core.scale.autoskip.js';
 
 const reverseAlign = (align) => align === 'left' ? 'right' : align === 'right' ? 'left' : align;
 const offsetFromEdge = (scale, edge, offset) => edge === 'top' || edge === 'left' ? scale[edge] + offset : scale[edge] - offset;
 const getTicksLimit = (ticksLength, maxTicksLimit) => Math.min(maxTicksLimit || ticksLength, ticksLength);
+const svgLayerForZ = (z) => z > 0 ? 'foreground' : 'background';
+
+function setSvgLineStyle(line, style) {
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', `${style.color}`);
+  line.setAttribute('stroke-width', `${style.width}`);
+  line.setAttribute('stroke-dasharray', `${style.borderDash || []}`);
+  line.setAttribute('stroke-dashoffset', `${style.borderDashOffset || 0}`);
+}
 
 /**
  * @typedef { import('../types/index.js').Chart } Chart
@@ -1439,7 +1449,24 @@ export default class Scale extends Element {
    * @protected
    */
   drawBackground() {
-    const {ctx, options: {backgroundColor}, left, top, width, height} = this;
+    const {chart, ctx, options: {backgroundColor, grid}, left, top, width, height} = this;
+    if (chart.options.renderer === 'svg') {
+      if (!backgroundColor) {
+        removeSvgScalePart(chart, this.id, 'background');
+        return;
+      }
+
+      const group = getOrCreateSvgScalePart(chart, this.id, 'background', svgLayerForZ(valueOrDefault(grid.z, -1)));
+      const rect = getOrCreateSvgElement(group, 'rect');
+      rect.setAttribute('x', `${left}`);
+      rect.setAttribute('y', `${top}`);
+      rect.setAttribute('width', `${width}`);
+      rect.setAttribute('height', `${height}`);
+      rect.setAttribute('fill', `${backgroundColor}`);
+      removeExtraSvgElements(group, 1);
+      return;
+    }
+
     if (backgroundColor) {
       ctx.save();
       ctx.fillStyle = backgroundColor;
@@ -1470,6 +1497,61 @@ export default class Scale extends Element {
     const ctx = this.ctx;
     const items = this._gridLineItems || (this._gridLineItems = this._computeGridLineItems(chartArea));
     let i, ilen;
+
+    if (this.chart.options.renderer === 'svg') {
+      if (!grid.display) {
+        removeSvgScalePart(this.chart, this.id, 'grid');
+        removeSvgScalePart(this.chart, this.id, 'ticks');
+        return;
+      }
+
+      const layer = svgLayerForZ(valueOrDefault(grid.z, -1));
+      const drawLines = (part, enabled, point1, point2, style) => {
+        if (!enabled) {
+          removeSvgScalePart(this.chart, this.id, part);
+          return;
+        }
+
+        const group = getOrCreateSvgScalePart(this.chart, this.id, part, layer);
+        let count = 0;
+        for (const item of items) {
+          const lineStyle = style(item);
+          if (!lineStyle.width || !lineStyle.color) {
+            continue;
+          }
+          const line = getOrCreateSvgElement(group, 'line', count++);
+          const p1 = point1(item);
+          const p2 = point2(item);
+          line.setAttribute('x1', `${p1.x}`);
+          line.setAttribute('y1', `${p1.y}`);
+          line.setAttribute('x2', `${p2.x}`);
+          line.setAttribute('y2', `${p2.y}`);
+          setSvgLineStyle(line, lineStyle);
+        }
+        removeExtraSvgElements(group, count);
+      };
+
+      drawLines(
+        'grid',
+        grid.drawOnChartArea,
+        (item) => ({x: item.x1, y: item.y1}),
+        (item) => ({x: item.x2, y: item.y2}),
+        (item) => item
+      );
+      drawLines(
+        'ticks',
+        grid.drawTicks,
+        (item) => ({x: item.tx1, y: item.ty1}),
+        (item) => ({x: item.tx2, y: item.ty2}),
+        (item) => ({
+          color: item.tickColor,
+          width: item.tickWidth,
+          borderDash: item.tickBorderDash,
+          borderDashOffset: item.tickBorderDashOffset
+        })
+      );
+      return;
+    }
 
     const drawLine = (p1, p2, style) => {
       if (!style.width || !style.color) {
@@ -1524,6 +1606,9 @@ export default class Scale extends Element {
     const borderOpts = border.setContext(this.getContext());
     const axisWidth = border.display ? borderOpts.width : 0;
     if (!axisWidth) {
+      if (chart.options.renderer === 'svg') {
+        removeSvgScalePart(chart, this.id, 'border');
+      }
       return;
     }
     const lastLineWidth = grid.setContext(this.getContext(0)).lineWidth;
@@ -1539,6 +1624,24 @@ export default class Scale extends Element {
       y2 = _alignPixel(chart, this.bottom, lastLineWidth) + lastLineWidth / 2;
       x1 = x2 = borderValue;
     }
+
+    if (chart.options.renderer === 'svg') {
+      const group = getOrCreateSvgScalePart(chart, this.id, 'border', svgLayerForZ(valueOrDefault(border.z, 0)));
+      const line = getOrCreateSvgElement(group, 'line');
+      line.setAttribute('x1', `${x1}`);
+      line.setAttribute('y1', `${y1}`);
+      line.setAttribute('x2', `${x2}`);
+      line.setAttribute('y2', `${y2}`);
+      setSvgLineStyle(line, {
+        color: borderOpts.color,
+        width: borderOpts.width,
+        borderDash: borderOpts.dash,
+        borderDashOffset: borderOpts.dashOffset
+      });
+      removeExtraSvgElements(group, 1);
+      return;
+    }
+
     ctx.save();
     ctx.lineWidth = borderOpts.width;
     ctx.strokeStyle = borderOpts.color;
