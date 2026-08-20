@@ -240,6 +240,7 @@ test('SVG legend supports point styles, pie items, updates and interaction state
   assert.equal(legend(line.chart).getAttribute('direction'), 'rtl');
   assert.equal(items.length, 6);
   assert.ok(itemSymbol(items[0]).getAttribute('d').includes('A'));
+  assert.match(itemSymbol(items[0]).getAttribute('d'), /A15,[^,]+,0,1,1/);
   assert.ok(itemSymbol(items[1]).getAttribute('d').includes('L'));
   assert.ok(itemSymbol(items[3]).getAttribute('d').includes('A'));
   assert.ok(itemSymbol(items[4]).getAttribute('d').match(/M.*L.*M/));

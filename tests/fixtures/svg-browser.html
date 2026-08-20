@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Chart.js SVG browser fixture</title>
+<style>
+  body { font: 14px Arial, sans-serif; margin: 0; }
+  #fixtures { display: grid; gap: 12px; grid-template-columns: repeat(2, 440px); padding: 12px; }
+  .fixture { border: 1px solid #cbd5e1; min-height: 280px; }
+  .fixture h2 { font-size: 14px; margin: 8px; }
+  canvas { display: block; }
+</style>
+<body>
+<div id="fixtures"></div>
+<output id="result"></output>
+<script type="module">
+  import {
+    ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController,
+    Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement,
+    Title,
+  } from '/dist/chart.js';
+
+  Chart.register(ArcElement, BarController, BarElement, CategoryScale, DoughnutController, Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Title);
+
+  const common = {
+    animation: false,
+    font: {family: 'Arial', size: 14},
+    responsive: false,
+  };
+
+  const fixtures = [
+    ['line', 'line', {labels: ['January', 'February', 'March', 'April'], datasets: [{label: 'Revenue', data: [2, 5, 3, 6], borderColor: '#2563eb', borderWidth: 3, pointRadius: 3}]}, {
+      scales: {x: {ticks: {minRotation: 45, maxRotation: 45}, title: {display: true, text: 'Month'}}, y: {title: {display: true, text: 'Revenue'}}},
+    }],
+    ['area', 'line', {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Area', data: [2, 6, 3, 7], borderColor: '#0f766e', backgroundColor: 'rgba(20, 184, 166, .35)', fill: true, tension: .35}]}, {}],
+    ['bar', 'bar', {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Orders', data: [4, 7, 5], backgroundColor: '#f59e0b', borderColor: '#b45309', borderWidth: 2}]}, {}],
+    ['pie', 'pie', {labels: ['North', 'South', 'West'], datasets: [{data: [4, 3, 5], backgroundColor: ['#2563eb', '#10b981', '#f59e0b'], borderColor: '#fff', borderWidth: 2}]}, {}],
+    ['doughnut', 'doughnut', {labels: ['North', 'South', 'West'], datasets: [{data: [4, 3, 5], backgroundColor: ['#7c3aed', '#ec4899', '#22c55e'], borderColor: '#fff', borderWidth: 2}]}, {}],
+    ['legend', 'line', {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Ellipse marker', data: [2, 4, 3], borderColor: '#1d4ed8', pointStyle: 'circle', pointRadius: 5}]}, {
+      plugins: {legend: {labels: {pointStyleWidth: 30, usePointStyle: true}}},
+    }],
+  ];
+
+  function mount(name, type, data, options, renderer) {
+    const card = document.createElement('section');
+    card.className = 'fixture';
+    card.dataset.case = `${name}-${renderer}`;
+    card.innerHTML = `<h2>${name} (${renderer})</h2>`;
+    const canvas = document.createElement('canvas');
+    canvas.width = 420;
+    canvas.height = 250;
+    card.appendChild(canvas);
+    document.querySelector('#fixtures').appendChild(card);
+    new Chart(canvas, {type, data, options: {...common, ...options, renderer}});
+  }
+
+  for (const [name, type, data, options] of fixtures) {
+    mount(name, type, data, options, 'canvas');
+    mount(name, type, data, options, 'svg');
+  }
+
+  const svgCharts = document.querySelectorAll('[data-case$="-svg"] svg');
+  const line = document.querySelector('[data-case="line-svg"] [data-svg-part="line"] path');
+  const fill = document.querySelector('[data-case="area-svg"] [data-svg-part="fill"] path');
+  const legend = document.querySelector('[data-case="legend-svg"] [data-legend-role="symbol"]');
+  const result = {
+    fill: Boolean(fill?.getAttribute('clip-path')),
+    legend: /A15,[^,]+,0,1,1/.test(legend?.getAttribute('d') || ''),
+    line: Boolean(line?.getAttribute('d')),
+    svgCharts: svgCharts.length,
+    text: document.querySelectorAll('[data-case="line-svg"] text').length,
+  };
+  document.querySelector('#result').textContent = JSON.stringify(result);
+  document.body.dataset.svgReady = 'true';
+</script>
+</body>

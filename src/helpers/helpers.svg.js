@@ -222,6 +222,10 @@ export function getOrCreateSvgDatasetGroup(chart, datasetIndex) {
     root.appendChild(group);
   }
 
+  // Dataset controllers are called in Chart.js draw order. Re-appending an
+  // existing node keeps its identity while matching runtime `dataset.order`.
+  root.appendChild(group);
+
   group.setAttribute('data-render-id', renderId);
   return group;
 }

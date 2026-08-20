@@ -5,7 +5,7 @@ import {_steppedLineTo, _bezierCurveTo} from '../helpers/helpers.canvas.js';
 import {_updateBezierControlPoints} from '../helpers/helpers.curve.js';
 import {valueOrDefault} from '../helpers/index.js';
 import {Path} from '../helpers/helpers.path.js';
-import {getOrCreateSvgDatasetPart, getOrCreateSvgPath, removeExtraSvgPaths, removeSvgDataset} from '../helpers/helpers.svg.js';
+import {getOrCreateSvgDatasetPart, getOrCreateSvgPath, removeExtraSvgPaths, removeSvgDatasetPart} from '../helpers/helpers.svg.js';
 
 /**
  * @typedef { import('./element.point.js').default } PointElement
@@ -475,7 +475,7 @@ export default class LineElement extends Element {
         ctx.restore();
       }
     } else if (this._chart && this._chart.options.renderer === 'svg') {
-      removeSvgDataset(this._chart, this._datasetIndex);
+      removeSvgDatasetPart(this._chart, this._datasetIndex, 'line');
     }
 
     if (this.animated) {

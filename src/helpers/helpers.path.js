@@ -164,6 +164,56 @@ export class Path {
       this._append`A${r},${r},0,${+(da >= pi)},${cw},${this._x1 = x + r * Math.cos(a1)},${this._y1 = y + r * Math.sin(a1)}`;
     }
   }
+  // eslint-disable-next-line complexity
+  ellipse(x, y, rx, ry, rotation, a0, a1, ccw) {
+    x = +x;
+    y = +y;
+    rx = +rx;
+    ry = +ry;
+    rotation = +rotation;
+    ccw = !!ccw;
+
+    if (rx < 0 || ry < 0) {
+      throw new Error('negative radius: ' + (rx < 0 ? rx : ry));
+    }
+
+    const point = (angle) => {
+      const cosAngle = Math.cos(angle);
+      const sinAngle = Math.sin(angle);
+      const cosRotation = Math.cos(rotation);
+      const sinRotation = Math.sin(rotation);
+      return {
+        x: x + rx * cosAngle * cosRotation - ry * sinAngle * sinRotation,
+        y: y + rx * cosAngle * sinRotation + ry * sinAngle * cosRotation
+      };
+    };
+    const start = point(a0);
+    const end = point(a1);
+    const cw = 1 ^ ccw;
+    let da = ccw ? a0 - a1 : a1 - a0;
+
+    if (this._x1 === null) {
+      this._append`M${this._x1 = start.x},${this._y1 = start.y}`;
+    } else if (Math.abs(this._x1 - start.x) > epsilon || Math.abs(this._y1 - start.y) > epsilon) {
+      this._append`L${this._x1 = start.x},${this._y1 = start.y}`;
+    }
+
+    if (!rx || !ry) {
+      return;
+    }
+
+    if (da < 0) {
+      da = da % tau + tau;
+    }
+
+    const rotationDegrees = rotation * 180 / pi;
+    if (da > tauEpsilon) {
+      const opposite = point(a0 + pi);
+      this._append`A${rx},${ry},${rotationDegrees},1,${cw},${opposite.x},${opposite.y}A${rx},${ry},${rotationDegrees},1,${cw},${this._x1 = start.x},${this._y1 = start.y}`;
+    } else if (da > epsilon) {
+      this._append`A${rx},${ry},${rotationDegrees},${+(da >= pi)},${cw},${this._x1 = end.x},${this._y1 = end.y}`;
+    }
+  }
   rect(x, y, w, h) {
     this._append`M${this._x0 = this._x1 = +x},${this._y0 = this._y1 = +y}h${w = +w}v${+h}h${-w}Z`;
   }
