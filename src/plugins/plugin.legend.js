@@ -332,7 +332,7 @@ export class Legend extends Element {
         top,
         right: left + width,
         bottom: top + height
-      }, 'background'));
+      }));
       group.setAttribute('direction', this.options.textDirection || (this.options.rtl ? 'rtl' : 'ltr'));
       this._draw(group);
       return;

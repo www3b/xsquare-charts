@@ -632,7 +632,7 @@ export default class BarController extends DatasetController {
   }
 
   /**
-	 * @private
+	 * @protected
 	 */
   _calculateBarIndexPixels(index, ruler) {
     const scale = ruler.scale;

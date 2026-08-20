@@ -137,7 +137,7 @@ function createChart() {
 }
 
 function scalePart(chart, layer, scaleId, part) {
-  const root = layer === 'foreground' ? chart.$chartjsSvgRoot : chart.$chartjsSvgBackgroundRoot;
+  const root = findChild(chart.$chartjsSvgRoot, 'data-svg-layer', layer);
   return findChild(findChild(root, 'data-scale-id', scaleId), 'data-svg-part', part);
 }
 

@@ -14,12 +14,12 @@
 <output id="result"></output>
 <script type="module">
   import {
-    ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController,
+    ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController, HistogramController,
     Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Tooltip,
     Title,
   } from '/dist/chart.js';
 
-  Chart.register(ArcElement, BarController, BarElement, CategoryScale, DoughnutController, Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Title, Tooltip);
+  Chart.register(ArcElement, BarController, BarElement, CategoryScale, DoughnutController, Filler, HistogramController, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Title, Tooltip);
 
   const common = {
     animation: false,
@@ -33,6 +33,7 @@
     }],
     ['area', 'line', {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Area', data: [2, 6, 3, 7], borderColor: '#0f766e', backgroundColor: 'rgba(20, 184, 166, .35)', fill: true, tension: .35}]}, {}],
     ['bar', 'bar', {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Orders', data: [4, 7, 5], backgroundColor: '#f59e0b', borderColor: '#b45309', borderWidth: 2}]}, {}],
+    ['histogram', 'histogram', {datasets: [{label: 'Variable bins', data: [{xMin: 0, xMax: 1, y: 2}, {xMin: 1, xMax: 4, y: 5}, {xMin: 4, xMax: 10, y: 3}], backgroundColor: '#38bdf8', borderColor: '#0369a1', borderWidth: 1}]}, {}],
     ['pie', 'pie', {labels: ['North', 'South', 'West'], datasets: [{data: [4, 3, 5], backgroundColor: ['#2563eb', '#10b981', '#f59e0b'], borderColor: '#fff', borderWidth: 2}]}, {}],
     ['doughnut', 'doughnut', {labels: ['North', 'South', 'West'], datasets: [{data: [4, 3, 5], backgroundColor: ['#7c3aed', '#ec4899', '#22c55e'], borderColor: '#fff', borderWidth: 2}]}, {}],
     ['legend', 'line', {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Ellipse marker', data: [2, 4, 3], borderColor: '#1d4ed8', pointStyle: 'circle', pointRadius: 5}]}, {
@@ -105,13 +106,17 @@
   htmlTooltipChart.draw();
   const tooltipRestoredForSvg = document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]')?.getAttribute('aria-hidden') === 'false';
 
-  const svgCharts = document.querySelectorAll('[data-case$="-svg"] svg');
+  const svgCharts = document.querySelectorAll('[data-case$="-svg"] svg[data-chart-svg]');
   const line = document.querySelector('[data-case="line-svg"] [data-svg-part="line"] path');
   const fill = document.querySelector('[data-case="area-svg"] [data-svg-part="fill"] path');
   const legend = document.querySelector('[data-case="legend-svg"] [data-legend-role="symbol"]');
+  const histogramBars = [...document.querySelectorAll('[data-case="histogram-svg"] [data-svg-part="bars"] > g')];
+  const histogramWidths = histogramBars.map((bar) => bar.getBBox().width);
   const result = {
     fill: Boolean(fill?.getAttribute('clip-path')),
+    histogram: histogramWidths.length === 3 && histogramWidths[0] < histogramWidths[1] && histogramWidths[1] < histogramWidths[2],
     legend: /A15,[^,]+,0,1,1/.test(legend?.getAttribute('d') || ''),
+    legacySvgRoots: document.querySelectorAll('svg[data-chart-svg-layer]').length,
     line: Boolean(line?.getAttribute('d')),
     svgCharts: svgCharts.length,
     text: document.querySelectorAll('[data-case="line-svg"] text').length,

@@ -1,17 +1,10 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const SVG_ROOT_KEYS = {
-  background: '$chartjsSvgBackgroundRoot',
-  foreground: '$chartjsSvgRoot'
-};
+const SVG_LAYERS = /** @type {('background'|'datasets'|'foreground')[]} */ (['background', 'datasets', 'foreground']);
 const svgElementContexts = new WeakMap();
 const svgElements = new WeakMap();
 
 function createSvgElement(chart, name) {
   return chart.canvas.ownerDocument.createElementNS(SVG_NS, name);
-}
-
-function rootKey(layer) {
-  return SVG_ROOT_KEYS[layer];
 }
 
 function otherLayer(layer) {
@@ -24,10 +17,9 @@ function findChild(parent, attribute, value) {
 
 /**
  * @param {any} chart
- * @param {'background'|'foreground'} [layer]
  */
-function getOrCreateSvgDefs(chart, layer = 'foreground') {
-  const root = getOrCreateSvgRoot(chart, layer);
+function getOrCreateSvgDefs(chart) {
+  const root = getOrCreateSvgRoot(chart);
   const renderId = root.getAttribute('data-render-id') || '0';
   let defs = /** @type {SVGDefsElement} */ (findChild(root, 'data-svg-defs', 'true'));
   if (!defs) {
@@ -65,35 +57,55 @@ function syncSvgRoot(chart, root) {
 
 /**
  * @param {any} chart
- * @param {'background'|'foreground'} [layer]
  * @returns {SVGSVGElement}
  */
-export function getOrCreateSvgRoot(chart, layer = 'foreground') {
-  const key = rootKey(layer);
-  let root = chart[key];
+export function getOrCreateSvgRoot(chart) {
+  let root = chart.$chartjsSvgRoot;
   if (!root) {
     root = createSvgElement(chart, 'svg');
     root.setAttribute('aria-hidden', 'true');
-    root.setAttribute('data-chart-svg-layer', layer);
+    root.setAttribute('data-chart-svg', 'true');
     root.style.position = 'absolute';
     root.style.pointerEvents = 'none';
     root.style.overflow = 'visible';
 
     const parent = chart.canvas.parentNode;
-    if (layer === 'background') {
-      parent.insertBefore(root, chart.canvas);
-    } else {
-      parent.insertBefore(root, chart.canvas.nextSibling);
-    }
-    chart[key] = root;
+    parent.insertBefore(root, chart.canvas.nextSibling);
+    chart.$chartjsSvgRoot = root;
   }
   syncSvgRoot(chart, root);
   return root;
 }
 
 /**
+ * @param {any} chart
+ * @param {'background'|'datasets'|'foreground'} layer
+ * @returns {SVGGElement}
+ */
+function getOrCreateSvgLayer(chart, layer) {
+  const root = getOrCreateSvgRoot(chart);
+  let group = /** @type {SVGGElement} */ (findChild(root, 'data-svg-layer', layer));
+  if (!group) {
+    group = createSvgElement(chart, 'g');
+    group.setAttribute('data-svg-layer', layer);
+    const index = SVG_LAYERS.indexOf(layer);
+    const next = SVG_LAYERS.slice(index + 1)
+      .map((name) => findChild(root, 'data-svg-layer', name))
+      .find(Boolean);
+    root.insertBefore(group, next || null);
+  }
+  group.setAttribute('data-render-id', root.getAttribute('data-render-id') || '0');
+  return group;
+}
+
+function getSvgLayer(chart, layer) {
+  const root = chart.$chartjsSvgRoot;
+  return root && findChild(root, 'data-svg-layer', layer);
+}
+
+/**
  * Returns a chart-level SVG group. It shares the regular background and
- * foreground roots with all other SVG renderers, while keeping layout-box
+ * layers with all other SVG renderers, while keeping layout-box
  * content outside scale and dataset groups.
  *
  * @param {any} chart
@@ -102,7 +114,7 @@ export function getOrCreateSvgRoot(chart, layer = 'foreground') {
  * @returns {SVGGElement}
  */
 export function getOrCreateSvgChartPart(chart, part, layer) {
-  const root = getOrCreateSvgRoot(chart, layer);
+  const root = getOrCreateSvgLayer(chart, layer);
   const renderId = root.getAttribute('data-render-id') || '0';
   let group = /** @type {SVGGElement} */ (findChild(root, 'data-chart-svg-part', part));
   if (!group) {
@@ -120,7 +132,7 @@ export function getOrCreateSvgChartPart(chart, part, layer) {
  */
 export function removeSvgChartPart(chart, part) {
   for (const layer of ['background', 'foreground']) {
-    const root = chart[rootKey(layer)];
+    const root = getSvgLayer(chart, layer);
     const group = root && findChild(root, 'data-chart-svg-part', part);
     if (group) {
       group.remove();
@@ -138,7 +150,7 @@ export function removeSvgChartPart(chart, part) {
 export function getOrCreateSvgScalePart(chart, scaleId, part, layer) {
   removeSvgScalePart(chart, scaleId, part, otherLayer(layer));
 
-  const root = getOrCreateSvgRoot(chart, layer);
+  const root = getOrCreateSvgLayer(chart, layer);
   const renderId = root.getAttribute('data-render-id') || '0';
   let scale = /** @type {SVGGElement} */ (findChild(root, 'data-scale-id', scaleId));
   if (!scale) {
@@ -191,7 +203,7 @@ export function removeExtraSvgElements(group, count) {
 export function removeSvgScalePart(chart, scaleId, part, layer) {
   const layers = layer ? [layer] : ['background', 'foreground'];
   for (const currentLayer of layers) {
-    const root = chart[rootKey(currentLayer)];
+    const root = getSvgLayer(chart, currentLayer);
     const scale = root && findChild(root, 'data-scale-id', scaleId);
     const group = scale && findChild(scale, 'data-svg-part', part);
     if (group) {
@@ -209,7 +221,7 @@ export function removeSvgScalePart(chart, scaleId, part, layer) {
  * @returns {SVGGElement}
  */
 export function getOrCreateSvgDatasetGroup(chart, datasetIndex) {
-  const root = getOrCreateSvgRoot(chart);
+  const root = getOrCreateSvgLayer(chart, 'datasets');
   const renderId = root.getAttribute('data-render-id') || '0';
   if (!root.hasAttribute('data-render-id')) {
     root.setAttribute('data-render-id', renderId);
@@ -263,7 +275,7 @@ export function getOrCreateSvgDatasetPart(chart, datasetIndex, part) {
  * @param {string} part
  */
 export function removeSvgDatasetPart(chart, datasetIndex, part) {
-  const root = chart[rootKey('foreground')];
+  const root = getSvgLayer(chart, 'datasets');
   const dataset = root && findChild(root, 'data-dataset-index', datasetIndex.toString());
   const group = dataset && findChild(dataset, 'data-svg-part', part);
   if (group) {
@@ -277,11 +289,10 @@ export function removeSvgDatasetPart(chart, datasetIndex, part) {
  * @param {any} chart
  * @param {string} key
  * @param {{left: number, top: number, right: number, bottom: number}} bounds
- * @param {'background'|'foreground'} [layer]
  * @returns {string}
  */
-export function getOrCreateSvgClipRect(chart, key, bounds, layer) {
-  const defs = getOrCreateSvgDefs(chart, layer);
+export function getOrCreateSvgClipRect(chart, key, bounds) {
+  const defs = getOrCreateSvgDefs(chart);
   const renderId = defs.getAttribute('data-render-id');
   const id = `chartjs-${chart.id}-clip-${key}`;
   let clip = /** @type {SVGClipPathElement} */ (findChild(defs, 'id', id));
@@ -403,7 +414,7 @@ export function removeExtraSvgPaths(group, count) {
  * @param {number} datasetIndex
  */
 export function removeSvgDataset(chart, datasetIndex) {
-  const root = chart[rootKey('foreground')];
+  const root = getSvgLayer(chart, 'datasets');
   const group = root && findChild(root, 'data-dataset-index', datasetIndex.toString());
   if (group) {
     group.remove();
@@ -415,11 +426,11 @@ export function removeSvgDataset(chart, datasetIndex) {
  */
 export function beginSvgRender(chart) {
   if (chart.options.renderer === 'svg') {
-    const layers = /** @type {('background'|'foreground')[]} */ (['background', 'foreground']);
-    for (const layer of layers) {
-      const root = getOrCreateSvgRoot(chart, layer);
-      const renderId = +(root.getAttribute('data-render-id') || 0) + 1;
-      root.setAttribute('data-render-id', renderId.toString());
+    const root = getOrCreateSvgRoot(chart);
+    const renderId = +(root.getAttribute('data-render-id') || 0) + 1;
+    root.setAttribute('data-render-id', renderId.toString());
+    for (const layer of SVG_LAYERS) {
+      getOrCreateSvgLayer(chart, layer).setAttribute('data-render-id', renderId.toString());
     }
   } else {
     removeSvgRoot(chart);
@@ -434,20 +445,24 @@ export function endSvgRender(chart) {
     return;
   }
 
-  const layers = /** @type {('background'|'foreground')[]} */ (['background', 'foreground']);
-  for (const layer of layers) {
-    const root = chart[rootKey(layer)];
-    if (!root) {
+  const root = chart.$chartjsSvgRoot;
+  if (!root) {
+    return;
+  }
+  const renderId = root.getAttribute('data-render-id');
+  for (const layer of SVG_LAYERS) {
+    const group = getSvgLayer(chart, layer);
+    if (!group) {
       continue;
     }
-    for (const group of Array.from(root.children)) {
-      if (group.getAttribute('data-render-id') !== root.getAttribute('data-render-id')) {
-        group.remove();
+    for (const child of Array.from(group.children)) {
+      if (child.getAttribute('data-render-id') !== renderId) {
+        child.remove();
       }
     }
-    removeStaleSvgClipPaths(root, root.getAttribute('data-render-id'));
-    removeStaleSvgElements(root, root.getAttribute('data-render-id'));
+    removeStaleSvgElements(group, renderId);
   }
+  removeStaleSvgClipPaths(root, renderId);
 }
 
 function removeStaleSvgClipPaths(root, renderId) {
@@ -474,22 +489,17 @@ function removeStaleSvgElements(group, renderId) {
 
 /**
  * @param {any} chart
- * @param {'background'|'foreground'} [layer]
  */
-export function removeSvgRoot(chart, layer) {
-  const layers = layer ? [layer] : ['background', 'foreground'];
-  for (const currentLayer of layers) {
-    const key = rootKey(currentLayer);
-    const root = chart[key];
-    if (!root) {
-      continue;
-    }
-
-    const parent = root.parentNode;
-    if (root.getAttribute('data-positioned-parent') === 'true' && parent && parent.style && parent.style.position === 'relative') {
-      parent.style.position = root.getAttribute('data-parent-position');
-    }
-    root.remove();
-    delete chart[key];
+export function removeSvgRoot(chart) {
+  const root = chart.$chartjsSvgRoot;
+  if (!root) {
+    return;
   }
+
+  const parent = root.parentNode;
+  if (root.getAttribute('data-positioned-parent') === 'true' && parent && parent.style && parent.style.position === 'relative') {
+    parent.style.position = root.getAttribute('data-parent-position');
+  }
+  root.remove();
+  delete chart.$chartjsSvgRoot;
 }

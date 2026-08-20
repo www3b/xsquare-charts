@@ -128,7 +128,7 @@ function createChart() {
 }
 
 function chartPart(chart, part) {
-  return findChild(chart.$chartjsSvgBackgroundRoot, 'data-chart-svg-part', part);
+  return findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'background'), 'data-chart-svg-part', part);
 }
 
 test('SVG global title and subtitle reuse layout geometry and text styles', () => {

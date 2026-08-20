@@ -100,7 +100,7 @@ function createChart(datasets, options = {}) {
 }
 
 function bars(chart, datasetIndex) {
-  const metaDataset = findChild(chart.$chartjsSvgRoot, 'data-dataset-index', String(datasetIndex));
+  const metaDataset = findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', String(datasetIndex));
   const group = metaDataset && findChild(metaDataset, 'data-svg-part', 'bars');
   return group ? group.children : [];
 }

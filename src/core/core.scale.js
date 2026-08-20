@@ -1674,7 +1674,7 @@ export default class Scale extends Element {
     const items = this.getLabelItems(chartArea);
     if (this.chart.options.renderer === 'svg') {
       const group = getOrCreateSvgScalePart(this.chart, this.id, 'labels', svgLayerForZ(valueOrDefault(optionTicks.z, 0)));
-      group.setAttribute('clip-path', area ? getOrCreateSvgClipRect(this.chart, `scale-${this.id}-labels`, area, svgLayerForZ(valueOrDefault(optionTicks.z, 0))) : 'none');
+      group.setAttribute('clip-path', area ? getOrCreateSvgClipRect(this.chart, `scale-${this.id}-labels`, area) : 'none');
       for (let i = 0; i < items.length; ++i) {
         const item = items[i];
         renderSvgText(group, i, item.label, item.font, {

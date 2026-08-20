@@ -102,7 +102,7 @@ function createChart(datasets, options = {}) {
 }
 
 function dataset(chart, index) {
-  return findChild(chart.$chartjsSvgRoot, 'data-dataset-index', String(index));
+  return findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', String(index));
 }
 
 function part(chart, index, name) {
@@ -229,7 +229,7 @@ test('SVG LineElement follows Chart.js draw order without recreating datasets', 
   const firstLine = linePaths(chart, 0)[0];
   const secondLine = linePaths(chart, 1)[0];
   const expectedDomOrder = () => chart.getSortedVisibleDatasetMetas().slice().reverse().map((meta) => String(meta.index));
-  const domOrder = () => chart.$chartjsSvgRoot.children.filter((node) => node.hasAttribute('data-dataset-index')).map((node) => node.getAttribute('data-dataset-index'));
+  const domOrder = () => findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets').children.map((node) => node.getAttribute('data-dataset-index'));
 
   assert.deepEqual(domOrder(), expectedDomOrder());
   chart.data.datasets[0].order = 2;

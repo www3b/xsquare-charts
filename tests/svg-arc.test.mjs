@@ -99,7 +99,7 @@ function createChart(type, datasets, options = {}) {
 }
 
 function arcs(chart, datasetIndex) {
-  const datasetGroup = findChild(chart.$chartjsSvgRoot, 'data-dataset-index', String(datasetIndex));
+  const datasetGroup = findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', String(datasetIndex));
   const group = datasetGroup && findChild(datasetGroup, 'data-svg-part', 'arcs');
   return group ? group.children.map((arc) => arc.children[0]) : [];
 }

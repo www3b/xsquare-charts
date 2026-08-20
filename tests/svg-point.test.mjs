@@ -124,7 +124,7 @@ function createChart() {
 }
 
 function pointGroup(chart, datasetIndex) {
-  const root = chart.$chartjsSvgRoot;
+  const root = findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets');
   const dataset = findChild(root, 'data-dataset-index', String(datasetIndex));
   return findChild(dataset, 'data-svg-part', 'points');
 }
@@ -134,7 +134,7 @@ test('SVG PointElement reuses standard point geometry, styles and DOM nodes', ()
   const {chart, parent} = createChart();
   const canvas = chart.canvas;
   const points = pointGroup(chart, 0);
-  const line = findChild(findChild(chart.$chartjsSvgRoot, 'data-dataset-index', '0'), 'data-svg-part', 'line');
+  const line = findChild(findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', '0'), 'data-svg-part', 'line');
 
   assert.ok(line);
   assert.ok(points);

@@ -65,6 +65,16 @@
           <div class="chart-frame"><canvas id="bar-horizontal-svg-chart"></canvas></div>
         </section>
         <section class="chart-card">
+          <h2>Histogram from raw values</h2>
+          <p><code>createHistogramBins()</code> строит бины из измерений latency.</p>
+          <div class="chart-frame"><canvas id="histogram-raw-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Histogram from backend bins</h2>
+          <p>Бины разной ширины передаются напрямую как <code>{xMin, xMax, y}</code>.</p>
+          <div class="chart-frame"><canvas id="histogram-bins-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
           <h2>Pie</h2>
           <p>Базовые SVG/Canvas sectors.</p>
           <div class="chart-frame"><canvas id="pie-chart"></canvas></div>

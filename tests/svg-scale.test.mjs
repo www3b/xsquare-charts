@@ -112,10 +112,13 @@ test('SVG scale grid, ticks and borders retain computed coordinates and styles',
   scale.drawBorder();
   endSvgRender(chart);
 
-  const [background, canvas, foreground] = chart.parent.children;
-  assert.equal(background.getAttribute('data-chart-svg-layer'), 'background');
+  const [canvas, root] = chart.parent.children;
   assert.equal(canvas, chart.canvas);
-  assert.equal(foreground.getAttribute('data-chart-svg-layer'), 'foreground');
+  assert.equal(root.getAttribute('data-chart-svg'), 'true');
+  const background = findChild(root, 'data-svg-layer', 'background');
+  const datasets = findChild(root, 'data-svg-layer', 'datasets');
+  const foreground = findChild(root, 'data-svg-layer', 'foreground');
+  assert.deepEqual(root.children, [background, datasets, foreground]);
 
   const backgroundScale = findChild(background, 'data-scale-id', 'x');
   const grid = findChild(backgroundScale, 'data-svg-part', 'grid').children[0];
@@ -138,12 +141,13 @@ test('SVG scale nodes are reused and move with z, visibility and cleanup', () =>
   const y = createScale(chart, 'y1', 'y', {z: 1});
   x.drawGrid(chart.chartArea);
   y.drawGrid(chart.chartArea);
-  const background = chart.parent.children[0];
+  const root = chart.$chartjsSvgRoot;
+  const background = findChild(root, 'data-svg-layer', 'background');
   const firstGrid = findChild(findChild(background, 'data-scale-id', 'x'), 'data-svg-part', 'grid').children[0];
 
   x.drawGrid(chart.chartArea);
   assert.equal(findChild(findChild(background, 'data-scale-id', 'x'), 'data-svg-part', 'grid').children[0], firstGrid);
-  assert.ok(findChild(chart.parent.children[2], 'data-scale-id', 'y1'));
+  assert.ok(findChild(findChild(root, 'data-svg-layer', 'foreground'), 'data-scale-id', 'y1'));
 
   x.options.grid.drawOnChartArea = false;
   x.options.grid.drawTicks = false;
@@ -152,4 +156,32 @@ test('SVG scale nodes are reused and move with z, visibility and cleanup', () =>
 
   removeSvgRoot(chart);
   assert.deepEqual(chart.parent.children, [chart.canvas]);
+});
+
+test('SVG root and layers are reused through resize and renderer switches', () => {
+  const chart = createChart();
+  beginSvgRender(chart);
+  const root = chart.$chartjsSvgRoot;
+  const layers = root.children.slice();
+  endSvgRender(chart);
+
+  chart.width = 600;
+  chart.height = 240;
+  beginSvgRender(chart);
+  endSvgRender(chart);
+  assert.equal(chart.$chartjsSvgRoot, root);
+  assert.deepEqual(root.children, layers);
+  assert.equal(root.getAttribute('width'), '600');
+  assert.equal(root.getAttribute('height'), '240');
+  assert.equal(root.getAttribute('viewBox'), '0 0 600 240');
+
+  chart.options.renderer = 'canvas';
+  beginSvgRender(chart);
+  assert.equal(chart.$chartjsSvgRoot, undefined);
+  assert.deepEqual(chart.parent.children, [chart.canvas]);
+  chart.options.renderer = 'svg';
+  beginSvgRender(chart);
+  assert.equal(chart.parent.children.filter((node) => node.getAttribute('data-chart-svg') === 'true').length, 1);
+  endSvgRender(chart);
+  removeSvgRoot(chart);
 });

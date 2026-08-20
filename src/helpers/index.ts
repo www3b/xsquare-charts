@@ -9,6 +9,7 @@ export {default as easingEffects} from './helpers.easing.js';
 export * from './helpers.extras.js';
 export * from './helpers.interpolation.js';
 export * from './helpers.intl.js';
+export * from './helpers.histogram.js';
 export * from './helpers.options.js';
 export * from './helpers.math.js';
 export * from './helpers.rtl.js';

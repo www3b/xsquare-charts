@@ -9,6 +9,7 @@ export * from './index.js';
  */
 export {
   BarController,
+  HistogramController,
   BubbleController,
   DoughnutController,
   LineController,

@@ -101,7 +101,7 @@ function createChart(datasets, filler = {}) {
 }
 
 function fillGroup(chart, datasetIndex) {
-  const dataset = findChild(chart.$chartjsSvgRoot, 'data-dataset-index', String(datasetIndex));
+  const dataset = findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', String(datasetIndex));
   return dataset && findChild(dataset, 'data-svg-part', 'fill');
 }
 
@@ -130,7 +130,7 @@ test('SVG filler reuses the existing line/target geometry and cleans up nodes', 
     areaDataset(false, {backgroundColor: '#cccccc'}),
   ]);
   const fills = fillPaths(chart, 0);
-  const dataset = findChild(chart.$chartjsSvgRoot, 'data-dataset-index', '0');
+  const dataset = findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', '0');
   const line = findChild(dataset, 'data-svg-part', 'line');
   const points = findChild(dataset, 'data-svg-part', 'points');
 

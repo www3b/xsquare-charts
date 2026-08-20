@@ -6,6 +6,7 @@ import {
   Chart,
   DoughnutController,
   Filler,
+  HistogramController,
   Legend,
   LineController,
   LineElement,
@@ -17,6 +18,7 @@ import {
   Tooltip,
   PieController,
 } from '/dist/chart.js';
+import {createHistogramBins} from '/helpers/helpers.js';
 
 Chart.register(
   ArcElement,
@@ -25,6 +27,7 @@ Chart.register(
   CategoryScale,
   DoughnutController,
   Filler,
+  HistogramController,
   Legend,
   LineController,
   LineElement,
@@ -75,6 +78,14 @@ function groupedBarData() {
     }],
   };
 }
+
+const rawLatencySamples = [12, 16, 18, 19, 22, 24, 25, 27, 28, 29, 31, 34, 35, 37, 41, 43, 48, 54, 57, 63];
+const backendHistogramBins = [
+  {xMin: 0, xMax: 10, y: 4},
+  {xMin: 10, xMax: 25, y: 13},
+  {xMin: 25, xMax: 50, y: 9},
+  {xMin: 50, xMax: 90, y: 3},
+];
 
 const svgCharts = [
   new Chart(document.getElementById('area-chart'), {
@@ -241,6 +252,40 @@ const svgCharts = [
       }],
     },
     options: {...barOptions({x: {...axisOptions, type: 'linear'}, y: axisOptions}), indexAxis: 'y'},
+  }),
+
+  new Chart(document.getElementById('histogram-raw-chart'), {
+    type: 'histogram',
+    data: {
+      datasets: [{
+        label: 'Requests',
+        data: createHistogramBins(rawLatencySamples, {bins: 6}),
+        backgroundColor: 'rgba(56, 189, 248, .7)',
+        borderColor: '#0284c7',
+        borderWidth: 1,
+      }],
+    },
+    options: {
+      ...barOptions({x: {...axisOptions, type: 'linear'}, y: {...axisOptions, type: 'linear'}}),
+      plugins: {legend: {labels: {color: '#f8fafc'}}},
+    },
+  }),
+
+  new Chart(document.getElementById('histogram-bins-chart'), {
+    type: 'histogram',
+    data: {
+      datasets: [{
+        label: 'Events from backend',
+        data: backendHistogramBins,
+        backgroundColor: 'rgba(167, 139, 250, .7)',
+        borderColor: '#7c3aed',
+        borderWidth: 1,
+      }],
+    },
+    options: {
+      ...barOptions({x: {...axisOptions, type: 'linear'}, y: {...axisOptions, type: 'linear'}}),
+      plugins: {legend: {labels: {color: '#f8fafc'}}},
+    },
   }),
 
   new Chart(document.getElementById('pie-chart'), {

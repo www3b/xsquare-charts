@@ -124,7 +124,7 @@ function createChart(type = 'line', dataSets, options = {}) {
 }
 
 function legend(chart) {
-  return findChild(chart.$chartjsSvgBackgroundRoot, 'data-chart-svg-part', 'legend');
+  return findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'background'), 'data-chart-svg-part', 'legend');
 }
 
 function legendItems(chart) {

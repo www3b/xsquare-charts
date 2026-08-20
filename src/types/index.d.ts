@@ -159,6 +159,30 @@ export declare const BarController: ChartComponent & {
   new (chart: Chart, datasetIndex: number): BarController;
 };
 
+/** A vertical histogram bin. Its x boundaries are mapped directly to pixels. */
+export interface HistogramDataPoint {
+  xMin: number;
+  xMax: number;
+  y: number;
+}
+
+/** A horizontal histogram bin for charts with `indexAxis: 'y'`. */
+export interface HorizontalHistogramDataPoint {
+  yMin: number;
+  yMax: number;
+  x: number;
+}
+
+export interface HistogramControllerDatasetOptions extends BarControllerDatasetOptions {}
+
+export interface HistogramControllerChartOptions extends BarControllerChartOptions {}
+
+export type HistogramController = BarController
+export declare const HistogramController: ChartComponent & {
+  prototype: HistogramController;
+  new (chart: Chart, datasetIndex: number): HistogramController;
+};
+
 export interface BubbleControllerDatasetOptions
   extends ControllerDatasetOptions,
   ScriptableAndArrayOptions<PointOptions, ScriptableContext<'bubble'>>,
@@ -2207,6 +2231,7 @@ export declare const BarElement: ChartComponent & {
 export interface ElementOptionsByType<TType extends ChartType> {
   arc: ScriptableAndArrayOptions<ArcOptions & ArcHoverOptions, ScriptableContext<TType>>;
   bar: ScriptableAndArrayOptions<BarOptions & BarHoverOptions, ScriptableContext<TType>>;
+  histogram: ScriptableAndArrayOptions<BarOptions & BarHoverOptions, ScriptableContext<TType>>;
   line: ScriptableAndArrayOptions<LineOptions & LineHoverOptions, ScriptableContext<TType>>;
   point: ScriptableAndArrayOptions<PointOptions & PointHoverOptions, ScriptableContext<TType>>;
 }
@@ -3749,6 +3774,13 @@ export interface BarParsedData extends CartesianParsedData {
   }
 }
 
+export interface HistogramParsedData extends CartesianParsedData {
+  _histogram: {
+    min: number;
+    max: number;
+  };
+}
+
 export interface BubbleParsedData extends CartesianParsedData {
   // The bubble radius value
   _custom: number;
@@ -3765,6 +3797,14 @@ export interface ChartTypeRegistry {
     defaultDataPoint: number | [number, number] | null;
     metaExtensions: {};
     parsedDataType: BarParsedData,
+    scales: keyof CartesianScaleTypeRegistry;
+  };
+  histogram: {
+    chartOptions: HistogramControllerChartOptions;
+    datasetOptions: HistogramControllerDatasetOptions;
+    defaultDataPoint: HistogramDataPoint | HorizontalHistogramDataPoint;
+    metaExtensions: {};
+    parsedDataType: HistogramParsedData;
     scales: keyof CartesianScaleTypeRegistry;
   };
   line: {
