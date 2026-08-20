@@ -9,6 +9,7 @@ import Config, {determineAxis, getIndexAxis} from './core.config.js';
 import {each, callback as callCallback, uid, valueOrDefault, _elementsEqual, isNullOrUndef, setsEqual, defined, isFunction, _isClickEvent} from '../helpers/helpers.core.js';
 import {clearCanvas, clipArea, createContext, unclipArea, _isPointInArea, _isDomSupported, retinaScale, getDatasetClipArea} from '../helpers/index.js';
 import {beginSvgRender, endSvgRender, removeSvgRoot} from '../helpers/helpers.svg.js';
+import {serializeSvgChart} from '../helpers/helpers.svg.export.js';
 // @ts-ignore
 import {version} from '../../package.json';
 import {debounce} from '../helpers/helpers.extras.js';
@@ -962,6 +963,10 @@ class Chart {
 
   toBase64Image(...args) {
     return this.canvas.toDataURL(...args);
+  }
+
+  toSVG() {
+    return serializeSvgChart(this);
   }
 
   /**

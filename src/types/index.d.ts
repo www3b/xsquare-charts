@@ -602,6 +602,7 @@ export declare class Chart<
 
   destroy(): void;
   toBase64Image(type?: string, quality?: unknown): string;
+  toSVG(): string;
   bindEvents(): void;
   unbindEvents(): void;
   updateHoverStyle(items: InteractionItem[], mode: 'dataset', enabled: boolean): void;

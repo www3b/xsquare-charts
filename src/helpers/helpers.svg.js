@@ -143,7 +143,7 @@ export function removeSvgChartPart(chart, part) {
 /**
  * @param {any} chart
  * @param {string} scaleId
- * @param {'background'|'grid'|'ticks'|'border'|'labels'|'title'} part
+ * @param {'background'|'grid'|'ticks'|'border'|'labels'|'title'|'radial-background'|'radial-grid'|'angle-lines'|'point-labels'|'radial-ticks'} part
  * @param {'background'|'foreground'} layer
  * @returns {SVGGElement}
  */
@@ -197,7 +197,7 @@ export function removeExtraSvgElements(group, count) {
 /**
  * @param {any} chart
  * @param {string} scaleId
- * @param {'background'|'grid'|'ticks'|'border'|'labels'|'title'} part
+ * @param {'background'|'grid'|'ticks'|'border'|'labels'|'title'|'radial-background'|'radial-grid'|'angle-lines'|'point-labels'|'radial-ticks'} part
  * @param {'background'|'foreground'} [layer]
  */
 export function removeSvgScalePart(chart, scaleId, part, layer) {

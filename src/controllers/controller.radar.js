@@ -57,6 +57,8 @@ export default class RadarController extends DatasetController {
     const labels = meta.iScale.getLabels();
 
     // Update Line
+    line._chart = this.chart;
+    line._datasetIndex = this.index;
     line.points = points;
     // In resize mode only point locations change, so no need to set the points or options.
     if (mode !== 'resize') {

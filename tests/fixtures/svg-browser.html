@@ -15,11 +15,19 @@
 <script type="module">
   import {
     ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController, HistogramController,
-    Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Tooltip,
+    BubbleController, Filler, Legend, LineController, LineElement, LinearScale, LogarithmicScale, PieController, PointElement, PolarAreaController, RadialLinearScale, RadarController, ScatterController, TimeScale, TimeSeriesScale, Tooltip, _adapters,
     Title,
   } from '/dist/chart.js';
 
-  Chart.register(ArcElement, BarController, BarElement, CategoryScale, DoughnutController, Filler, HistogramController, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Title, Tooltip);
+  Chart.register(ArcElement, BarController, BarElement, BubbleController, CategoryScale, DoughnutController, Filler, HistogramController, Legend, LineController, LineElement, LinearScale, LogarithmicScale, PieController, PointElement, PolarAreaController, RadialLinearScale, RadarController, ScatterController, TimeScale, TimeSeriesScale, Title, Tooltip);
+  _adapters._date.override({
+    formats: () => ({datetime: 'x', millisecond: 'x', second: 'x', minute: 'x', hour: 'x', day: 'x', week: 'x', month: 'x', quarter: 'x', year: 'x'}),
+    parse: (value) => value instanceof Date ? +value : typeof value === 'number' ? value : Date.parse(value),
+    format: (value) => new Date(value).toISOString().slice(0, 10),
+    add: (value, amount, unit) => value + amount * ({millisecond: 1, second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 6048e5, month: 2592e6, quarter: 7776e6, year: 31536e6}[unit] || 1),
+    diff: (a, b, unit) => (a - b) / ({millisecond: 1, second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 6048e5, month: 2592e6, quarter: 7776e6, year: 31536e6}[unit] || 1),
+    startOf: (value) => value, endOf: (value) => value,
+  });
 
   const common = {
     animation: false,
@@ -28,12 +36,21 @@
   };
 
   const fixtures = [
-    ['line', 'line', {labels: ['January', 'February', 'March', 'April'], datasets: [{label: 'Revenue', data: [2, 5, 3, 6], borderColor: '#2563eb', borderWidth: 3, pointRadius: 3}]}, {
+    ['line', 'line', {labels: ['Январь & <2026>', 'February 🚀', 'March', 'April'], datasets: [{label: 'Revenue & Profit <2026>', data: [2, 5, 3, 6], borderColor: '#2563eb', borderWidth: 3, pointRadius: 3}]}, {
       scales: {x: {ticks: {minRotation: 45, maxRotation: 45}, title: {display: true, text: 'Month'}}, y: {title: {display: true, text: 'Revenue'}}},
     }],
     ['area', 'line', {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Area', data: [2, 6, 3, 7], borderColor: '#0f766e', backgroundColor: 'rgba(20, 184, 166, .35)', fill: true, tension: .35}]}, {}],
     ['bar', 'bar', {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Orders', data: [4, 7, 5], backgroundColor: '#f59e0b', borderColor: '#b45309', borderWidth: 2}]}, {}],
     ['histogram', 'histogram', {datasets: [{label: 'Variable bins', data: [{xMin: 0, xMax: 1, y: 2}, {xMin: 1, xMax: 4, y: 5}, {xMin: 4, xMax: 10, y: 3}], backgroundColor: '#38bdf8', borderColor: '#0369a1', borderWidth: 1}]}, {}],
+    ['scatter', 'scatter', {datasets: [{label: 'Samples', showLine: true, fill: true, data: [{x: 1, y: 2}, {x: 3, y: 5}, {x: 7, y: -2}], borderColor: '#7c3aed', backgroundColor: 'rgba(124, 58, 237, .2)', pointBackgroundColor: '#c4b5fd', pointRadius: [4, 7, 5], pointStyle: ['circle', 'triangle', 'star']}]}, {}],
+    ['bubble', 'bubble', {datasets: [{label: 'Sizes', data: [{x: 1, y: 2, r: 5}, {x: 3, y: 4, r: 14}, {x: 5, y: 1, r: 24}], backgroundColor: 'rgba(16, 185, 129, .55)', borderColor: '#047857'}]}, {}],
+    ['log', 'line', {datasets: [{label: 'Log', data: [{x: 1, y: 1}, {x: 2, y: 10}, {x: 5, y: 100}, {x: 10, y: 1000}], borderColor: '#ea580c'}]}, {scales: {x: {type: 'logarithmic'}, y: {type: 'logarithmic'}}}],
+    ['time', 'line', {datasets: [{label: 'Time', data: [{x: '2026-01-01', y: 2}, {x: '2026-01-05', y: 5}, {x: '2026-01-20', y: 3}], borderColor: '#0891b2'}]}, {scales: {x: {type: 'time', time: {unit: 'day'}, title: {display: true, text: 'Date'}}, y: {type: 'linear'}}}],
+    ['timeseries', 'line', {datasets: [{label: 'Series', data: [{x: '2026-01-01', y: 2}, {x: '2026-01-02', y: 5}, {x: '2026-01-20', y: 3}, {x: '2026-04-10', y: 6}], borderColor: '#be123c'}]}, {scales: {x: {type: 'timeseries', time: {unit: 'day'}}, y: {type: 'linear'}}}],
+    ['radar', 'radar', {labels: ['North', 'East', 'South', 'West', 'Center'], datasets: [{label: 'Actual', data: [4, 7, 5, 8, 6], backgroundColor: 'rgba(37, 99, 235, .25)', borderColor: '#2563eb', borderWidth: 2, pointBackgroundColor: '#fff', pointRadius: 4}]}, {
+      plugins: {title: {display: true, text: 'Radar overview'}}, scales: {r: {backgroundColor: '#f8fafc', pointLabels: {backdropColor: '#fff', backdropPadding: 2}, ticks: {backdropColor: '#fff'}}},
+    }],
+    ['polar', 'polarArea', {labels: ['North', 'East', 'South', 'West'], datasets: [{data: [4, 7, 3, 6], backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ec4899'], borderColor: '#fff', borderWidth: 2}]}, {}],
     ['pie', 'pie', {labels: ['North', 'South', 'West'], datasets: [{data: [4, 3, 5], backgroundColor: ['#2563eb', '#10b981', '#f59e0b'], borderColor: '#fff', borderWidth: 2}]}, {}],
     ['doughnut', 'doughnut', {labels: ['North', 'South', 'West'], datasets: [{data: [4, 3, 5], backgroundColor: ['#7c3aed', '#ec4899', '#22c55e'], borderColor: '#fff', borderWidth: 2}]}, {}],
     ['legend', 'line', {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Ellipse marker', data: [2, 4, 3], borderColor: '#1d4ed8', pointStyle: 'circle', pointRadius: 5}]}, {
@@ -54,10 +71,33 @@
     return new Chart(canvas, {type, data, options: {...common, ...options, renderer}});
   }
 
+  const charts = new Map();
   for (const [name, type, data, options] of fixtures) {
-    mount(name, type, data, options, 'canvas');
-    mount(name, type, data, options, 'svg');
+    charts.set(`${name}-canvas`, mount(name, type, data, options, 'canvas'));
+    charts.set(`${name}-svg`, mount(name, type, data, options, 'svg'));
   }
+
+  const exported = ['area', 'histogram', 'pie', 'radar', 'polar', 'scatter', 'bubble', 'log', 'time', 'timeseries'].map((name) => {
+    const source = charts.get(`${name}-svg`);
+    const before = source.$chartjsSvgRoot.outerHTML;
+    const card = document.createElement('section');
+    card.className = 'fixture';
+    card.dataset.case = `exported-${name}`;
+    card.innerHTML = `<h2>exported ${name}</h2>${source.toSVG()}`;
+    document.querySelector('#fixtures').appendChild(card);
+    return {name, source, svg: card.querySelector('svg'), unchanged: source.$chartjsSvgRoot.outerHTML === before};
+  });
+  const exportsValid = exported.every(({source, svg, unchanged}) => {
+    const xml = new DOMParser().parseFromString(source.toSVG(), 'image/svg+xml');
+    return unchanged && svg?.getAttribute('xmlns') === 'http://www.w3.org/2000/svg'
+      && svg?.getAttribute('width') === '420' && !svg?.getAttribute('style')
+      && !svg?.hasAttribute('aria-hidden') && !svg?.querySelector('[data-render-id]')
+      && !xml.querySelector('parsererror');
+  });
+  const polarTooltipChart = charts.get('polar-svg');
+  polarTooltipChart.tooltip.setActiveElements([{datasetIndex: 0, index: 1}], {x: 210, y: 100});
+  polarTooltipChart.draw();
+  const radialTooltip = document.querySelector('[data-case="polar-svg"] [data-chart-tooltip]')?.getAttribute('aria-hidden') === 'false';
 
   const htmlTooltipChart = mount('html-tooltip', 'line', {
     labels: ['One', 'Two', 'Three'],
@@ -112,9 +152,25 @@
   const legend = document.querySelector('[data-case="legend-svg"] [data-legend-role="symbol"]');
   const histogramBars = [...document.querySelectorAll('[data-case="histogram-svg"] [data-svg-part="bars"] > g')];
   const histogramWidths = histogramBars.map((bar) => bar.getBBox().width);
+  const radarGrid = document.querySelector('[data-case="radar-svg"] [data-svg-part="radial-grid"] path');
+  const polarGrid = document.querySelector('[data-case="polar-svg"] [data-svg-part="radial-grid"] path');
+  const scatter = document.querySelectorAll('[data-case="scatter-svg"] [data-svg-part="points"] path').length === 3
+    && Boolean(document.querySelector('[data-case="scatter-svg"] [data-svg-part="line"] path'));
+  const bubble = document.querySelectorAll('[data-case="bubble-svg"] [data-svg-part="points"] path').length === 3;
+  const cartesianScales = ['log', 'time', 'timeseries'].every((name) => {
+    const root = `[data-case="${name}-svg"] [data-scale-id="x"]`;
+    return document.querySelector(`${root} [data-svg-part="grid"]`)
+      && document.querySelector(`${root} [data-svg-part="labels"] text`);
+  });
   const result = {
     fill: Boolean(fill?.getAttribute('clip-path')),
+    exportsValid,
     histogram: histogramWidths.length === 3 && histogramWidths[0] < histogramWidths[1] && histogramWidths[1] < histogramWidths[2],
+    radial: Boolean(radarGrid?.getAttribute('d')) && /A/.test(polarGrid?.getAttribute('d') || ''),
+    radialTooltip,
+    scatter,
+    bubble,
+    cartesianScales,
     legend: /A15,[^,]+,0,1,1/.test(legend?.getAttribute('d') || ''),
     legacySvgRoots: document.querySelectorAll('svg[data-chart-svg-layer]').length,
     line: Boolean(line?.getAttribute('d')),
