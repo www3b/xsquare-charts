@@ -3,6 +3,7 @@ import {
   _arrayUnique, isArray, isNullOrUndef,
   valueOrDefault, resolveObjectKey, sign, defined
 } from '../helpers/index.js';
+import {setSvgElementContext} from '../helpers/helpers.svg.js';
 
 function getAllScaleValues(scale, type) {
   if (!scale._cache.$bar) {
@@ -674,6 +675,7 @@ export default class BarController extends DatasetController {
 
     for (; i < ilen; ++i) {
       if (this.getParsed(i)[vScale.axis] !== null && !rects[i].hidden) {
+        setSvgElementContext(rects[i], this.chart, this.index, i);
         rects[i].draw(this._ctx);
       }
     }

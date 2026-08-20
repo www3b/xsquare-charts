@@ -288,14 +288,15 @@ export function getOrCreateSvgClipPath(chart, key, d) {
  * @param {object} element
  * @param {any} chart
  * @param {number} datasetIndex
+ * @param {number} [dataIndex]
  */
-export function setSvgElementContext(element, chart, datasetIndex) {
-  svgElementContexts.set(element, {chart, datasetIndex});
+export function setSvgElementContext(element, chart, datasetIndex, dataIndex) {
+  svgElementContexts.set(element, {chart, datasetIndex, dataIndex});
 }
 
 /**
  * @param {object} element
- * @returns {{chart: any, datasetIndex: number}|undefined}
+ * @returns {{chart: any, datasetIndex: number, dataIndex?: number}|undefined}
  */
 export function getSvgElementContext(element) {
   return svgElementContexts.get(element);

@@ -731,7 +731,7 @@ export default class DatasetController {
       if (element.hidden) {
         continue;
       }
-      setSvgElementContext(element, chart, this.index);
+      setSvgElementContext(element, chart, this.index, i);
       if (element.active && drawActiveElementsOnTop) {
         active.push(element);
       } else {

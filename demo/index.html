@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chart.js SVG area demo</title>
+    <title>Chart.js SVG gallery</title>
     <style>
       :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #101828; color: #f8fafc; }
       body { margin: 0; padding: 32px; }
@@ -28,7 +28,7 @@
   <body>
     <main>
       <h1>Chart gallery: Canvas → SVG</h1>
-      <p>Переключатель меняет renderer у area и scatter. Bar и doughnut пока оставлены Canvas — их SVG-элементы ещё не реализованы.</p>
+      <p>Переключатель меняет renderer у area, scatter и bar. Doughnut остаётся Canvas, потому что SVG ArcElement ещё не реализован.</p>
       <div class="toolbar" aria-label="Renderer">
         <button class="active" data-renderer="canvas">Canvas</button>
         <button data-renderer="svg">SVG</button>
@@ -46,8 +46,23 @@
         </section>
         <section class="chart-card">
           <h2>Bar (Canvas)</h2>
-          <p>Контрольный пример до SVG BarElement.</p>
+          <p>Контрольный Canvas-пример для сравнения с SVG.</p>
           <div class="chart-frame"><canvas id="bar-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Grouped bar (SVG)</h2>
+          <p>Rounded bars, разные border width, borderSkipped и положительные/отрицательные значения.</p>
+          <div class="chart-frame"><canvas id="bar-svg-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Stacked bar (SVG)</h2>
+          <p>Stack с <code>borderSkipped: 'middle'</code>.</p>
+          <div class="chart-frame"><canvas id="bar-stack-svg-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Horizontal floating bar (SVG)</h2>
+          <p>Horizontal bars, floating ranges и radius по углам.</p>
+          <div class="chart-frame"><canvas id="bar-horizontal-svg-chart"></canvas></div>
         </section>
         <section class="chart-card">
           <h2>Doughnut (Canvas)</h2>

@@ -159,12 +159,15 @@ export interface DrawPointOptions {
  * Kept separate from painting so the same point geometry can be written to a
  * CanvasRenderingContext2D or serialized as an SVG path.
  */
-export interface PointPath {
+export interface PathContext {
   moveTo(x: number, y: number): void;
   lineTo(x: number, y: number): void;
   arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, counterclockwise?: boolean): void;
   rect(x: number, y: number, width: number, height: number): void;
   closePath(): void;
+}
+
+export interface PointPath extends PathContext {
   ellipse?(x: number, y: number, radiusX: number, radiusY: number, rotation: number, startAngle: number, endAngle: number, counterclockwise?: boolean): void;
 }
 
@@ -526,7 +529,7 @@ export function renderText(
  * @param rect - Bounding rect
  */
 export function addRoundedRectPath(
-  ctx: CanvasRenderingContext2D,
+  ctx: PathContext,
   rect: RoundedRect & { radius: TRBLCorners }
 ) {
   const {x, y, w, h, radius} = rect;
