@@ -15,6 +15,7 @@ import {
   SubTitle,
   Title,
   Tooltip,
+  PieController,
 } from '/dist/chart.js';
 
 Chart.register(
@@ -33,6 +34,7 @@ Chart.register(
   SubTitle,
   Title,
   Tooltip,
+  PieController,
 );
 
 const axisOptions = {
