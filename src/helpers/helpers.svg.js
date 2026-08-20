@@ -22,6 +22,19 @@ function findChild(parent, attribute, value) {
   return Array.from(parent.children).find((child) => child.getAttribute(attribute) === value);
 }
 
+function getOrCreateSvgDefs(chart) {
+  const root = getOrCreateSvgRoot(chart);
+  const renderId = root.getAttribute('data-render-id') || '0';
+  let defs = /** @type {SVGDefsElement} */ (findChild(root, 'data-svg-defs', 'true'));
+  if (!defs) {
+    defs = createSvgElement(chart, 'defs');
+    defs.setAttribute('data-svg-defs', 'true');
+    root.insertBefore(defs, root.children[0] || null);
+  }
+  defs.setAttribute('data-render-id', renderId);
+  return defs;
+}
+
 function syncSvgRoot(chart, root) {
   const {canvas, width, height} = chart;
   const parent = canvas.parentNode;
@@ -104,8 +117,8 @@ export function getOrCreateSvgScalePart(chart, scaleId, part, layer) {
 }
 
 /**
- * @param {SVGGElement} group
- * @param {'line'|'path'|'rect'} name
+ * @param {SVGElement} group
+ * @param {string} name
  * @param {number} [index]
  * @returns {SVGElement}
  */
@@ -119,7 +132,7 @@ export function getOrCreateSvgElement(group, name, index = 0) {
 }
 
 /**
- * @param {SVGGElement} group
+ * @param {SVGElement} group
  * @param {number} count
  */
 export function removeExtraSvgElements(group, count) {
@@ -194,6 +207,78 @@ export function getOrCreateSvgDatasetPart(chart, datasetIndex, part) {
 
   group.setAttribute('data-render-id', renderId);
   return group;
+}
+
+/**
+ * Removes a dataset part without affecting other SVG renderers in the same
+ * dataset group.
+ *
+ * @param {any} chart
+ * @param {number} datasetIndex
+ * @param {string} part
+ */
+export function removeSvgDatasetPart(chart, datasetIndex, part) {
+  const root = chart[rootKey('foreground')];
+  const dataset = root && findChild(root, 'data-dataset-index', datasetIndex.toString());
+  const group = dataset && findChild(dataset, 'data-svg-part', part);
+  if (group) {
+    group.remove();
+  }
+}
+
+/**
+ * Updates a reusable SVG clip path containing a rectangle.
+ *
+ * @param {any} chart
+ * @param {string} key
+ * @param {{left: number, top: number, right: number, bottom: number}} bounds
+ * @returns {string}
+ */
+export function getOrCreateSvgClipRect(chart, key, bounds) {
+  const defs = getOrCreateSvgDefs(chart);
+  const renderId = defs.getAttribute('data-render-id');
+  const id = `chartjs-${chart.id}-clip-${key}`;
+  let clip = /** @type {SVGClipPathElement} */ (findChild(defs, 'id', id));
+  if (!clip) {
+    clip = createSvgElement(chart, 'clipPath');
+    clip.setAttribute('id', id);
+    defs.appendChild(clip);
+  }
+  clip.setAttribute('data-svg-clip', 'true');
+  clip.setAttribute('data-render-id', renderId);
+  const rect = getOrCreateSvgElement(clip, 'rect');
+  rect.setAttribute('x', bounds.left.toString());
+  rect.setAttribute('y', bounds.top.toString());
+  rect.setAttribute('width', Math.max(0, bounds.right - bounds.left).toString());
+  rect.setAttribute('height', Math.max(0, bounds.bottom - bounds.top).toString());
+  removeExtraSvgElements(clip, 1);
+  return `url(#${id})`;
+}
+
+/**
+ * Updates a reusable SVG clip path containing a path string.
+ *
+ * @param {any} chart
+ * @param {string} key
+ * @param {string} d
+ * @returns {string}
+ */
+export function getOrCreateSvgClipPath(chart, key, d) {
+  const defs = getOrCreateSvgDefs(chart);
+  const renderId = defs.getAttribute('data-render-id');
+  const id = `chartjs-${chart.id}-clip-${key}`;
+  let clip = /** @type {SVGClipPathElement} */ (findChild(defs, 'id', id));
+  if (!clip) {
+    clip = createSvgElement(chart, 'clipPath');
+    clip.setAttribute('id', id);
+    defs.appendChild(clip);
+  }
+  clip.setAttribute('data-svg-clip', 'true');
+  clip.setAttribute('data-render-id', renderId);
+  const path = getOrCreateSvgElement(clip, 'path');
+  path.setAttribute('d', d);
+  removeExtraSvgElements(clip, 1);
+  return `url(#${id})`;
 }
 
 /**
@@ -313,7 +398,20 @@ export function endSvgRender(chart) {
         group.remove();
       }
     }
+    removeStaleSvgClipPaths(root, root.getAttribute('data-render-id'));
     removeStaleSvgElements(root, root.getAttribute('data-render-id'));
+  }
+}
+
+function removeStaleSvgClipPaths(root, renderId) {
+  const defs = findChild(root, 'data-svg-defs', 'true');
+  if (!defs) {
+    return;
+  }
+  for (const clip of Array.from(defs.children)) {
+    if (clip.getAttribute('data-svg-clip') === 'true' && clip.getAttribute('data-render-id') !== renderId) {
+      clip.remove();
+    }
   }
 }
 

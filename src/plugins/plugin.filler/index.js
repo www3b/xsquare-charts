@@ -8,6 +8,13 @@ import LineElement from '../../elements/element.line.js';
 import {_drawfill} from './filler.drawing.js';
 import {_shouldApplyFill} from './filler.helper.js';
 import {_decodeFill, _resolveTarget} from './filler.options.js';
+import {removeSvgDatasetPart} from '../../helpers/helpers.svg.js';
+
+function removeSvgFill(source) {
+  if (source && source.chart.options.renderer === 'svg') {
+    removeSvgDatasetPart(source.chart, source.index, 'fill');
+  }
+}
 
 export default {
   id: 'filler',
@@ -45,6 +52,9 @@ export default {
       }
 
       source.fill = _resolveTarget(sources, i, options.propagate);
+      if (source.fill === false) {
+        removeSvgFill(source);
+      }
     }
   },
 
@@ -70,12 +80,18 @@ export default {
       return;
     }
 
+    // SVG fill paths stay with their dataset so the default beforeDatasetDraw
+    // order is exact. Earlier draw times retain their Canvas geometry but
+    // cannot globally interleave every dataset fill before every dataset line
+    // without introducing a separate SVG scene graph.
     const metasets = chart.getSortedVisibleDatasetMetas();
     for (let i = metasets.length - 1; i >= 0; --i) {
       const source = metasets[i].$filler;
 
       if (_shouldApplyFill(source)) {
         _drawfill(chart.ctx, source, chart.chartArea);
+      } else {
+        removeSvgFill(source);
       }
     }
   },
@@ -84,6 +100,9 @@ export default {
     const source = args.meta.$filler;
 
     if (!_shouldApplyFill(source) || options.drawTime !== 'beforeDatasetDraw') {
+      if (!_shouldApplyFill(source)) {
+        removeSvgFill(source);
+      }
       return;
     }
 
