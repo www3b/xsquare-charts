@@ -91,6 +91,7 @@ function createScale(chart, id, axis, grid = {}) {
   scale._borderValue = axis === 'x' ? 380 : 20;
   scale.getContext = () => ({});
   scale.options = {
+    axis,
     border: {display: true, setContext: () => borderOptions, z: 1},
     grid: {display: true, drawOnChartArea: true, drawTicks: true, setContext: () => gridOptions, z: -1, ...grid}
   };
