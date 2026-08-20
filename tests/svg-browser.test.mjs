@@ -46,11 +46,19 @@ test('SVG fixtures render in actual Chromium', {skip: !existsSync(chrome), timeo
     ], {maxBuffer: 2 * 1024 * 1024, timeout: 15000});
     assert.match(stdout, /data-svg-ready="true"/);
     const result = JSON.parse(stdout.match(/<output id="result">([^<]+)<\/output>/)[1]);
-    assert.equal(result.svgCharts, 12);
+    assert.equal(result.svgCharts, 15);
     assert.equal(result.line, true);
     assert.equal(result.fill, true);
     assert.equal(result.text, 12);
     assert.equal(result.legend, true);
+    assert.equal(result.tooltipVisible, true);
+    assert.equal(result.tooltipAboveSvg, true);
+    assert.equal(result.tooltipHidden, true);
+    assert.equal(result.tooltipReused, true);
+    assert.equal(result.tooltipRemovedForCanvas, true);
+    assert.equal(result.tooltipRestoredForSvg, true);
+    assert.equal(result.tooltipPointStyle, true);
+    assert.equal(result.tooltipSafe, true);
 
     assert.ok((await stat(screenshot)).size > 1000);
   } finally {

@@ -15,11 +15,11 @@
 <script type="module">
   import {
     ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController,
-    Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement,
+    Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Tooltip,
     Title,
   } from '/dist/chart.js';
 
-  Chart.register(ArcElement, BarController, BarElement, CategoryScale, DoughnutController, Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Title);
+  Chart.register(ArcElement, BarController, BarElement, CategoryScale, DoughnutController, Filler, Legend, LineController, LineElement, LinearScale, PieController, PointElement, Title, Tooltip);
 
   const common = {
     animation: false,
@@ -50,13 +50,60 @@
     canvas.height = 250;
     card.appendChild(canvas);
     document.querySelector('#fixtures').appendChild(card);
-    new Chart(canvas, {type, data, options: {...common, ...options, renderer}});
+    return new Chart(canvas, {type, data, options: {...common, ...options, renderer}});
   }
 
   for (const [name, type, data, options] of fixtures) {
     mount(name, type, data, options, 'canvas');
     mount(name, type, data, options, 'svg');
   }
+
+  const htmlTooltipChart = mount('html-tooltip', 'line', {
+    labels: ['One', 'Two', 'Three'],
+    datasets: [
+      {label: 'Revenue', data: [2, 5, 3], borderColor: '#2563eb', pointStyle: 'circle'},
+      {label: 'Cost', data: [4, 2, 6], borderColor: '#dc2626'},
+    ],
+  }, {
+    plugins: {
+      legend: false,
+      tooltip: {
+        backgroundColor: '#102030',
+        borderColor: '#93c5fd',
+        borderWidth: 2,
+        callbacks: {
+          footer: () => 'Footer',
+          label: (item) => `<b>${item.dataset.label}</b>`,
+          title: () => 'Title',
+        },
+        cornerRadius: {bottomLeft: 4, bottomRight: 5, topLeft: 2, topRight: 3},
+        position: 'nearest',
+        usePointStyle: true,
+      },
+    },
+  }, 'svg');
+  htmlTooltipChart.tooltip.setActiveElements([{datasetIndex: 0, index: 1}, {datasetIndex: 1, index: 1}], {x: 210, y: 100});
+  htmlTooltipChart.draw();
+  const tooltipRoot = document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]');
+  const tooltipVisible = tooltipRoot?.getAttribute('aria-hidden') === 'false';
+  const tooltipAboveSvg = tooltipRoot?.parentElement.lastElementChild === tooltipRoot;
+  const tooltipSafe = tooltipRoot?.querySelector('b') === null && tooltipRoot?.textContent.includes('<b>Revenue</b>');
+  const tooltipPointStyle = Boolean(tooltipRoot?.querySelector('[data-chart-tooltip-marker] svg path'));
+  htmlTooltipChart.tooltip.handleEvent({type: 'mouseout', x: 0, y: 0}, false, true);
+  htmlTooltipChart.draw();
+  const tooltipHidden = tooltipRoot?.getAttribute('aria-hidden') === 'true';
+  htmlTooltipChart.tooltip.setActiveElements([{datasetIndex: 0, index: 1}], {x: 210, y: 100});
+  htmlTooltipChart.draw();
+  const tooltipReused = document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]') === tooltipRoot;
+  htmlTooltipChart.options.renderer = 'canvas';
+  htmlTooltipChart.update('none');
+  htmlTooltipChart.draw();
+  const tooltipRemovedForCanvas = !document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]');
+  htmlTooltipChart.options.renderer = 'svg';
+  htmlTooltipChart.update('none');
+  htmlTooltipChart.tooltip.setActiveElements([{datasetIndex: 0, index: 1}], {x: 210, y: 100});
+  htmlTooltipChart.draw();
+  const tooltipRestoredForSvg = document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]')?.getAttribute('aria-hidden') === 'false';
 
   const svgCharts = document.querySelectorAll('[data-case$="-svg"] svg');
   const line = document.querySelector('[data-case="line-svg"] [data-svg-part="line"] path');
@@ -68,6 +115,14 @@
     line: Boolean(line?.getAttribute('d')),
     svgCharts: svgCharts.length,
     text: document.querySelectorAll('[data-case="line-svg"] text').length,
+    tooltipHidden,
+    tooltipPointStyle,
+    tooltipRemovedForCanvas,
+    tooltipRestoredForSvg,
+    tooltipReused,
+    tooltipSafe,
+    tooltipVisible,
+    tooltipAboveSvg,
   };
   document.querySelector('#result').textContent = JSON.stringify(result);
   document.body.dataset.svgReady = 'true';

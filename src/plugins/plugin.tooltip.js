@@ -6,6 +6,7 @@ import {toFont, toPadding, toTRBLCorners} from '../helpers/helpers.options.js';
 import {getRtlAdapter, overrideTextDirection, restoreTextDirection} from '../helpers/helpers.rtl.js';
 import {distanceBetweenPoints, _limitValue} from '../helpers/helpers.math.js';
 import {createContext, drawPoint} from '../helpers/index.js';
+import {hideHtmlTooltip, removeHtmlTooltip, renderHtmlTooltip} from './plugin.tooltip.html.js';
 
 /**
  * @typedef { import('../platform/platform.base.js').Chart } Chart
@@ -1246,6 +1247,24 @@ export default {
   afterDraw(chart) {
     const tooltip = chart.tooltip;
 
+    if (chart.options.renderer === 'svg') {
+      if (!tooltip || !tooltip._willRender()) {
+        hideHtmlTooltip(chart);
+        return;
+      }
+      const args = {tooltip};
+      if (chart.notifyPlugins('beforeTooltipDraw', {...args, cancelable: true}) === false) {
+        hideHtmlTooltip(chart);
+        return;
+      }
+      if (renderHtmlTooltip(tooltip)) {
+        chart.notifyPlugins('afterTooltipDraw', args);
+      }
+      return;
+    }
+
+    removeHtmlTooltip(chart);
+
     if (tooltip && tooltip._willRender()) {
       const args = {
         tooltip
@@ -1259,6 +1278,10 @@ export default {
 
       chart.notifyPlugins('afterTooltipDraw', args);
     }
+  },
+
+  afterDestroy(chart) {
+    removeHtmlTooltip(chart);
   },
 
   afterEvent(chart, args) {
