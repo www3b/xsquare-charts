@@ -5,7 +5,7 @@ import {_steppedLineTo, _bezierCurveTo} from '../helpers/helpers.canvas.js';
 import {_updateBezierControlPoints} from '../helpers/helpers.curve.js';
 import {valueOrDefault} from '../helpers/index.js';
 import {Path} from '../helpers/helpers.path.js';
-import {getOrCreateSvgDatasetGroup, getOrCreateSvgPath, removeExtraSvgPaths, removeSvgDataset} from '../helpers/helpers.svg.js';
+import {getOrCreateSvgDatasetPart, getOrCreateSvgPath, removeExtraSvgPaths, removeSvgDataset} from '../helpers/helpers.svg.js';
 
 /**
  * @typedef { import('./element.point.js').default } PointElement
@@ -254,7 +254,7 @@ function setSvgStyle(path, options, style = options) {
 
 function drawSvg(line, start, count) {
   const {options, segments, _chart: chart, _datasetIndex: datasetIndex} = line;
-  const group = getOrCreateSvgDatasetGroup(chart, datasetIndex);
+  const group = getOrCreateSvgDatasetPart(chart, datasetIndex, 'line');
   const segmentMethod = _getSegmentMethod(line);
   const params = {start, end: start + count - 1};
   const paths = options.segment ? segments : [undefined];

@@ -3,6 +3,8 @@ const SVG_ROOT_KEYS = {
   background: '$chartjsSvgBackgroundRoot',
   foreground: '$chartjsSvgRoot'
 };
+const svgElementContexts = new WeakMap();
+const svgElements = new WeakMap();
 
 function createSvgElement(chart, name) {
   return chart.canvas.ownerDocument.createElementNS(SVG_NS, name);
@@ -171,6 +173,83 @@ export function getOrCreateSvgDatasetGroup(chart, datasetIndex) {
 }
 
 /**
+ * Returns a stable part of a dataset's foreground group. Parts keep SVG
+ * drawing order explicit without coupling this helper to a chart element type.
+ *
+ * @param {any} chart
+ * @param {number} datasetIndex
+ * @param {string} part
+ * @returns {SVGGElement}
+ */
+export function getOrCreateSvgDatasetPart(chart, datasetIndex, part) {
+  const dataset = getOrCreateSvgDatasetGroup(chart, datasetIndex);
+  const renderId = dataset.getAttribute('data-render-id');
+  let group = /** @type {SVGGElement} */ (findChild(dataset, 'data-svg-part', part));
+
+  if (!group) {
+    group = createSvgElement(chart, 'g');
+    group.setAttribute('data-svg-part', part);
+    dataset.appendChild(group);
+  }
+
+  group.setAttribute('data-render-id', renderId);
+  return group;
+}
+
+/**
+ * Associates an element being drawn with its chart and dataset. Element
+ * classes can then render SVG without carrying chart-specific fields.
+ *
+ * @param {object} element
+ * @param {any} chart
+ * @param {number} datasetIndex
+ */
+export function setSvgElementContext(element, chart, datasetIndex) {
+  svgElementContexts.set(element, {chart, datasetIndex});
+}
+
+/**
+ * @param {object} element
+ * @returns {{chart: any, datasetIndex: number}|undefined}
+ */
+export function getSvgElementContext(element) {
+  return svgElementContexts.get(element);
+}
+
+/**
+ * Gets an SVG element owned by a chart element. The element is reused across
+ * animation frames and moved to the end of `group` to match draw order.
+ *
+ * @param {SVGGElement} group
+ * @param {object} owner
+ * @param {string} name
+ * @returns {SVGElement}
+ */
+export function getOrCreateSvgElementFor(group, owner, name) {
+  let element = svgElements.get(owner);
+  if (!element || element.ownerDocument !== group.ownerDocument) {
+    element = group.ownerDocument.createElementNS(SVG_NS, name);
+    svgElements.set(owner, element);
+  }
+
+  group.appendChild(element);
+  element.setAttribute('data-svg-element-owner', 'true');
+  element.setAttribute('data-render-id', group.getAttribute('data-render-id'));
+  return element;
+}
+
+/**
+ * @param {object} owner
+ */
+export function removeSvgElementFor(owner) {
+  const element = svgElements.get(owner);
+  if (element) {
+    element.remove();
+    svgElements.delete(owner);
+  }
+}
+
+/**
  * @param {SVGGElement} group
  * @param {number} index
  * @returns {SVGPathElement}
@@ -233,6 +312,17 @@ export function endSvgRender(chart) {
       if (group.getAttribute('data-render-id') !== root.getAttribute('data-render-id')) {
         group.remove();
       }
+    }
+    removeStaleSvgElements(root, root.getAttribute('data-render-id'));
+  }
+}
+
+function removeStaleSvgElements(group, renderId) {
+  for (const element of Array.from(group.children)) {
+    if (element.getAttribute('data-svg-element-owner') === 'true' && element.getAttribute('data-render-id') !== renderId) {
+      element.remove();
+    } else {
+      removeStaleSvgElements(element, renderId);
     }
   }
 }

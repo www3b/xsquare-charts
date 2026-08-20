@@ -153,6 +153,21 @@ export interface DrawPointOptions {
   borderWidth: number;
 }
 
+/**
+ * Canvas-like path operations used by the built-in point styles.
+ *
+ * Kept separate from painting so the same point geometry can be written to a
+ * CanvasRenderingContext2D or serialized as an SVG path.
+ */
+export interface PointPath {
+  moveTo(x: number, y: number): void;
+  lineTo(x: number, y: number): void;
+  arc(x: number, y: number, radius: number, startAngle: number, endAngle: number, counterclockwise?: boolean): void;
+  rect(x: number, y: number, width: number, height: number): void;
+  closePath(): void;
+  ellipse?(x: number, y: number, radiusX: number, radiusY: number, rotation: number, startAngle: number, endAngle: number, counterclockwise?: boolean): void;
+}
+
 export function drawPoint(
   ctx: CanvasRenderingContext2D,
   options: DrawPointOptions,
@@ -164,41 +179,27 @@ export function drawPoint(
 }
 
 // eslint-disable-next-line complexity
-export function drawPointLegend(
-  ctx: CanvasRenderingContext2D,
+export function tracePoint(
+  ctx: PointPath,
   options: DrawPointOptions,
   x: number,
   y: number,
-  w: number
+  w?: number
 ) {
-  let type: string, xOffset: number, yOffset: number, size: number, cornerRadius: number, width: number, xOffsetW: number, yOffsetW: number;
+  let xOffset: number, yOffset: number, size: number, cornerRadius: number, width: number, xOffsetW: number, yOffsetW: number;
   const style = options.pointStyle;
   const rotation = options.rotation;
   const radius = options.radius;
   let rad = (rotation || 0) * RAD_PER_DEG;
 
-  if (style && typeof style === 'object') {
-    type = style.toString();
-    if (type === '[object HTMLImageElement]' || type === '[object HTMLCanvasElement]') {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(rad);
-      ctx.drawImage(style, -style.width / 2, -style.height / 2, style.width, style.height);
-      ctx.restore();
-      return;
-    }
-  }
-
   if (isNaN(radius) || radius <= 0) {
     return;
   }
 
-  ctx.beginPath();
-
   switch (style) {
   // Default includes circle
     default:
-      if (w) {
+      if (w && ctx.ellipse) {
         ctx.ellipse(x, y, w / 2, radius, 0, 0, TAU);
       } else {
         ctx.arc(x, y, radius, 0, TAU);
@@ -300,6 +301,35 @@ export function drawPointLegend(
       ctx.closePath();
       break;
   }
+}
+
+// eslint-disable-next-line complexity
+export function drawPointLegend(
+  ctx: CanvasRenderingContext2D,
+  options: DrawPointOptions,
+  x: number,
+  y: number,
+  w: number
+) {
+  let type: string;
+  const style = options.pointStyle;
+  const rotation = options.rotation;
+  const rad = (rotation || 0) * RAD_PER_DEG;
+
+  if (style && typeof style === 'object') {
+    type = style.toString();
+    if (type === '[object HTMLImageElement]' || type === '[object HTMLCanvasElement]') {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rad);
+      ctx.drawImage(style, -style.width / 2, -style.height / 2, style.width, style.height);
+      ctx.restore();
+      return;
+    }
+  }
+
+  ctx.beginPath();
+  tracePoint(ctx, options, x, y, w);
 
   ctx.fill();
   if (options.borderWidth > 0) {

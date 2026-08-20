@@ -3,6 +3,7 @@ import defaults from './core.defaults.js';
 import {isArray, isFinite, isObject, valueOrDefault, resolveObjectKey, defined} from '../helpers/helpers.core.js';
 import {listenArrayEvents, unlistenArrayEvents} from '../helpers/helpers.collection.js';
 import {createContext, sign} from '../helpers/index.js';
+import {setSvgElementContext} from '../helpers/helpers.svg.js';
 
 /**
  * @typedef { import('./core.controller.js').default } Chart
@@ -730,6 +731,7 @@ export default class DatasetController {
       if (element.hidden) {
         continue;
       }
+      setSvgElementContext(element, chart, this.index);
       if (element.active && drawActiveElementsOnTop) {
         active.push(element);
       } else {
