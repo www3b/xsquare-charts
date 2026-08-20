@@ -120,7 +120,10 @@ const svgCharts = [
     options: {
       maintainAspectRatio: false,
       plugins: {
-        legend: {labels: {color: '#f8fafc'}},
+        legend: {
+          labels: {color: '#f8fafc', usePointStyle: true},
+          title: {color: '#93c5fd', display: true, text: 'Series legend'},
+        },
         subtitle: {align: 'end', color: '#a5b4fc', display: true, position: 'bottom', text: 'Canvas and SVG share the same layout box'},
         title: {color: '#f8fafc', display: true, text: ['Global title', 'multiline SVG text']},
       },
@@ -209,7 +212,16 @@ const svgCharts = [
         stack: 'total',
       }],
     },
-    options: barOptions({x: {...axisOptions, stacked: true}, y: {...axisOptions, stacked: true}}),
+    options: {
+      ...barOptions({x: {...axisOptions, stacked: true}, y: {...axisOptions, stacked: true}}),
+      plugins: {
+        legend: {
+          labels: {color: '#f8fafc'},
+          position: 'right',
+          title: {color: '#93c5fd', display: true, text: 'Vertical legend'},
+        },
+      },
+    },
   }),
 
   new Chart(document.getElementById('bar-horizontal-svg-chart'), {
@@ -242,7 +254,7 @@ const svgCharts = [
     },
     options: {
       maintainAspectRatio: false,
-      plugins: {legend: {labels: {color: '#f8fafc'}}},
+      plugins: {legend: {labels: {color: '#f8fafc'}, title: {color: '#93c5fd', display: true, text: 'Channels'}}},
       renderer: 'canvas',
       responsive: true,
     },

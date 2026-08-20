@@ -22,8 +22,12 @@ function findChild(parent, attribute, value) {
   return Array.from(parent.children).find((child) => child.getAttribute(attribute) === value);
 }
 
-function getOrCreateSvgDefs(chart) {
-  const root = getOrCreateSvgRoot(chart);
+/**
+ * @param {any} chart
+ * @param {'background'|'foreground'} [layer]
+ */
+function getOrCreateSvgDefs(chart, layer = 'foreground') {
+  const root = getOrCreateSvgRoot(chart, layer);
   const renderId = root.getAttribute('data-render-id') || '0';
   let defs = /** @type {SVGDefsElement} */ (findChild(root, 'data-svg-defs', 'true'));
   if (!defs) {
@@ -269,10 +273,11 @@ export function removeSvgDatasetPart(chart, datasetIndex, part) {
  * @param {any} chart
  * @param {string} key
  * @param {{left: number, top: number, right: number, bottom: number}} bounds
+ * @param {'background'|'foreground'} [layer]
  * @returns {string}
  */
-export function getOrCreateSvgClipRect(chart, key, bounds) {
-  const defs = getOrCreateSvgDefs(chart);
+export function getOrCreateSvgClipRect(chart, key, bounds, layer) {
+  const defs = getOrCreateSvgDefs(chart, layer);
   const renderId = defs.getAttribute('data-render-id');
   const id = `chartjs-${chart.id}-clip-${key}`;
   let clip = /** @type {SVGClipPathElement} */ (findChild(defs, 'id', id));

@@ -100,6 +100,7 @@ export function renderSvgText(parent, index, value, font, options = {}, textWidt
   text.setAttribute('text-anchor', svgTextAnchor(options.textAlign));
   text.setAttribute('dominant-baseline', svgBaseline(options.textBaseline));
   text.setAttribute('paint-order', 'stroke fill');
+  setOptionalAttribute(text, 'text-decoration', options.strikethrough ? 'line-through' : undefined);
   text.setAttribute('stroke', options.strokeWidth > 0 && options.strokeColor !== '' ? String(options.strokeColor) : 'none');
   text.setAttribute('stroke-width', options.strokeWidth > 0 ? String(options.strokeWidth) : '0');
   setSvgFont(text, font);
