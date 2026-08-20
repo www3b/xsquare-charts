@@ -88,6 +88,43 @@ export function getOrCreateSvgRoot(chart, layer = 'foreground') {
 }
 
 /**
+ * Returns a chart-level SVG group. It shares the regular background and
+ * foreground roots with all other SVG renderers, while keeping layout-box
+ * content outside scale and dataset groups.
+ *
+ * @param {any} chart
+ * @param {string} part
+ * @param {'background'|'foreground'} layer
+ * @returns {SVGGElement}
+ */
+export function getOrCreateSvgChartPart(chart, part, layer) {
+  const root = getOrCreateSvgRoot(chart, layer);
+  const renderId = root.getAttribute('data-render-id') || '0';
+  let group = /** @type {SVGGElement} */ (findChild(root, 'data-chart-svg-part', part));
+  if (!group) {
+    group = createSvgElement(chart, 'g');
+    group.setAttribute('data-chart-svg-part', part);
+    root.appendChild(group);
+  }
+  group.setAttribute('data-render-id', renderId);
+  return group;
+}
+
+/**
+ * @param {any} chart
+ * @param {string} part
+ */
+export function removeSvgChartPart(chart, part) {
+  for (const layer of ['background', 'foreground']) {
+    const root = chart[rootKey(layer)];
+    const group = root && findChild(root, 'data-chart-svg-part', part);
+    if (group) {
+      group.remove();
+    }
+  }
+}
+
+/**
  * @param {any} chart
  * @param {string} scaleId
  * @param {'background'|'grid'|'ticks'|'border'|'labels'|'title'} part

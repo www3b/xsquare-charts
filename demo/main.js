@@ -12,6 +12,8 @@ import {
   LinearScale,
   PointElement,
   ScatterController,
+  SubTitle,
+  Title,
   Tooltip,
 } from '/dist/chart.js';
 
@@ -28,6 +30,8 @@ Chart.register(
   LinearScale,
   PointElement,
   ScatterController,
+  SubTitle,
+  Title,
   Tooltip,
 );
 
@@ -115,7 +119,11 @@ const svgCharts = [
     },
     options: {
       maintainAspectRatio: false,
-      plugins: {legend: {labels: {color: '#f8fafc'}}},
+      plugins: {
+        legend: {labels: {color: '#f8fafc'}},
+        subtitle: {align: 'end', color: '#a5b4fc', display: true, position: 'bottom', text: 'Canvas and SVG share the same layout box'},
+        title: {color: '#f8fafc', display: true, text: ['Global title', 'multiline SVG text']},
+      },
       renderer: 'canvas',
       responsive: true,
       scales: {
@@ -167,7 +175,14 @@ const svgCharts = [
   new Chart(document.getElementById('bar-svg-chart'), {
     type: 'bar',
     data: groupedBarData(),
-    options: barOptions(),
+    options: {
+      ...barOptions(),
+      plugins: {
+        legend: {labels: {color: '#f8fafc'}},
+        subtitle: {color: '#fbbf24', display: true, position: 'right', text: 'Subtitle right'},
+        title: {color: '#f8fafc', display: true, position: 'left', text: 'Title left'},
+      },
+    },
   }),
 
   new Chart(document.getElementById('bar-stack-svg-chart'), {
