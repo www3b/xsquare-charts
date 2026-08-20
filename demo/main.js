@@ -189,30 +189,98 @@ const svgCharts = [
     },
     options: {...barOptions({x: {...axisOptions, type: 'linear'}, y: axisOptions}), indexAxis: 'y'},
   }),
+
+  new Chart(document.getElementById('pie-chart'), {
+    type: 'pie',
+    data: {
+      labels: ['Direct', 'Search', 'Partners', 'Other'],
+      datasets: [{
+        backgroundColor: ['#60a5fa', '#34d399', '#fbbf24', '#f472b6'],
+        borderColor: '#182230',
+        borderWidth: 3,
+        data: [38, 27, 21, 14],
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {legend: {labels: {color: '#f8fafc'}}},
+      renderer: 'canvas',
+      responsive: true,
+    },
+  }),
+
+  new Chart(document.getElementById('doughnut-chart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Direct', 'Search', 'Partners', 'Other'],
+      datasets: [{
+        backgroundColor: ['#60a5fa', '#34d399', '#fbbf24', '#f472b6'],
+        borderColor: '#182230',
+        borderWidth: 3,
+        data: [38, 27, 21, 14],
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {legend: {labels: {color: '#f8fafc'}}},
+      renderer: 'canvas',
+      responsive: true,
+    },
+  }),
+
+  new Chart(document.getElementById('doughnut-style-chart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Design', 'Development', 'Testing', 'Release'],
+      datasets: [{
+        backgroundColor: ['#818cf8', '#38bdf8', '#2dd4bf', '#fbbf24'],
+        borderAlign: 'inner',
+        borderColor: '#0f172a',
+        borderDash: [4, 2],
+        borderRadius: 12,
+        borderWidth: 3,
+        data: [30, 25, 20, 25],
+        offset: 10,
+        spacing: 5,
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {legend: {labels: {color: '#f8fafc'}}},
+      renderer: 'canvas',
+      responsive: true,
+    },
+  }),
+
+  new Chart(document.getElementById('doughnut-rings-chart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['North', 'East', 'South', 'West'],
+      datasets: [{
+        backgroundColor: ['#60a5fa', '#60a5fa', '#60a5fa', '#60a5fa'],
+        borderColor: '#182230',
+        borderWidth: 3,
+        data: [28, 18, 34, 20],
+      }, {
+        backgroundColor: ['#f472b6', '#f472b6', '#f472b6', '#f472b6'],
+        borderColor: '#182230',
+        borderWidth: 3,
+        data: [15, 32, 17, 36],
+      }],
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {legend: {labels: {color: '#f8fafc'}}},
+      renderer: 'canvas',
+      responsive: true,
+    },
+  }),
 ];
 
 new Chart(document.getElementById('bar-chart'), {
   type: 'bar',
   data: groupedBarData(),
   options: barOptions(),
-});
-
-new Chart(document.getElementById('doughnut-chart'), {
-  type: 'doughnut',
-  data: {
-    labels: ['Direct', 'Search', 'Partners', 'Other'],
-    datasets: [{
-      backgroundColor: ['#60a5fa', '#34d399', '#fbbf24', '#f472b6'],
-      borderColor: '#182230',
-      borderWidth: 3,
-      data: [38, 27, 21, 14],
-    }],
-  },
-  options: {
-    maintainAspectRatio: false,
-    plugins: {legend: {labels: {color: '#f8fafc'}}},
-    responsive: true,
-  },
 });
 
 for (const button of document.querySelectorAll('[data-renderer]')) {

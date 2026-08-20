@@ -2,7 +2,21 @@ import Element from '../core/core.element.js';
 import {_angleBetween, getAngleFromPoint, TAU, HALF_PI, valueOrDefault} from '../helpers/index.js';
 import {PI, _angleDiff, _normalizeAngle, _isBetween, _limitValue} from '../helpers/helpers.math.js';
 import {_readValueToProps} from '../helpers/helpers.options.js';
-import type {ArcOptions, Point} from '../types/index.js';
+import {Path} from '../helpers/helpers.path.js';
+import {
+  getOrCreateSvgClipPath,
+  getOrCreateSvgClipRect,
+  getOrCreateSvgDatasetPart,
+  getOrCreateSvgElement,
+  getOrCreateSvgElementFor,
+  getSvgElementContext,
+  removeSvgElementFor
+} from '../helpers/helpers.svg.js';
+import {getDatasetClipArea} from '../helpers/helpers.dataset.js';
+import type {ArcOptions, Chart, Point} from '../types/index.js';
+import type {PathContext} from '../helpers/helpers.canvas.js';
+
+type SvgArcContext = {chart: Chart, datasetIndex: number, dataIndex?: number};
 
 function clipSelf(ctx: CanvasRenderingContext2D, element: ArcElement, endAngle: number) {
   const {startAngle, x, y, outerRadius, innerRadius, options} = element;
@@ -99,7 +113,7 @@ function rThetaToXY(r: number, theta: number, x: number, y: number) {
 }
 
 function pathFullCircle(
-  ctx: CanvasRenderingContext2D,
+  ctx: PathContext,
   element: ArcElement,
   offset: number,
   spacing: number,
@@ -108,7 +122,6 @@ function pathFullCircle(
   const outerRadius = Math.max(element.outerRadius + spacing + offset - pixelMargin, 0);
   const innerRadius = innerR > 0 ? innerR + spacing + offset + pixelMargin : 0;
 
-  ctx.beginPath();
   ctx.arc(x, y, outerRadius, start, start + TAU);
 
   if (innerRadius > 0) {
@@ -136,7 +149,7 @@ function pathFullCircle(
  *    6<---b<---5    Inner
  */
 function pathArc(
-  ctx: CanvasRenderingContext2D,
+  ctx: PathContext,
   element: ArcElement,
   offset: number,
   spacing: number,
@@ -227,8 +240,6 @@ function pathArc(
   const innerStartAdjustedAngle = innerStartAngle + innerStart / innerStartAdjustedRadius;
   const innerEndAdjustedAngle = innerEndAngle - innerEnd / innerEndAdjustedRadius;
 
-  ctx.beginPath();
-
   if (circular) {
     // The first arc segments from point 1 to point a to point 2
     const outerMidAdjustedAngle = (outerStartAdjustedAngle + outerEndAdjustedAngle) / 2;
@@ -296,6 +307,7 @@ function drawArc(
   const {fullCircles, startAngle, circumference} = element;
   let endAngle = element.endAngle;
   if (fullCircles) {
+    ctx.beginPath();
     pathArc(ctx, element, offset, spacing, endAngle, circular);
     for (let i = 0; i < fullCircles; ++i) {
       ctx.fill();
@@ -304,6 +316,7 @@ function drawArc(
       endAngle = startAngle + (circumference % TAU || TAU);
     }
   }
+  ctx.beginPath();
   pathArc(ctx, element, offset, spacing, endAngle, circular);
   ctx.fill();
   return endAngle;
@@ -338,6 +351,7 @@ function drawBorder(
   let endAngle = element.endAngle;
   const isFullCircle = Math.abs(endAngle - startAngle) >= TAU - 1e-4;
   if (fullCircles) {
+    ctx.beginPath();
     pathArc(ctx, element, offset, spacing, endAngle, circular);
     for (let i = 0; i < fullCircles; ++i) {
       ctx.stroke();
@@ -357,9 +371,49 @@ function drawBorder(
   }
 
   if (!fullCircles) {
+    ctx.beginPath();
     pathArc(ctx, element, offset, spacing, endAngle, circular);
     ctx.stroke();
   }
+}
+
+// eslint-disable-next-line complexity
+function drawSvgArc(element: ArcElement, context: SvgArcContext, offset: number, spacing: number, circular: boolean) {
+  const {chart, datasetIndex, dataIndex} = context;
+  const {options, circumference} = element;
+  const {borderAlign, borderColor, borderDash, borderDashOffset, borderJoinStyle, borderWidth, backgroundColor} = options;
+  const halfAngle = (element.startAngle + element.endAngle) / 2;
+  const translateX = Math.cos(halfAngle) * offset;
+  const translateY = Math.sin(halfAngle) * offset;
+  const fix = 1 - Math.sin(Math.min(PI, circumference || 0));
+  const radiusOffset = offset * fix;
+  const path = new Path();
+  const group = getOrCreateSvgDatasetPart(chart, datasetIndex, 'arcs');
+  const arcGroup = getOrCreateSvgElementFor(group, element, 'g');
+  const arc = getOrCreateSvgElement(arcGroup, 'path');
+
+  pathArc(path, element, radiusOffset, spacing, element.endAngle, circular);
+  arcGroup.setAttribute('transform', `translate(${translateX} ${translateY})`);
+  arc.setAttribute('data-role', 'arc');
+  arc.setAttribute('d', path.toString());
+  arc.setAttribute('fill', String(backgroundColor));
+  arc.setAttribute('stroke', borderWidth ? String(borderColor) : 'none');
+  arc.setAttribute('stroke-width', (borderAlign === 'inner' ? borderWidth * 2 : borderWidth).toString());
+  arc.setAttribute('stroke-linejoin', borderAlign === 'inner' ? borderJoinStyle || 'round' : borderJoinStyle || 'bevel');
+  arc.setAttribute('stroke-dasharray', borderDash && borderDash.length ? borderDash.toString() : '');
+  arc.setAttribute('stroke-dashoffset', borderDashOffset.toString());
+
+  if (borderWidth && borderAlign === 'inner') {
+    arc.setAttribute('clip-path', getOrCreateSvgClipPath(chart, `arc-${datasetIndex}-${dataIndex}`, path.toString()));
+  } else {
+    arc.setAttribute('clip-path', 'none');
+  }
+
+  const clip = getDatasetClipArea(chart, chart.getDatasetMeta(datasetIndex));
+  arcGroup.setAttribute('clip-path', clip ? getOrCreateSvgClipRect(chart, `arc-dataset-${datasetIndex}`, clip) : 'none');
+
+  // TODO: Canvas clipSelf() uses an inverse wedge for a rare selfJoin edge
+  // case. Native SVG joins are used here until that difference is observable.
 }
 
 export interface ArcProps extends Point {
@@ -467,8 +521,10 @@ export default class ArcElement extends Element<ArcProps, ArcOptions> {
     return this.getCenterPoint(useFinalPosition);
   }
 
+  // eslint-disable-next-line complexity
   draw(ctx: CanvasRenderingContext2D) {
     const {options, circumference} = this;
+    const svgContext = getSvgElementContext(this);
     const offset = (options.offset || 0) / 4;
     const spacing = (options.spacing || 0) / 2;
     const circular = options.circular;
@@ -476,6 +532,14 @@ export default class ArcElement extends Element<ArcProps, ArcOptions> {
     this.fullCircles = circumference > TAU ? Math.floor(circumference / TAU) : 0;
 
     if (circumference === 0 || this.innerRadius < 0 || this.outerRadius < 0) {
+      if (svgContext && svgContext.chart.options.renderer === 'svg') {
+        removeSvgElementFor(this);
+      }
+      return;
+    }
+
+    if (svgContext && svgContext.chart.options.renderer === 'svg') {
+      drawSvgArc(this, svgContext, offset, spacing, circular);
       return;
     }
 
