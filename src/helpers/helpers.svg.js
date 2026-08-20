@@ -90,7 +90,7 @@ export function getOrCreateSvgRoot(chart, layer = 'foreground') {
 /**
  * @param {any} chart
  * @param {string} scaleId
- * @param {'background'|'grid'|'ticks'|'border'} part
+ * @param {'background'|'grid'|'ticks'|'border'|'labels'|'title'} part
  * @param {'background'|'foreground'} layer
  * @returns {SVGGElement}
  */
@@ -144,7 +144,7 @@ export function removeExtraSvgElements(group, count) {
 /**
  * @param {any} chart
  * @param {string} scaleId
- * @param {'background'|'grid'|'ticks'|'border'} part
+ * @param {'background'|'grid'|'ticks'|'border'|'labels'|'title'} part
  * @param {'background'|'foreground'} [layer]
  */
 export function removeSvgScalePart(chart, scaleId, part, layer) {

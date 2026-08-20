@@ -74,7 +74,15 @@ const svgCharts = [
   new Chart(document.getElementById('area-chart'), {
     type: 'line',
     data: {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      labels: [
+        ['Monday', 'launch'],
+        'Tuesday planning session',
+        'Wednesday customer review',
+        'Thursday implementation',
+        'Friday release candidate',
+        'Saturday monitoring',
+        'Sunday retrospective',
+      ],
       datasets: [{
         label: 'Revenue (bezier)',
         data: [12, 19, null, 28, -4, 35, 31],
@@ -110,7 +118,23 @@ const svgCharts = [
       plugins: {legend: {labels: {color: '#f8fafc'}}},
       renderer: 'canvas',
       responsive: true,
-      scales: {x: axisOptions, y: axisOptions},
+      scales: {
+        x: {
+          ...axisOptions,
+          ticks: {...axisOptions.ticks, maxRotation: 50, minRotation: 50},
+          title: {color: '#dbeafe', display: true, text: ['Release calendar', 'rotated + multiline labels']},
+        },
+        y: {
+          ...axisOptions,
+          title: {color: '#dbeafe', display: true, text: 'Revenue, $k'},
+        },
+        y1: {
+          ...axisOptions,
+          grid: {...axisOptions.grid, drawOnChartArea: false},
+          position: 'right',
+          title: {color: '#c4b5fd', display: true, text: 'Secondary scale'},
+        },
+      },
     },
   }),
 

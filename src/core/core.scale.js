@@ -4,7 +4,8 @@ import {callback as call, each, finiteOrDefault, isArray, isFinite, isNullOrUnde
 import {toDegrees, toRadians, _int16Range, _limitValue, HALF_PI} from '../helpers/helpers.math.js';
 import {_alignStartEnd, _toLeftRightCenter} from '../helpers/helpers.extras.js';
 import {createContext, toFont, toPadding, _addGrace} from '../helpers/helpers.options.js';
-import {getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart} from '../helpers/helpers.svg.js';
+import {getOrCreateSvgClipRect, getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart} from '../helpers/helpers.svg.js';
+import {renderSvgText} from '../helpers/helpers.svg.text.js';
 import {autoSkip} from './core.scale.autoskip.js';
 
 const reverseAlign = (align) => align === 'left' ? 'right' : align === 'right' ? 'left' : align;
@@ -1661,17 +1662,33 @@ export default class Scale extends Element {
     const optionTicks = this.options.ticks;
 
     if (!optionTicks.display) {
+      if (this.chart.options.renderer === 'svg') {
+        removeSvgScalePart(this.chart, this.id, 'labels');
+      }
       return;
     }
 
     const ctx = this.ctx;
 
     const area = this._computeLabelArea();
+    const items = this.getLabelItems(chartArea);
+    if (this.chart.options.renderer === 'svg') {
+      const group = getOrCreateSvgScalePart(this.chart, this.id, 'labels', svgLayerForZ(valueOrDefault(optionTicks.z, 0)));
+      group.setAttribute('clip-path', area ? getOrCreateSvgClipRect(this.chart, `scale-${this.id}-labels`, area) : 'none');
+      for (let i = 0; i < items.length; ++i) {
+        const item = items[i];
+        renderSvgText(group, i, item.label, item.font, {
+          ...item.options
+        }, undefined, 0, item.textOffset);
+      }
+      removeExtraSvgElements(group, items.length);
+      return;
+    }
+
     if (area) {
       clipArea(ctx, area);
     }
 
-    const items = this.getLabelItems(chartArea);
     for (const item of items) {
       const renderTextOptions = item.options;
       const tickFont = item.font;
@@ -1692,6 +1709,9 @@ export default class Scale extends Element {
     const {ctx, options: {position, title, reverse}} = this;
 
     if (!title.display) {
+      if (this.chart.options.renderer === 'svg') {
+        removeSvgScalePart(this.chart, this.id, 'title');
+      }
       return;
     }
 
@@ -1710,6 +1730,27 @@ export default class Scale extends Element {
     }
 
     const {titleX, titleY, maxWidth, rotation} = titleArgs(this, offset, position, align);
+
+    if (this.chart.options.renderer === 'svg') {
+      const group = getOrCreateSvgScalePart(this.chart, this.id, 'title', svgLayerForZ(valueOrDefault(this.options.grid.z, -1)));
+      const lines = isArray(title.text) ? title.text : [title.text];
+      ctx.save();
+      ctx.font = font.string;
+      const textWidths = lines.map((line) => ctx.measureText(line).width);
+      ctx.restore();
+      renderSvgText(group, 0, title.text, font, {
+        color: title.color,
+        maxWidth,
+        rotation,
+        textAlign: titleAlign(align, position, reverse),
+        textBaseline: 'middle',
+        translation: [titleX, titleY],
+        strokeColor: title.strokeColor,
+        strokeWidth: title.strokeWidth
+      }, textWidths);
+      removeExtraSvgElements(group, 1);
+      return;
+    }
 
     renderText(ctx, title.text, 0, 0, font, {
       color: title.color,
