@@ -1,24 +1,12 @@
 import Element from '../core/core.element.js';
 import {_bezierInterpolation, _pointInLine, _steppedInterpolation} from '../helpers/helpers.interpolation.js';
 import {_computeSegments, _boundSegments} from '../helpers/helpers.segment.js';
-import {_steppedLineTo, _bezierCurveTo} from '../helpers/helpers.canvas.js';
 import {_updateBezierControlPoints} from '../helpers/helpers.curve.js';
 import {valueOrDefault} from '../helpers/index.js';
-import {Path} from '../helpers/helpers.path.js';
-import {getOrCreateSvgDatasetPart, getOrCreateSvgPath, removeExtraSvgPaths, removeSvgDatasetPart, resolveSvgPaint} from '../helpers/helpers.svg.js';
 
 /**
  * @typedef { import('./element.point.js').default } PointElement
  */
-
-function setStyle(ctx, options, style = options) {
-  ctx.lineCap = valueOrDefault(style.borderCapStyle, options.borderCapStyle);
-  ctx.setLineDash(valueOrDefault(style.borderDash, options.borderDash));
-  ctx.lineDashOffset = valueOrDefault(style.borderDashOffset, options.borderDashOffset);
-  ctx.lineJoin = valueOrDefault(style.borderJoinStyle, options.borderJoinStyle);
-  ctx.lineWidth = valueOrDefault(style.borderWidth, options.borderWidth);
-  ctx.strokeStyle = valueOrDefault(style.borderColor, options.borderColor);
-}
 
 function lineTo(ctx, previous, target) {
   ctx.lineTo(target.x, target.y);
@@ -29,11 +17,11 @@ function lineTo(ctx, previous, target) {
  */
 function getLineMethod(options) {
   if (options.stepped) {
-    return _steppedLineTo;
+    return steppedLineTo;
   }
 
   if (options.tension || options.cubicInterpolationMode === 'monotone') {
-    return _bezierCurveTo;
+    return bezierCurveTo;
   }
 
   return lineTo;
@@ -206,76 +194,25 @@ function _getInterpolationMethod(options) {
   return _pointInLine;
 }
 
-function strokePathWithCache(ctx, line, start, count) {
-  let path = line._path;
-  if (!path) {
-    path = line._path = new Path2D();
-    if (line.path(path, start, count)) {
-      path.closePath();
-    }
-  }
-  setStyle(ctx, line.options);
-  ctx.stroke(path);
-}
-
-function strokePathDirect(ctx, line, start, count) {
-  const {segments, options} = line;
-  const segmentMethod = _getSegmentMethod(line);
-
-  for (const segment of segments) {
-    setStyle(ctx, options, segment.style);
-    ctx.beginPath();
-    if (segmentMethod(ctx, line, segment, {start, end: start + count - 1})) {
-      ctx.closePath();
-    }
-    ctx.stroke();
-  }
-}
-
-const usePath2D = typeof Path2D === 'function';
-
-function draw(ctx, line, start, count) {
-  if (usePath2D && !line.options.segment) {
-    strokePathWithCache(ctx, line, start, count);
+function steppedLineTo(ctx, previous, target, reverse, mode) {
+  if (mode === 'middle') {
+    const midpoint = (previous.x + target.x) / 2;
+    ctx.lineTo(midpoint, previous.y);
+    ctx.lineTo(midpoint, target.y);
+  } else if (mode === 'after' !== !!reverse) {
+    ctx.lineTo(previous.x, target.y);
   } else {
-    strokePathDirect(ctx, line, start, count);
+    ctx.lineTo(target.x, previous.y);
   }
+  ctx.lineTo(target.x, target.y);
 }
 
-function setSvgStyle(chart, path, options, style = options) {
-  path.setAttribute('fill', 'none');
-  path.setAttribute('stroke', resolveSvgPaint(chart, valueOrDefault(style.borderColor, options.borderColor)));
-  path.setAttribute('stroke-width', valueOrDefault(style.borderWidth, options.borderWidth));
-  path.setAttribute('stroke-linecap', valueOrDefault(style.borderCapStyle, options.borderCapStyle));
-  path.setAttribute('stroke-linejoin', valueOrDefault(style.borderJoinStyle, options.borderJoinStyle));
-  path.setAttribute('stroke-dasharray', valueOrDefault(style.borderDash, options.borderDash));
-  path.setAttribute('stroke-dashoffset', valueOrDefault(style.borderDashOffset, options.borderDashOffset));
-}
-
-function drawSvg(line, start, count) {
-  const {options, segments, _chart: chart, _datasetIndex: datasetIndex} = line;
-  const group = getOrCreateSvgDatasetPart(chart, datasetIndex, 'line');
-  const segmentMethod = _getSegmentMethod(line);
-  const params = {start, end: start + count - 1};
-  const paths = options.segment ? segments : [undefined];
-
-  for (let i = 0; i < paths.length; ++i) {
-    const segment = paths[i];
-    const path = new Path();
-    const loop = segment
-      ? segmentMethod(path, line, segment, params)
-      : line.path(path, start, count);
-    if (loop) {
-      path.closePath();
-    }
-
-    const element = getOrCreateSvgPath(group, i);
-    element.setAttribute('data-dataset-index', datasetIndex.toString());
-    element.setAttribute('d', path.toString());
-    setSvgStyle(chart, element, options, segment && segment.style);
+function bezierCurveTo(ctx, previous, target, reverse) {
+  if (reverse) {
+    ctx.bezierCurveTo(target.cp2x, target.cp2y, target.cp1x, target.cp1y, target.x, target.y);
+  } else {
+    ctx.bezierCurveTo(previous.cp2x, previous.cp2y, target.cp1x, target.cp1y, target.x, target.y);
   }
-
-  removeExtraSvgPaths(group, paths.length);
 }
 
 export default class LineElement extends Element {
@@ -455,33 +392,7 @@ export default class LineElement extends Element {
     return !!loop;
   }
 
-  /**
-	 * Draw
-	 * @param {CanvasRenderingContext2D} ctx
-	 * @param {object} chartArea
-	 * @param {number} [start]
-	 * @param {number} [count]
-	 */
-  draw(ctx, chartArea, start, count) {
-    const options = this.options || {};
-    const points = this.points || [];
-
-    if (points.length && options.borderWidth) {
-      if (this._chart.options.renderer === 'svg') {
-        drawSvg(this, start, count);
-      } else {
-        ctx.save();
-        draw(ctx, this, start, count);
-        ctx.restore();
-      }
-    } else if (this._chart && this._chart.options.renderer === 'svg') {
-      removeSvgDatasetPart(this._chart, this._datasetIndex, 'line');
-    }
-
-    if (this.animated) {
-      // When line is animated, the control points and path are not cached.
-      this._pointsUpdated = false;
-      this._path = undefined;
-    }
+  draw(renderer, context) {
+    renderer.drawElement(this, context);
   }
 }

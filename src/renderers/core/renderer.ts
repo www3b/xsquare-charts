@@ -1,7 +1,6 @@
 /**
- * Minimal visual-backend contract owned by Chart. Drawing migration deliberately
- * stays outside this boundary: existing elements continue to draw through their
- * current Canvas or SVG paths.
+ * Visual-backend contract owned by Chart. Elements provide resolved geometry and
+ * state; the renderer owns every backend-specific drawing operation.
  */
 export interface Renderer {
   readonly type: 'canvas' | 'svg';
@@ -13,9 +12,20 @@ export interface Renderer {
   clear(): void;
   beginFrame(): void;
   endFrame(): void;
+  drawElement(element: any, context?: RenderContext): void;
+  beginDataset(index: number, clip: any): void;
+  endDataset(clip: any): void;
   measureText(text: string | number, font: string): number;
   getEventTarget(): HTMLElement | SVGSVGElement;
   destroy(removeRoot?: boolean): void;
+}
+
+export interface RenderContext {
+  area?: any;
+  datasetIndex?: number;
+  dataIndex?: number;
+  start?: number;
+  count?: number;
 }
 
 export interface RendererCreateOptions {

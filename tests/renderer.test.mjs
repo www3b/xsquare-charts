@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {readFileSync, readdirSync} from 'node:fs';
 import test from 'node:test';
 import {
   CategoryScale,
@@ -97,4 +98,13 @@ test('Chart core can run with a renderer supplied by an isolated registry', () =
   chart.destroy();
   assert.equal(destroyed, true);
   assert.equal(host.children.length, 0);
+});
+
+test('Elements stay renderer-neutral', () => {
+  const directory = new URL('../src/elements/', import.meta.url);
+  for (const name of readdirSync(directory).filter((name) => /\.(js|ts)$/.test(name))) {
+    const source = readFileSync(new URL(name, directory), 'utf8');
+    assert.doesNotMatch(source, /helpers\.svg|renderers\/svg|createElementNS|setAttribute\(/);
+    assert.doesNotMatch(source, /renderer\s*(?:===|!==)|options\.renderer/);
+  }
 });

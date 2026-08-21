@@ -2,57 +2,10 @@ import Element from '../core/core.element.js';
 import {_angleBetween, getAngleFromPoint, TAU, HALF_PI, valueOrDefault} from '../helpers/index.js';
 import {PI, _angleDiff, _normalizeAngle, _isBetween, _limitValue} from '../helpers/helpers.math.js';
 import {_readValueToProps} from '../helpers/helpers.options.js';
-import {Path} from '../helpers/helpers.path.js';
-import {
-  getOrCreateSvgClipPath,
-  getOrCreateSvgClipRect,
-  getOrCreateSvgDatasetPart,
-  getOrCreateSvgElement,
-  getOrCreateSvgElementFor,
-  getSvgElementContext,
-  resolveSvgPaint,
-  removeSvgElementFor
-} from '../helpers/helpers.svg.js';
-import {getDatasetClipArea} from '../helpers/helpers.dataset.js';
 import type {ArcOptions, Chart, Point} from '../types/index.js';
-import type {PathContext} from '../helpers/helpers.canvas.js';
+type PathContext = {arc: Function; moveTo: Function; lineTo: Function; closePath: Function; rect: Function};
 
-type SvgArcContext = {chart: Chart, datasetIndex: number, dataIndex?: number};
-
-function clipSelf(ctx: CanvasRenderingContext2D, element: ArcElement, endAngle: number) {
-  const {startAngle, x, y, outerRadius, innerRadius, options} = element;
-  const {borderWidth, borderJoinStyle} = options;
-  const outerAngleClip = Math.min(borderWidth / outerRadius, _normalizeAngle(startAngle - endAngle));
-  ctx.beginPath();
-  ctx.arc(x, y, outerRadius - borderWidth / 2, startAngle + outerAngleClip / 2, endAngle - outerAngleClip / 2);
-
-  if (innerRadius > 0) {
-    const innerAngleClip = Math.min(borderWidth / innerRadius, _normalizeAngle(startAngle - endAngle));
-    ctx.arc(x, y, innerRadius + borderWidth / 2, endAngle - innerAngleClip / 2, startAngle + innerAngleClip / 2, true);
-  } else {
-    const clipWidth = Math.min(borderWidth / 2, outerRadius * _normalizeAngle(startAngle - endAngle));
-
-    if (borderJoinStyle === 'round') {
-      ctx.arc(x, y, clipWidth, endAngle - PI / 2, startAngle + PI / 2, true);
-    } else if (borderJoinStyle === 'bevel') {
-      const r = 2 * clipWidth * clipWidth;
-      const endX = -r * Math.cos(endAngle + PI / 2) + x;
-      const endY = -r * Math.sin(endAngle + PI / 2) + y;
-      const startX = r * Math.cos(startAngle + PI / 2) + x;
-      const startY = r * Math.sin(startAngle + PI / 2) + y;
-      ctx.lineTo(endX, endY);
-      ctx.lineTo(startX, startY);
-    }
-  }
-  ctx.closePath();
-
-  ctx.moveTo(0, 0);
-  ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-  ctx.clip('evenodd');
-}
-
-function traceSelfClip(ctx: PathContext, chart: Chart, element: ArcElement, endAngle: number) {
+export function traceSelfClip(ctx: PathContext, chart: Chart, element: ArcElement, endAngle: number) {
   const {startAngle, x, y, outerRadius, innerRadius, options} = element;
   const {borderWidth, borderJoinStyle} = options;
   const outerAngleClip = Math.min(borderWidth / outerRadius, _normalizeAngle(startAngle - endAngle));
@@ -77,24 +30,6 @@ function traceSelfClip(ctx: PathContext, chart: Chart, element: ArcElement, endA
   ctx.rect(0, 0, chart.width, chart.height);
 }
 
-
-function clipArc(ctx: CanvasRenderingContext2D, element: ArcElement, endAngle: number) {
-  const {startAngle, pixelMargin, x, y, outerRadius, innerRadius} = element;
-  let angleMargin = pixelMargin / outerRadius;
-
-  // Draw an inner border by clipping the arc and drawing a double-width border
-  // Enlarge the clipping arc by 0.33 pixels to eliminate glitches between borders
-  ctx.beginPath();
-  ctx.arc(x, y, outerRadius, startAngle - angleMargin, endAngle + angleMargin);
-  if (innerRadius > pixelMargin) {
-    angleMargin = pixelMargin / innerRadius;
-    ctx.arc(x, y, innerRadius, endAngle + angleMargin, startAngle - angleMargin, true);
-  } else {
-    ctx.arc(x, y, pixelMargin, endAngle + HALF_PI, startAngle - HALF_PI);
-  }
-  ctx.closePath();
-  ctx.clip();
-}
 
 function toRadiusCorners(value) {
   return _readValueToProps(value, ['outerStart', 'outerEnd', 'innerStart', 'innerEnd']);
@@ -174,7 +109,7 @@ function pathFullCircle(
  *   \           /
  *    6<---b<---5    Inner
  */
-function pathArc(
+export function pathArc(
   ctx: PathContext,
   element: ArcElement,
   offset: number,
@@ -323,135 +258,6 @@ function pathArc(
   ctx.closePath();
 }
 
-function drawArc(
-  ctx: CanvasRenderingContext2D,
-  element: ArcElement,
-  offset: number,
-  spacing: number,
-  circular: boolean,
-) {
-  const {fullCircles, startAngle, circumference} = element;
-  let endAngle = element.endAngle;
-  if (fullCircles) {
-    ctx.beginPath();
-    pathArc(ctx, element, offset, spacing, endAngle, circular);
-    for (let i = 0; i < fullCircles; ++i) {
-      ctx.fill();
-    }
-    if (!isNaN(circumference)) {
-      endAngle = startAngle + (circumference % TAU || TAU);
-    }
-  }
-  ctx.beginPath();
-  pathArc(ctx, element, offset, spacing, endAngle, circular);
-  ctx.fill();
-  return endAngle;
-}
-
-function drawBorder(
-  ctx: CanvasRenderingContext2D,
-  element: ArcElement,
-  offset: number,
-  spacing: number,
-  circular: boolean,
-) {
-  const {fullCircles, startAngle, circumference, options} = element;
-  const {borderWidth, borderJoinStyle, borderDash, borderDashOffset, borderRadius} = options;
-  const inner = options.borderAlign === 'inner';
-
-  if (!borderWidth) {
-    return;
-  }
-
-  ctx.setLineDash(borderDash || []);
-  ctx.lineDashOffset = borderDashOffset;
-
-  if (inner) {
-    ctx.lineWidth = borderWidth * 2;
-    ctx.lineJoin = borderJoinStyle || 'round';
-  } else {
-    ctx.lineWidth = borderWidth;
-    ctx.lineJoin = borderJoinStyle || 'bevel';
-  }
-
-  let endAngle = element.endAngle;
-  const isFullCircle = Math.abs(endAngle - startAngle) >= TAU - 1e-4;
-  if (fullCircles) {
-    ctx.beginPath();
-    pathArc(ctx, element, offset, spacing, endAngle, circular);
-    for (let i = 0; i < fullCircles; ++i) {
-      ctx.stroke();
-    }
-    if (!isNaN(circumference)) {
-      endAngle = startAngle + (circumference % TAU || TAU);
-    }
-  }
-
-  if (inner) {
-    clipArc(ctx, element, endAngle);
-  }
-
-  const skipSelfClip = isFullCircle && element.innerRadius > 0;
-  if (!skipSelfClip && options.selfJoin && endAngle - startAngle >= PI && borderRadius === 0 && borderJoinStyle !== 'miter') {
-    clipSelf(ctx, element, endAngle);
-  }
-
-  if (!fullCircles) {
-    ctx.beginPath();
-    pathArc(ctx, element, offset, spacing, endAngle, circular);
-    ctx.stroke();
-  }
-}
-
-// eslint-disable-next-line complexity
-function drawSvgArc(element: ArcElement, context: SvgArcContext, offset: number, spacing: number, circular: boolean) {
-  const {chart, datasetIndex, dataIndex} = context;
-  const {options, circumference} = element;
-  const {borderAlign, borderColor, borderDash, borderDashOffset, borderJoinStyle, borderRadius, borderWidth, backgroundColor, selfJoin} = options;
-  const halfAngle = (element.startAngle + element.endAngle) / 2;
-  const translateX = Math.cos(halfAngle) * offset;
-  const translateY = Math.sin(halfAngle) * offset;
-  const fix = 1 - Math.sin(Math.min(PI, circumference || 0));
-  const radiusOffset = offset * fix;
-  const path = new Path();
-  const group = getOrCreateSvgDatasetPart(chart, datasetIndex, 'arcs');
-  const arcGroup = getOrCreateSvgElementFor(group, element, 'g');
-  const shapeGroup = getOrCreateSvgElement(arcGroup, 'g');
-  const arc = getOrCreateSvgElement(shapeGroup, 'path');
-  const isFullCircle = Math.abs(element.endAngle - element.startAngle) >= TAU - 1e-4;
-  const skipSelfClip = isFullCircle && element.innerRadius > 0;
-  const selfClip = borderWidth && !skipSelfClip && selfJoin && element.endAngle - element.startAngle >= PI && borderRadius === 0 && borderJoinStyle !== 'miter';
-
-  pathArc(path, element, radiusOffset, spacing, element.endAngle, circular);
-  arcGroup.setAttribute('transform', `translate(${translateX} ${translateY})`);
-  arc.setAttribute('data-role', 'arc');
-  arc.setAttribute('d', path.toString());
-  arc.setAttribute('fill', resolveSvgPaint(chart, backgroundColor));
-  arc.setAttribute('stroke', borderWidth ? resolveSvgPaint(chart, borderColor) : 'none');
-  arc.setAttribute('stroke-width', (borderAlign === 'inner' ? borderWidth * 2 : borderWidth).toString());
-  arc.setAttribute('stroke-linejoin', borderAlign === 'inner' ? borderJoinStyle || 'round' : borderJoinStyle || 'bevel');
-  arc.setAttribute('stroke-dasharray', borderDash && borderDash.length ? borderDash.toString() : '');
-  arc.setAttribute('stroke-dashoffset', borderDashOffset.toString());
-
-  if (borderWidth && borderAlign === 'inner') {
-    arc.setAttribute('clip-path', getOrCreateSvgClipPath(chart, `arc-${datasetIndex}-${dataIndex}`, path.toString()));
-  } else {
-    arc.setAttribute('clip-path', 'none');
-  }
-
-  if (selfClip) {
-    const selfClipPath = new Path();
-    traceSelfClip(selfClipPath, chart, element, element.endAngle);
-    shapeGroup.setAttribute('clip-path', getOrCreateSvgClipPath(chart, `arc-self-${datasetIndex}-${dataIndex}`, selfClipPath.toString(), 'evenodd'));
-  } else {
-    shapeGroup.setAttribute('clip-path', 'none');
-  }
-
-  const clip = getDatasetClipArea(chart, chart.getDatasetMeta(datasetIndex));
-  arcGroup.setAttribute('clip-path', clip ? getOrCreateSvgClipRect(chart, `arc-dataset-${datasetIndex}`, clip) : 'none');
-
-}
-
 export interface ArcProps extends Point {
   startAngle: number;
   endAngle: number;
@@ -557,41 +363,7 @@ export default class ArcElement extends Element<ArcProps, ArcOptions> {
     return this.getCenterPoint(useFinalPosition);
   }
 
-  // eslint-disable-next-line complexity
-  draw(ctx: CanvasRenderingContext2D) {
-    const {options, circumference} = this;
-    const svgContext = getSvgElementContext(this);
-    const offset = (options.offset || 0) / 4;
-    const spacing = (options.spacing || 0) / 2;
-    const circular = options.circular;
-    this.pixelMargin = (options.borderAlign === 'inner') ? 0.33 : 0;
-    this.fullCircles = circumference > TAU ? Math.floor(circumference / TAU) : 0;
-
-    if (circumference === 0 || this.innerRadius < 0 || this.outerRadius < 0) {
-      if (svgContext && svgContext.chart.options.renderer === 'svg') {
-        removeSvgElementFor(this);
-      }
-      return;
-    }
-
-    if (svgContext && svgContext.chart.options.renderer === 'svg') {
-      drawSvgArc(this, svgContext, offset, spacing, circular);
-      return;
-    }
-
-    ctx.save();
-
-    const halfAngle = (this.startAngle + this.endAngle) / 2;
-    ctx.translate(Math.cos(halfAngle) * offset, Math.sin(halfAngle) * offset);
-    const fix = 1 - Math.sin(Math.min(PI, circumference || 0));
-    const radiusOffset = offset * fix;
-
-    ctx.fillStyle = options.backgroundColor;
-    ctx.strokeStyle = options.borderColor;
-
-    drawArc(ctx, this, radiusOffset, spacing, circular);
-    drawBorder(ctx, this, radiusOffset, spacing, circular);
-
-    ctx.restore();
+  draw(renderer: {drawElement: (element: ArcElement, context?: any) => void}, context?: any) {
+    renderer.drawElement(this, context);
   }
 }

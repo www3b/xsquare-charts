@@ -3,7 +3,6 @@ import defaults from './core.defaults.js';
 import {isArray, isFinite, isObject, valueOrDefault, resolveObjectKey, defined} from '../helpers/helpers.core.js';
 import {listenArrayEvents, unlistenArrayEvents} from '../helpers/helpers.collection.js';
 import {createContext, sign} from '../helpers/index.js';
-import {setSvgElementContext} from '../helpers/helpers.svg.js';
 
 /**
  * @typedef { import('./core.controller.js').default } Chart
@@ -711,7 +710,7 @@ export default class DatasetController {
   update(mode) {} // eslint-disable-line no-unused-vars
 
   draw() {
-    const ctx = this._ctx;
+    const renderer = this.chart.renderer;
     const chart = this.chart;
     const meta = this._cachedMeta;
     const elements = meta.data || [];
@@ -722,8 +721,13 @@ export default class DatasetController {
     const drawActiveElementsOnTop = this.options.drawActiveElementsOnTop;
     let i;
 
+    // Third-party lifecycle-only renderers may intentionally omit element handlers.
+    if (typeof renderer.drawElement !== 'function') {
+      return;
+    }
+
     if (meta.dataset) {
-      meta.dataset.draw(ctx, area, start, count);
+      meta.dataset.draw(renderer, {area, datasetIndex: this.index, start, count});
     }
 
     for (i = start; i < start + count; ++i) {
@@ -731,16 +735,15 @@ export default class DatasetController {
       if (element.hidden) {
         continue;
       }
-      setSvgElementContext(element, chart, this.index, i);
       if (element.active && drawActiveElementsOnTop) {
         active.push(element);
       } else {
-        element.draw(ctx, area);
+        element.draw(renderer, {area, datasetIndex: this.index, dataIndex: i});
       }
     }
 
     for (i = 0; i < active.length; ++i) {
-      active[i].draw(ctx, area);
+      active[i].draw(renderer, {area, datasetIndex: this.index, dataIndex: elements.indexOf(active[i])});
     }
   }
 

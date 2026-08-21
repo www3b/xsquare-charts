@@ -1,5 +1,9 @@
-import type {Renderer, RendererCreateOptions} from '../core/renderer.js';
-import {beginSvgRender, endSvgRender} from '../../helpers/helpers.svg.js';
+import type {Renderer, RendererCreateOptions, RenderContext} from '../core/renderer.js';
+import {beginSvgRender, endSvgRender, getOrCreateSvgClipRect, getOrCreateSvgDatasetGroup} from '../../helpers/helpers.svg.js';
+import {drawSvgLine} from './elements/line.js';
+import {drawSvgPoint} from './elements/point.js';
+import {drawSvgBar} from './elements/bar.js';
+import {drawSvgArc} from './elements/arc.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -63,6 +67,22 @@ export default class SvgRenderer implements Renderer {
     endSvgRender(this.chart);
   }
 
+  drawElement(element: any, context: RenderContext = {}): void {
+    const handler = svgElementHandlers[element.constructor.id];
+    if (handler) {
+      handler(this.chart, element, context);
+    }
+  }
+
+  beginDataset(index: number, clip: any): void {
+    const group = getOrCreateSvgDatasetGroup(this.chart, index);
+    group.setAttribute('clip-path', clip ? getOrCreateSvgClipRect(this.chart, `dataset-${index}`, clip) : 'none');
+  }
+
+  endDataset(_clip: any): void {
+    return;
+  }
+
   measureText(text: string | number, font: string): number {
     this.measureNode.setAttribute('font', font);
     this.measureNode.textContent = String(text);
@@ -93,3 +113,10 @@ export default class SvgRenderer implements Renderer {
     }
   }
 }
+
+const svgElementHandlers: Record<string, (chart: RendererCreateOptions['chart'], element: any, context: RenderContext) => void> = {
+  line: drawSvgLine,
+  point: drawSvgPoint,
+  bar: drawSvgBar,
+  arc: drawSvgArc,
+};

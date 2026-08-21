@@ -8,8 +8,7 @@ import registry from './core.registry.js';
 import renderers from '../renderers/index.js';
 import Config, {determineAxis, getIndexAxis} from './core.config.js';
 import {each, callback as callCallback, uid, valueOrDefault, _elementsEqual, isNullOrUndef, setsEqual, defined, isFunction, _isClickEvent} from '../helpers/helpers.core.js';
-import {clipArea, createContext, unclipArea, _isPointInArea, _isDomSupported, getDatasetClipArea} from '../helpers/index.js';
-import {getOrCreateSvgClipRect, getOrCreateSvgDatasetGroup} from '../helpers/helpers.svg.js';
+import {createContext, _isPointInArea, _isDomSupported, getDatasetClipArea} from '../helpers/index.js';
 import {serializeSvgChart} from '../helpers/helpers.svg.export.js';
 // @ts-ignore
 import {version} from '../../package.json';
@@ -843,7 +842,6 @@ class Chart {
 	 * @private
 	 */
   _drawDataset(meta) {
-    const ctx = this.ctx;
     const args = {
       meta,
       index: meta.index,
@@ -856,19 +854,11 @@ class Chart {
       return;
     }
 
-    const svg = this.renderer.type === 'svg';
-    if (svg) {
-      const group = getOrCreateSvgDatasetGroup(this, meta.index);
-      group.setAttribute('clip-path', clip ? getOrCreateSvgClipRect(this, `dataset-${meta.index}`, clip) : 'none');
-    } else if (clip) {
-      clipArea(ctx, clip);
-    }
+    this.renderer.beginDataset?.(meta.index, clip);
 
     meta.controller.draw();
 
-    if (!svg && clip) {
-      unclipArea(ctx);
-    }
+    this.renderer.endDataset?.(clip);
 
     args.cancelable = false;
     this.notifyPlugins('afterDatasetDraw', args);

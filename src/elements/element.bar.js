@@ -1,19 +1,6 @@
 import Element from '../core/core.element.js';
 import {getDatasetClipArea, isObject, _isBetween, _limitValue} from '../helpers/index.js';
-import {addRoundedRectPath} from '../helpers/helpers.canvas.js';
 import {toTRBL, toTRBLCorners} from '../helpers/helpers.options.js';
-import {Path} from '../helpers/helpers.path.js';
-import {
-  getOrCreateSvgClipPath,
-  getOrCreateSvgClipRect,
-  getOrCreateSvgDatasetPart,
-  getOrCreateSvgElement,
-  getOrCreateSvgElementFor,
-  resolveSvgPaint,
-  getSvgElementContext
-} from '../helpers/helpers.svg.js';
-
-/** @typedef {import('../helpers/helpers.canvas.js').PathContext} PathContext */
 
 /** @typedef {{ x: number, y: number, base: number, horizontal: boolean, width: number, height: number }} BarProps */
 
@@ -24,7 +11,7 @@ import {
  * @return {object} bounds of the bar
  * @private
  */
-function getBarBounds(bar, useFinalPosition) {
+export function getBarBounds(bar, useFinalPosition) {
   const {x, y, base, width, height} = /** @type {BarProps} */ (bar.getProps(['x', 'y', 'base', 'width', 'height'], useFinalPosition));
 
   let left, right, top, bottom, half;
@@ -82,7 +69,7 @@ function parseBorderRadius(bar, maxW, maxH) {
   };
 }
 
-function boundingRects(bar) {
+export function boundingRects(bar) {
   const bounds = getBarBounds(bar);
   const width = bounds.right - bounds.left;
   const height = bounds.bottom - bounds.top;
@@ -123,20 +110,11 @@ function inRange(bar, x, y, useFinalPosition) {
 		&& (skipY || _isBetween(y, bounds.top, bounds.bottom));
 }
 
-function hasRadius(radius) {
+export function hasRadius(radius) {
   return radius.topLeft || radius.topRight || radius.bottomLeft || radius.bottomRight;
 }
 
-/**
- * Add a path of a rectangle to the current sub-path
- * @param {PathContext} ctx Context
- * @param {*} rect Bounding rect
- */
-function addNormalRectPath(ctx, rect) {
-  ctx.rect(rect.x, rect.y, rect.w, rect.h);
-}
-
-function inflateRect(rect, amount, refRect = {}) {
+export function inflateRect(rect, amount, refRect = {}) {
   const x = rect.x !== refRect.x ? -amount : 0;
   const y = rect.y !== refRect.y ? -amount : 0;
   const w = (rect.x + rect.w !== refRect.x + refRect.w ? amount : 0) - x;
@@ -148,51 +126,6 @@ function inflateRect(rect, amount, refRect = {}) {
     h: rect.h + h,
     radius: rect.radius
   };
-}
-
-// eslint-disable-next-line max-statements
-function drawSvg(bar, context) {
-  const {chart, datasetIndex, dataIndex} = context;
-  const {inflateAmount, options: {borderColor, backgroundColor}} = bar;
-  const {inner, outer} = boundingRects(bar);
-  const addRectPath = hasRadius(outer.radius) ? addRoundedRectPath : addNormalRectPath;
-  const hasBorder = outer.w !== inner.w || outer.h !== inner.h;
-  const group = getOrCreateSvgDatasetPart(chart, datasetIndex, 'bars');
-  const barGroup = getOrCreateSvgElementFor(group, bar, 'g');
-  const shapeGroup = getOrCreateSvgElement(barGroup, 'g');
-  const border = getOrCreateSvgElement(shapeGroup, 'path', 0);
-  const background = getOrCreateSvgElement(shapeGroup, 'path', 1);
-  const outerRect = inflateRect(outer, inflateAmount, inner);
-  const innerRect = inflateRect(inner, -inflateAmount, outer);
-  const backgroundRect = inflateRect(inner, inflateAmount);
-  const backgroundPath = new Path();
-
-  addRectPath(backgroundPath, backgroundRect);
-  background.setAttribute('data-role', 'background');
-  background.setAttribute('d', backgroundPath.toString());
-  background.setAttribute('fill', resolveSvgPaint(chart, backgroundColor));
-  background.setAttribute('stroke', 'none');
-
-  if (hasBorder) {
-    const borderPath = new Path();
-    const clipPath = new Path();
-    addRectPath(clipPath, outerRect);
-    addRectPath(borderPath, outerRect);
-    addRectPath(borderPath, innerRect);
-    border.setAttribute('data-role', 'border');
-    border.setAttribute('d', borderPath.toString());
-    border.setAttribute('display', '');
-    border.setAttribute('fill', resolveSvgPaint(chart, borderColor));
-    border.setAttribute('fill-rule', 'evenodd');
-    border.setAttribute('stroke', 'none');
-    shapeGroup.setAttribute('clip-path', getOrCreateSvgClipPath(chart, `bar-${datasetIndex}-${dataIndex}`, clipPath.toString()));
-  } else {
-    border.setAttribute('display', 'none');
-    shapeGroup.setAttribute('clip-path', 'none');
-  }
-
-  const clip = getDatasetClipArea(chart, chart.getDatasetMeta(datasetIndex));
-  barGroup.setAttribute('clip-path', clip ? getOrCreateSvgClipRect(chart, `bar-dataset-${datasetIndex}`, clip) : 'none');
 }
 
 export default class BarElement extends Element {
@@ -233,34 +166,8 @@ export default class BarElement extends Element {
     }
   }
 
-  draw(ctx) {
-    const svgContext = getSvgElementContext(this);
-    if (svgContext && svgContext.chart.options.renderer === 'svg') {
-      drawSvg(this, svgContext);
-      return;
-    }
-
-    const {inflateAmount, options: {borderColor, backgroundColor}} = this;
-    const {inner, outer} = boundingRects(this);
-    const addRectPath = hasRadius(outer.radius) ? addRoundedRectPath : addNormalRectPath;
-
-    ctx.save();
-
-    if (outer.w !== inner.w || outer.h !== inner.h) {
-      ctx.beginPath();
-      addRectPath(ctx, inflateRect(outer, inflateAmount, inner));
-      ctx.clip();
-      addRectPath(ctx, inflateRect(inner, -inflateAmount, outer));
-      ctx.fillStyle = borderColor;
-      ctx.fill('evenodd');
-    }
-
-    ctx.beginPath();
-    addRectPath(ctx, inflateRect(inner, inflateAmount));
-    ctx.fillStyle = backgroundColor;
-    ctx.fill();
-
-    ctx.restore();
+  draw(renderer, context) {
+    renderer.drawElement(this, context);
   }
 
   inRange(mouseX, mouseY, useFinalPosition) {

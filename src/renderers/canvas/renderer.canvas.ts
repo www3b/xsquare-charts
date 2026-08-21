@@ -1,4 +1,9 @@
-import type {Renderer, RendererCreateOptions} from '../core/renderer.js';
+import type {Renderer, RendererCreateOptions, RenderContext} from '../core/renderer.js';
+import {clipArea, unclipArea} from '../../helpers/helpers.canvas.js';
+import {drawCanvasLine} from './elements/line.js';
+import {drawCanvasPoint} from './elements/point.js';
+import {drawCanvasBar} from './elements/bar.js';
+import {drawCanvasArc} from './elements/arc.js';
 
 const EXPANDO_KEY = '$chartjs';
 
@@ -87,6 +92,29 @@ export default class CanvasRenderer implements Renderer {
     return;
   }
 
+  drawElement(element: any, context: RenderContext = {}): void {
+    const ctx = this.context;
+    if (!ctx) {
+      return;
+    }
+    const handler = canvasElementHandlers[element.constructor.id];
+    if (handler) {
+      handler(ctx, element, context);
+    }
+  }
+
+  beginDataset(_index: number, clip: any): void {
+    if (clip && this.context) {
+      clipArea(this.context, clip);
+    }
+  }
+
+  endDataset(clip: any): void {
+    if (clip && this.context) {
+      unclipArea(this.context);
+    }
+  }
+
   measureText(text: string | number, font: string): number {
     const context = this.context;
     if (!context) {
@@ -126,3 +154,10 @@ export default class CanvasRenderer implements Renderer {
     }
   }
 }
+
+const canvasElementHandlers: Record<string, (ctx: CanvasRenderingContext2D, element: any, context: RenderContext) => void> = {
+  line: drawCanvasLine,
+  point: drawCanvasPoint,
+  bar: drawCanvasBar,
+  arc: drawCanvasArc,
+};
