@@ -1,21 +1,17 @@
 import Element from '../core/core.element.js';
 import layouts from '../core/core.layouts.js';
 import {PI, isArray, toPadding, toFont} from '../helpers/index.js';
-import {_toLeftRightCenter, _alignStartEnd} from '../helpers/helpers.extras.js';
-import {renderText} from '../helpers/helpers.canvas.js';
-import {getOrCreateSvgChartPart, removeExtraSvgElements, removeSvgChartPart} from '../helpers/helpers.svg.js';
-import {renderSvgText} from '../helpers/helpers.svg.text.js';
+import {_alignStartEnd} from '../helpers/helpers.extras.js';
 
 export class Title extends Element {
   /**
-   * @param {{ ctx: any; options: any; chart: any; svgPart?: string; }} config
+   * @param {{ options: any; chart: any; svgPart?: string; }} config
 	 */
   constructor(config) {
     super();
 
     this.chart = config.chart;
     this.options = config.options;
-    this.ctx = config.ctx;
     this._svgPart = config.svgPart || 'title';
     this._padding = undefined;
     this.top = undefined;
@@ -85,51 +81,12 @@ export class Title extends Element {
   }
 
   draw() {
-    const ctx = this.ctx;
-    const opts = this.options;
-
-    if (!opts.display) {
-      if (this.chart.options.renderer === 'svg') {
-        removeSvgChartPart(this.chart, this._svgPart);
-      }
-      return;
-    }
-
-    const fontOpts = toFont(opts.font);
-    const lineHeight = fontOpts.lineHeight;
-    const offset = lineHeight / 2 + this._padding.top;
-    const {titleX, titleY, maxWidth, rotation} = this._drawArgs(offset);
-
-    if (this.chart.options.renderer === 'svg') {
-      const group = getOrCreateSvgChartPart(this.chart, this._svgPart, 'background');
-      const lines = isArray(opts.text) ? opts.text : [opts.text];
-      const textWidths = lines.map((line) => this.chart.renderer.measureText(line, fontOpts.string));
-      renderSvgText(group, 0, opts.text, fontOpts, {
-        color: opts.color,
-        maxWidth,
-        rotation,
-        textAlign: _toLeftRightCenter(opts.align),
-        textBaseline: 'middle',
-        translation: [titleX, titleY],
-      }, textWidths);
-      removeExtraSvgElements(group, 1);
-      return;
-    }
-
-    renderText(ctx, opts.text, 0, 0, fontOpts, {
-      color: opts.color,
-      maxWidth,
-      rotation,
-      textAlign: _toLeftRightCenter(opts.align),
-      textBaseline: 'middle',
-      translation: [titleX, titleY],
-    });
+    this.chart.renderer.drawTitle(this);
   }
 }
 
 function createTitle(chart, titleOpts) {
   const title = new Title({
-    ctx: chart.ctx,
     options: titleOpts,
     chart,
     svgPart: 'title'

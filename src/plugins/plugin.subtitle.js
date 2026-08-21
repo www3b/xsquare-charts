@@ -8,7 +8,6 @@ export default {
 
   start(chart, _args, options) {
     const title = new Title({
-      ctx: chart.ctx,
       options,
       chart,
       svgPart: 'subtitle'

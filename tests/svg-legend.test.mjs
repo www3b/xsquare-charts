@@ -193,6 +193,57 @@ test('SVG legend draws line and bar items from resolved Legend layout', () => {
   bar.chart.destroy();
 });
 
+test('Legend exposes one shared draw model for RTL, multiline labels and hitboxes', () => {
+  const {chart} = createChart('line', [{label: ['A long', 'multiline label'], data: [1, 2, 3]}], {
+    plugins: {legend: {rtl: true, labels: {padding: 12}, title: {display: true, text: 'Shared title'}}}
+  });
+  const model = chart.legend.buildLegendDrawItems();
+  assert.equal(model.items.length, 1);
+  assert.equal(model.items[0].legendItem, chart.legend.legendItems[0]);
+  assert.equal(model.items[0].symbol.y, chart.legend.legendHitBoxes[0].top);
+  assert.equal(model.items[0].text.y, model.items[0].symbol.y + model.items[0].itemHeight / 2);
+  assert.equal(model.title.text, 'Shared title');
+  assert.equal(model.title.x, chart.legend.left + chart.legend.width / 2);
+  chart.destroy();
+});
+
+test('Legend draw model owns final RTL symbol, text and multi-column hitbox coordinates', () => {
+  const {chart} = createChart('line', [
+    {label: ['North', 'multiline'], data: [1, 2], pointStyle: 'triangle'},
+    {label: 'East', data: [2, 3], pointStyle: 'circle'},
+    {label: 'South', data: [3, 4], pointStyle: 'star'},
+  ], {plugins: {legend: {position: 'left', rtl: true, labels: {pointStyleWidth: 26, usePointStyle: true}}}});
+  const model = chart.legend.buildLegendDrawItems();
+  for (const item of model.items) {
+    assert.equal(chart.legend.legendHitBoxes[item.index].left, item.hitbox.left);
+    assert.equal(chart.legend.legendHitBoxes[item.index].top, item.hitbox.top);
+    assert.ok(item.symbol.centerX >= item.hitbox.left && item.symbol.centerX <= item.hitbox.left + item.hitbox.width);
+    assert.ok(item.text.x >= chart.legend.left && item.text.x <= chart.legend.right);
+  }
+  assert.ok(model.items[1].hitbox.top >= model.items[0].hitbox.top + model.items[0].hitbox.height);
+  const symbol = itemSymbol(legendItems(chart)[0]);
+  assert.ok(symbol.getAttribute('d').includes(String(model.items[0].symbol.centerX)));
+  chart.destroy();
+});
+
+test('Legend uses fit row and column metadata as the canonical draw model', () => {
+  const data = Array.from({length: 12}, (_, index) => ({label: ['short', `very very long legend label ${index}`], data: [index + 1, index + 2]}));
+  const {chart} = createChart('line', data, {
+    plugins: {legend: {align: 'start', maxHeight: 82, position: 'left', rtl: true, labels: {padding: 6, usePointStyle: true}}}
+  });
+  const model = chart.legend.buildLegendDrawItems();
+  const columns = new Set(model.items.map((item) => item.hitbox.col));
+  assert.ok(columns.size >= 2);
+  for (const item of model.items) {
+    assert.equal(item.width, chart.legend.legendHitBoxes[item.index].width);
+    assert.equal(item.hitbox.col, chart.legend.legendHitBoxes[item.index].col);
+    assert.ok(item.symbol.centerX >= item.hitbox.left && item.symbol.centerX <= item.hitbox.left + item.hitbox.width);
+  }
+  const firstInSecondColumn = model.items.find((item) => item.hitbox.col === 1);
+  assert.notEqual(firstInSecondColumn.symbol.centerX, model.items[0].symbol.centerX);
+  chart.destroy();
+});
+
 // eslint-disable-next-line max-statements
 test('SVG legend supports point styles, pie items, updates and interaction state', () => {
   const chartData = datasets();

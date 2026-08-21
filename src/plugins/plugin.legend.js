@@ -109,6 +109,7 @@ export class Legend extends Element {
  		 * @private
  		 */
     this._hoveredItem = null;
+    this._drawItems = undefined;
 
     // Are we in doughnut mode which has a different data type
     this.doughnutMode = false;
@@ -134,6 +135,7 @@ export class Legend extends Element {
   }
 
   update(maxWidth, maxHeight, margins) {
+    this._drawItems = undefined;
     this.maxWidth = maxWidth;
     this.maxHeight = maxHeight;
     this._margins = margins;
@@ -156,6 +158,7 @@ export class Legend extends Element {
   }
 
   buildLabels() {
+    this._drawItems = undefined;
     const labelOpts = this.options.labels || {};
     let legendItems = call(labelOpts.generateLabels, [this.chart], this) || [];
 
@@ -175,6 +178,7 @@ export class Legend extends Element {
   }
 
   fit() {
+    this._drawItems = undefined;
     const {options} = this;
 
     // The legend may not be displayed for a variety of reasons including
@@ -280,39 +284,103 @@ export class Legend extends Element {
     if (!this.options.display) {
       return;
     }
-    const titleHeight = this._computeTitleHeight();
-    const {legendHitBoxes: hitboxes, options: {align, labels: {padding}, rtl}} = this;
-    const rtlHelper = getRtlAdapter(rtl, this.left, this.width);
-    if (this.isHorizontal()) {
-      let row = 0;
-      let left = _alignStartEnd(align, this.left + padding, this.right - this.lineWidths[row]);
-      for (const hitbox of hitboxes) {
-        if (row !== hitbox.row) {
-          row = hitbox.row;
-          left = _alignStartEnd(align, this.left + padding, this.right - this.lineWidths[row]);
-        }
-        hitbox.top += this.top + titleHeight + padding;
-        hitbox.left = rtlHelper.leftForLtr(rtlHelper.x(left), hitbox.width);
-        left += hitbox.width + padding;
-      }
-    } else {
-      let col = 0;
-      let top = _alignStartEnd(align, this.top + titleHeight + padding, this.bottom - this.columnSizes[col].height);
-      for (const hitbox of hitboxes) {
-        if (hitbox.col !== col) {
-          col = hitbox.col;
-          top = _alignStartEnd(align, this.top + titleHeight + padding, this.bottom - this.columnSizes[col].height);
-        }
-        hitbox.top = top;
-        hitbox.left += this.left + padding;
-        hitbox.left = rtlHelper.leftForLtr(rtlHelper.x(hitbox.left), hitbox.width);
-        top += hitbox.height + padding;
-      }
+    const {items} = this.buildLegendDrawItems();
+    for (const {index, hitbox} of items) {
+      this.legendHitBoxes[index] = hitbox;
     }
   }
 
   isHorizontal() {
     return this.options.position === 'top' || this.options.position === 'bottom';
+  }
+
+  buildLegendDrawItems() {
+    if (this._drawItems) {
+      return this._drawItems;
+    }
+    const {options: opts, columnSizes, lineWidths} = this;
+    const {align, labels: labelOpts} = opts;
+    const rtlHelper = getRtlAdapter(opts.rtl, this.left, this.width);
+    const labelFont = toFont(labelOpts.font);
+    const {padding} = labelOpts;
+    const fontSize = labelFont.size;
+    const halfFontSize = fontSize / 2;
+    const {boxWidth, boxHeight, itemHeight} = getBoxSize(labelOpts, fontSize);
+    const isHorizontal = this.isHorizontal();
+    const titleHeight = this._computeTitleHeight();
+    let row = -1;
+    let col = -1;
+    let cursorX;
+    let cursorY;
+    const items = [];
+
+    this.legendItems.forEach((legendItem, index) => {
+      const layoutHitbox = this.legendHitBoxes[index];
+      if (!layoutHitbox) return;
+      const textAlign = rtlHelper.textAlign(legendItem.textAlign || (legendItem.textAlign = labelOpts.textAlign));
+      const width = layoutHitbox.width;
+      const height = layoutHitbox.height;
+      let x;
+      let y;
+      rtlHelper.setWidth(this.width);
+
+      if (isHorizontal) {
+        if (layoutHitbox.row !== row) {
+          row = layoutHitbox.row;
+          cursorX = _alignStartEnd(align, this.left + padding, this.right - lineWidths[row]);
+        }
+        x = cursorX;
+        y = this.top + titleHeight + padding + layoutHitbox.top;
+        cursorX += width + padding;
+      } else {
+        if (layoutHitbox.col !== col) {
+          col = layoutHitbox.col;
+          cursorY = _alignStartEnd(align, this.top + titleHeight + padding, this.bottom - columnSizes[col].height);
+        }
+        x = this.left + padding + layoutHitbox.left;
+        y = cursorY + layoutHitbox.top;
+      }
+
+      const anchorX = rtlHelper.x(x);
+      const symbol = labelOpts.usePointStyle ? {
+        centerX: rtlHelper.xPlus(anchorX, boxWidth / 2),
+        centerY: y + halfFontSize,
+        height: boxHeight,
+        width: boxWidth,
+      } : {
+        x: rtlHelper.leftForLtr(anchorX, boxWidth),
+        y: y + Math.max((fontSize - boxHeight) / 2, 0),
+        height: boxHeight,
+        width: boxWidth,
+      };
+      const textX = rtlHelper.x(_textX(textAlign, x + boxWidth + halfFontSize, isHorizontal ? x + width : this.right, opts.rtl));
+      const hitbox = {left: rtlHelper.leftForLtr(anchorX, width), top: y, width, height, row: layoutHitbox.row, col: layoutHitbox.col};
+      items.push({legendItem, index, symbol, text: {x: textX, y: y + itemHeight / 2, align: textAlign}, hitbox, width, itemHeight});
+    });
+
+    return this._drawItems = {items, labelFont, fontSize, halfFontSize, boxWidth, boxHeight, itemHeight, title: this._buildTitleDrawItem(rtlHelper)};
+  }
+
+  _buildTitleDrawItem(rtlHelper = getRtlAdapter(this.options.rtl, this.left, this.width)) {
+    const opts = this.options;
+    const titleOpts = opts.title;
+    if (!titleOpts.display) return null;
+    const font = toFont(titleOpts.font);
+    const padding = toPadding(titleOpts.padding);
+    const halfFontSize = font.size / 2;
+    let left = this.left;
+    let maxWidth = this.width;
+    let y;
+    if (this.isHorizontal()) {
+      maxWidth = Math.max(...this.lineWidths);
+      y = this.top + padding.top + halfFontSize;
+      left = _alignStartEnd(opts.align, left, this.right - maxWidth);
+    } else {
+      const maxHeight = this.columnSizes.reduce((acc, size) => Math.max(acc, size.height), 0);
+      y = padding.top + halfFontSize + _alignStartEnd(opts.align, this.top, this.bottom - maxHeight - opts.labels.padding - this._computeTitleHeight());
+    }
+    const align = rtlHelper.textAlign(_toLeftRightCenter(titleOpts.position));
+    return {text: titleOpts.text, font, color: titleOpts.color, maxWidth, x: _alignStartEnd(titleOpts.position, left, left + maxWidth), y, textAlign: align};
   }
 
   draw() {
@@ -348,22 +416,21 @@ export class Legend extends Element {
 	 */
   // eslint-disable-next-line max-statements
   _draw(svgGroup) {
-    const {options: opts, columnSizes, lineWidths, ctx, chart} = this;
-    const {align, labels: labelOpts} = opts;
+    const {options: opts, ctx, chart} = this;
+    const drawItems = this.buildLegendDrawItems();
+    const {labels: labelOpts} = opts;
     const defaultColor = defaults.color;
     const rtlHelper = getRtlAdapter(opts.rtl, this.left, this.width);
     const labelFont = toFont(labelOpts.font);
-    const {padding} = labelOpts;
     const fontSize = labelFont.size;
     const halfFontSize = fontSize / 2;
-    let cursor;
 
     const svg = !!svgGroup;
     const svgTitle = svg && getOrCreateLegendChild(svgGroup, 'g', 'title');
     const svgItems = svg && getOrCreateLegendChild(svgGroup, 'g', 'items');
     const svgItemKeys = new Set();
 
-    this.drawTitle(svgTitle);
+    this.drawTitle(svgTitle, drawItems.title);
 
     // Canvas setup
     if (!svg) {
@@ -375,11 +442,11 @@ export class Legend extends Element {
       ctx.font = labelFont.string;
     }
 
-    const {boxWidth, boxHeight, itemHeight} = getBoxSize(labelOpts, fontSize);
+    const {boxWidth, boxHeight, itemHeight} = drawItems;
 
     // current position
     // eslint-disable-next-line complexity, max-statements
-    const drawLegendBox = function(x, y, legendItem, index) {
+    const drawLegendBox = function(symbolGeometry, legendItem, index) {
       if (isNaN(boxWidth) || boxWidth <= 0 || isNaN(boxHeight) || boxHeight < 0) {
         return;
       }
@@ -397,8 +464,8 @@ export class Legend extends Element {
             rotation: legendItem.rotation,
             borderWidth: lineWidth
           };
-          centerX = rtlHelper.xPlus(x, boxWidth / 2);
-          centerY = y + halfFontSize;
+          centerX = symbolGeometry.centerX;
+          centerY = symbolGeometry.centerY;
 
           if (drawOptions.pointStyle && typeof drawOptions.pointStyle === 'object') {
             const image = getOrCreateLegendChild(itemGroup, 'image', 'symbol-image');
@@ -422,8 +489,8 @@ export class Legend extends Element {
           tracePoint(path, drawOptions, centerX, centerY, labelOpts.pointStyleWidth && boxWidth);
           symbol.setAttribute('d', path.toString());
         } else {
-          const yBoxTop = y + Math.max((fontSize - boxHeight) / 2, 0);
-          const xBoxLeft = rtlHelper.leftForLtr(x, boxWidth);
+          const yBoxTop = symbolGeometry.y;
+          const xBoxLeft = symbolGeometry.x;
           const borderRadius = toTRBLCorners(legendItem.borderRadius);
           if (Object.values(borderRadius).some(v => v !== 0)) {
             addRoundedRectPath(path, {x: xBoxLeft, y: yBoxTop, w: boxWidth, h: boxHeight, radius: borderRadius});
@@ -458,16 +525,16 @@ export class Legend extends Element {
           rotation: legendItem.rotation,
           borderWidth: lineWidth
         };
-        const centerX = rtlHelper.xPlus(x, boxWidth / 2);
-        const centerY = y + halfFontSize;
+        const centerX = symbolGeometry.centerX;
+        const centerY = symbolGeometry.centerY;
 
         // Draw pointStyle as legend symbol
         drawPointLegend(ctx, drawOptions, centerX, centerY, labelOpts.pointStyleWidth && boxWidth);
       } else {
         // Draw box as legend symbol
         // Adjust position when boxHeight < fontSize (want it centered)
-        const yBoxTop = y + Math.max((fontSize - boxHeight) / 2, 0);
-        const xBoxLeft = rtlHelper.leftForLtr(x, boxWidth);
+        const yBoxTop = symbolGeometry.y;
+        const xBoxLeft = symbolGeometry.x;
         const borderRadius = toTRBLCorners(legendItem.borderRadius);
 
         ctx.beginPath();
@@ -493,94 +560,42 @@ export class Legend extends Element {
       ctx.restore();
     };
 
-    const fillText = function(x, y, legendItem, index) {
+    const fillText = function(textGeometry, legendItem, index) {
       if (svg) {
         const itemGroup = getOrCreateLegendItem(svgItems, legendItem, index);
         const labelGroup = getOrCreateLegendChild(itemGroup, 'g', 'label');
         renderSvgText(labelGroup, 0, legendItem.text, labelFont, {
           color: legendItem.fontColor || defaultColor,
           strikethrough: legendItem.hidden,
-          textAlign: rtlHelper.textAlign(legendItem.textAlign),
+          textAlign: textGeometry.align,
           textBaseline: 'middle',
-          translation: [x, y + (itemHeight / 2)]
+          translation: [textGeometry.x, textGeometry.y]
         });
         return;
       }
-      renderText(ctx, legendItem.text, x, y + (itemHeight / 2), labelFont, {
+      renderText(ctx, legendItem.text, textGeometry.x, textGeometry.y, labelFont, {
         strikethrough: legendItem.hidden,
-        textAlign: rtlHelper.textAlign(legendItem.textAlign)
+        textAlign: textGeometry.align
       });
     };
-
-    // Horizontal
-    const isHorizontal = this.isHorizontal();
-    const titleHeight = this._computeTitleHeight();
-    if (isHorizontal) {
-      cursor = {
-        x: _alignStartEnd(align, this.left + padding, this.right - lineWidths[0]),
-        y: this.top + padding + titleHeight,
-        line: 0
-      };
-    } else {
-      cursor = {
-        x: this.left + padding,
-        y: _alignStartEnd(align, this.top + titleHeight + padding, this.bottom - columnSizes[0].height),
-        line: 0
-      };
-    }
 
     if (!svg) {
       overrideTextDirection(this.ctx, opts.textDirection);
     }
-
-    const lineHeight = itemHeight + padding;
     // eslint-disable-next-line complexity
-    this.legendItems.forEach((legendItem, i) => {
+    drawItems.items.forEach((drawItem) => {
+      const {legendItem, index: i} = drawItem;
       if (!svg) {
         ctx.strokeStyle = legendItem.fontColor; // for strikethrough effect
         ctx.fillStyle = legendItem.fontColor; // render in correct colour
       }
 
-      const textWidth = this.chart.renderer.measureText(legendItem.text, labelFont.string);
-      const textAlign = rtlHelper.textAlign(legendItem.textAlign || (legendItem.textAlign = labelOpts.textAlign));
-      const width = boxWidth + halfFontSize + textWidth;
-      let x = cursor.x;
-      let y = cursor.y;
-
-      rtlHelper.setWidth(this.width);
-
-      if (isHorizontal) {
-        if (i > 0 && x + width + padding > this.right) {
-          y = cursor.y += lineHeight;
-          cursor.line++;
-          x = cursor.x = _alignStartEnd(align, this.left + padding, this.right - lineWidths[cursor.line]);
-        }
-      } else if (i > 0 && y + lineHeight > this.bottom) {
-        x = cursor.x = x + columnSizes[cursor.line].width + padding;
-        cursor.line++;
-        y = cursor.y = _alignStartEnd(align, this.top + titleHeight + padding, this.bottom - columnSizes[cursor.line].height);
-      }
-
-      const realX = rtlHelper.x(x);
-
-      drawLegendBox(realX, y, legendItem, i);
-
-      x = _textX(textAlign, x + boxWidth + halfFontSize, isHorizontal ? x + width : this.right, opts.rtl);
-
-      // Fill the actual label
-      fillText(rtlHelper.x(x), y, legendItem, i);
+      drawLegendBox(drawItem.symbol, legendItem, i);
+      fillText(drawItem.text, legendItem, i);
       if (svg) {
         svgItemKeys.add(legendItemKey(legendItem, i));
       }
 
-      if (isHorizontal) {
-        cursor.x += width + padding;
-      } else if (typeof legendItem.text !== 'string') {
-        const fontLineHeight = labelFont.lineHeight;
-        cursor.y += calculateLegendItemHeight(legendItem, fontLineHeight) + padding;
-      } else {
-        cursor.y += lineHeight;
-      }
     });
 
     if (svg) {
@@ -594,7 +609,27 @@ export class Legend extends Element {
 	 * @protected
 	 */
   // eslint-disable-next-line max-statements
-  drawTitle(svgGroup) {
+  drawTitle(svgGroup, drawItem) {
+    if (drawItem) {
+      if (svgGroup) {
+        const lines = Array.isArray(drawItem.text) ? drawItem.text : [drawItem.text];
+        const textWidths = lines.map((line) => this.chart.renderer.measureText(line, drawItem.font.string));
+        renderSvgText(svgGroup, 0, drawItem.text, drawItem.font, {
+          color: drawItem.color,
+          maxWidth: drawItem.maxWidth,
+          textAlign: drawItem.textAlign,
+          textBaseline: 'middle',
+          translation: [drawItem.x, drawItem.y],
+        }, textWidths);
+      } else {
+        this.ctx.textAlign = drawItem.textAlign;
+        this.ctx.textBaseline = 'middle';
+        this.ctx.strokeStyle = drawItem.color;
+        this.ctx.fillStyle = drawItem.color;
+        renderText(this.ctx, drawItem.text, drawItem.x, drawItem.y, drawItem.font);
+      }
+      return;
+    }
     const opts = this.options;
     const titleOpts = opts.title;
     const titleFont = toFont(titleOpts.font);

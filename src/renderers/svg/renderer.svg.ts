@@ -4,6 +4,7 @@ import {drawSvgLine} from './elements/line.js';
 import {drawSvgPoint} from './elements/point.js';
 import {drawSvgBar} from './elements/bar.js';
 import {drawSvgArc} from './elements/arc.js';
+import {drawSvgTitle} from './title.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -72,6 +73,10 @@ export default class SvgRenderer implements Renderer {
     if (handler) {
       handler(this.chart, element, context);
     }
+  }
+
+  drawTitle(title: any): void {
+    drawSvgTitle(this.chart, title);
   }
 
   beginDataset(index: number, clip: any): void {

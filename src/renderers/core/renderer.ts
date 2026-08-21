@@ -13,6 +13,7 @@ export interface Renderer {
   beginFrame(): void;
   endFrame(): void;
   drawElement(element: any, context?: RenderContext): void;
+  drawTitle(title: any): void;
   beginDataset(index: number, clip: any): void;
   endDataset(clip: any): void;
   measureText(text: string | number, font: string): number;
