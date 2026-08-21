@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {Scale} from '../dist/chart.js';
+import {CategoryScale, Chart, LineController, LineElement, LinearScale, PointElement, Scale} from '../dist/chart.js';
 import {beginSvgRender, endSvgRender, removeSvgRoot} from '../src/helpers/helpers.svg.js';
+
+Chart.register(CategoryScale, LineController, LineElement, LinearScale, PointElement);
 
 class SvgNode {
   constructor(document) {
@@ -33,6 +35,14 @@ class SvgNode {
 
   get nextSibling() {
     return this.parentNode && this.parentNode.children[this.parentNode.children.indexOf(this) + 1];
+  }
+
+  get lastElementChild() {
+    return this.children[this.children.length - 1];
+  }
+
+  removeAttribute(name) {
+    this.attributes.delete(name);
   }
 
   setAttribute(name, value) {
@@ -104,58 +114,116 @@ function createScale(chart, id, axis, grid = {}) {
   return scale;
 }
 
-test('SVG scale grid, ticks and borders retain computed coordinates and styles', () => {
+function createRenderedScaleChart() {
+  const document = {
+    defaultView: {getComputedStyle: () => ({position: 'static'})},
+    createElementNS: () => new SvgNode(document)
+  };
+  const parent = new SvgNode(document);
+  const canvas = new SvgNode(document);
+  canvas.width = 440;
+  canvas.height = 300;
+  canvas.offsetLeft = 0;
+  canvas.offsetTop = 0;
+  canvas.getContext = () => ({canvas, measureText: (value) => ({width: String(value).length * 8})});
+  parent.appendChild(canvas);
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: {labels: ['One', 'Two', 'Three'], datasets: [{data: [1, 3, 2]}]},
+    options: {
+      animation: false,
+      plugins: {legend: false, tooltip: false},
+      renderer: 'svg',
+      responsive: false,
+      scales: {
+        x: {
+          backgroundColor: '#eef',
+          border: {color: '#112233', dash: [4, 2], dashOffset: 1, width: 2, z: 1},
+          grid: {color: '#123456', lineWidth: 2, tickBorderDash: [2, 1], tickBorderDashOffset: 3, tickColor: '#654321', tickWidth: 1, z: -1},
+          title: {display: true, text: 'Months'}
+        },
+        y: {grid: {color: '#abcdef', lineWidth: 1, z: 1}}
+      }
+    }
+  });
+  return {chart, parent};
+}
+
+function scalePart(chart, layer, id, part) {
+  const root = chart.$chartjsSvgRoot;
+  const scale = findChild(findChild(root, 'data-svg-layer', layer), 'data-scale-id', id);
+  return scale && findChild(scale, 'data-svg-part', part);
+}
+
+test('Scale grid and border geometry remain renderer-neutral', () => {
   const chart = createChart();
-  beginSvgRender(chart);
   const scale = createScale(chart, 'x', 'x');
-  scale.drawGrid(chart.chartArea);
-  scale.drawBorder();
-  endSvgRender(chart);
-
-  const [canvas, root] = chart.parent.children;
-  assert.equal(canvas, chart.canvas);
-  assert.equal(root.getAttribute('data-chart-svg'), 'true');
-  const background = findChild(root, 'data-svg-layer', 'background');
-  const datasets = findChild(root, 'data-svg-layer', 'datasets');
-  const foreground = findChild(root, 'data-svg-layer', 'foreground');
-  assert.deepEqual(root.children, [background, datasets, foreground]);
-
-  const backgroundScale = findChild(background, 'data-scale-id', 'x');
-  const grid = findChild(backgroundScale, 'data-svg-part', 'grid').children[0];
-  const ticks = findChild(backgroundScale, 'data-svg-part', 'ticks').children[0];
-  assert.deepEqual([grid.getAttribute('x1'), grid.getAttribute('y1'), grid.getAttribute('x2'), grid.getAttribute('y2')], ['20', '20', '20', '380']);
-  assert.equal(grid.getAttribute('stroke-dasharray'), '');
-  assert.equal(grid.getAttribute('stroke-width'), '2');
-  assert.equal(ticks.getAttribute('stroke-dasharray'), '2,1');
-  assert.equal(ticks.getAttribute('stroke-dashoffset'), '3');
-
-  const border = findChild(findChild(foreground, 'data-scale-id', 'x'), 'data-svg-part', 'border').children[0];
-  assert.equal(border.getAttribute('y1'), '380');
-  assert.equal(border.getAttribute('stroke-dasharray'), '4,2');
+  const [grid] = scale.getGridLineItems(chart.chartArea);
+  const border = scale.getBorderDrawItem();
+  assert.deepEqual([grid.x1, grid.y1, grid.x2, grid.y2], [20, 20, 20, 380]);
+  assert.deepEqual([grid.tx1, grid.ty1, grid.tx2, grid.ty2], [20, 380, 20, 390]);
+  assert.equal(grid.tickBorderDashOffset, 3);
+  assert.equal(border.y1, 380);
+  assert.deepEqual(border.borderDash, [4, 2]);
 });
 
-test('SVG scale nodes are reused and move with z, visibility and cleanup', () => {
+test('Scale grid geometry preserves z and display options for renderers', () => {
   const chart = createChart();
-  beginSvgRender(chart);
   const x = createScale(chart, 'x', 'x');
   const y = createScale(chart, 'y1', 'y', {z: 1});
-  x.drawGrid(chart.chartArea);
-  y.drawGrid(chart.chartArea);
-  const root = chart.$chartjsSvgRoot;
-  const background = findChild(root, 'data-svg-layer', 'background');
-  const firstGrid = findChild(findChild(background, 'data-scale-id', 'x'), 'data-svg-part', 'grid').children[0];
-
-  x.drawGrid(chart.chartArea);
-  assert.equal(findChild(findChild(background, 'data-scale-id', 'x'), 'data-svg-part', 'grid').children[0], firstGrid);
-  assert.ok(findChild(findChild(root, 'data-svg-layer', 'foreground'), 'data-scale-id', 'y1'));
-
+  assert.equal(x.options.grid.z, -1);
+  assert.equal(y.options.grid.z, 1);
+  assert.equal(x.getGridLineItems(chart.chartArea), x.getGridLineItems(chart.chartArea));
   x.options.grid.drawOnChartArea = false;
   x.options.grid.drawTicks = false;
-  x.drawGrid(chart.chartArea);
-  assert.equal(findChild(background, 'data-scale-id', 'x'), undefined);
+  assert.equal(x.options.grid.drawOnChartArea, false);
+  assert.equal(x.options.grid.drawTicks, false);
+});
 
-  removeSvgRoot(chart);
-  assert.deepEqual(chart.parent.children, [chart.canvas]);
+test('SvgRenderer renders cartesian scale parts, reuses nodes and cleans up stale parts', () => {
+  const {chart} = createRenderedScaleChart();
+  const grid = scalePart(chart, 'background', 'x', 'grid').children[0];
+  const ticks = scalePart(chart, 'background', 'x', 'ticks').children[0];
+  const border = scalePart(chart, 'foreground', 'x', 'border').children[0];
+  assert.ok(grid.getAttribute('x1'));
+  assert.ok(grid.getAttribute('y1'));
+  assert.equal(grid.getAttribute('stroke'), '#123456');
+  assert.equal(grid.getAttribute('stroke-width'), '2');
+  assert.equal(grid.getAttribute('stroke-dasharray'), '4,2');
+  assert.equal(grid.getAttribute('stroke-dashoffset'), '1');
+  assert.ok(ticks.getAttribute('x1'));
+  assert.equal(ticks.getAttribute('stroke'), '#654321');
+  assert.equal(ticks.getAttribute('stroke-width'), '1');
+  assert.equal(ticks.getAttribute('stroke-dasharray'), '2,1');
+  assert.equal(ticks.getAttribute('stroke-dashoffset'), '3');
+  assert.ok(border.getAttribute('x1'));
+  assert.equal(border.getAttribute('stroke'), '#112233');
+  assert.equal(border.getAttribute('stroke-width'), '2');
+  assert.equal(border.getAttribute('stroke-dasharray'), '4,2');
+  assert.equal(border.getAttribute('stroke-dashoffset'), '1');
+  assert.ok(scalePart(chart, 'foreground', 'y', 'grid'));
+
+  const labels = scalePart(chart, 'background', 'x', 'labels');
+  chart.update('none');
+  assert.equal(scalePart(chart, 'background', 'x', 'grid').children[0], grid);
+  assert.equal(scalePart(chart, 'foreground', 'x', 'border').children[0], border);
+  assert.equal(scalePart(chart, 'background', 'x', 'labels'), labels);
+
+  const x = chart.options.scales.x;
+  x.grid.drawOnChartArea = false;
+  x.grid.drawTicks = false;
+  x.ticks = {display: false};
+  x.border.display = false;
+  x.title.display = false;
+  x.backgroundColor = undefined;
+  chart.update('none');
+  assert.equal(scalePart(chart, 'background', 'x', 'grid'), undefined);
+  assert.equal(scalePart(chart, 'background', 'x', 'ticks'), undefined);
+  assert.equal(scalePart(chart, 'background', 'x', 'labels'), undefined);
+  assert.equal(scalePart(chart, 'foreground', 'x', 'border'), undefined);
+  assert.equal(scalePart(chart, 'background', 'x', 'title'), undefined);
+  assert.equal(scalePart(chart, 'background', 'x', 'background'), undefined);
+  chart.destroy();
 });
 
 test('SVG root and layers are reused through resize and renderer switches', () => {
@@ -184,4 +252,49 @@ test('SVG root and layers are reused through resize and renderer switches', () =
   assert.equal(chart.parent.children.filter((node) => node.getAttribute('data-chart-svg') === 'true').length, 1);
   endSvgRender(chart);
   removeSvgRoot(chart);
+});
+
+test('Canvas cartesian scale renders background, grid, labels and title through its renderer', () => {
+  const document = {
+    defaultView: {getComputedStyle: () => ({position: 'static'})},
+    createElementNS: () => new SvgNode(document)
+  };
+  const parent = new SvgNode(document);
+  const canvas = new SvgNode(document);
+  canvas.width = 400;
+  canvas.height = 240;
+  canvas.offsetLeft = 0;
+  canvas.offsetTop = 0;
+  const calls = [];
+  const context = new Proxy({
+    canvas,
+    measureText(value) {
+      return {actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2, actualBoundingBoxLeft: 0, actualBoundingBoxRight: String(value).length * 8, width: String(value).length * 8};
+    }
+  }, {
+    get(target, property) {
+      if (property in target) return target[property];
+      return (...args) => calls.push([property, ...args]);
+    }
+  });
+  canvas.getContext = () => context;
+  parent.appendChild(canvas);
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: {labels: ['One', 'Two', 'Three'], datasets: [{data: [1, 3, 2]}]},
+    options: {
+      animation: false,
+      plugins: {legend: false, tooltip: false},
+      renderer: 'canvas',
+      responsive: false,
+      scales: {
+        x: {backgroundColor: '#eef', title: {display: true, text: 'Months'}},
+        y: {title: {display: true, text: 'Value'}}
+      }
+    }
+  });
+  assert.ok(calls.some(([name]) => name === 'fillRect'));
+  assert.ok(calls.some(([name]) => name === 'stroke'));
+  assert.ok(calls.some(([name, text]) => name === 'fillText' && (text === 'Months' || text === 'Value')));
+  chart.destroy();
 });

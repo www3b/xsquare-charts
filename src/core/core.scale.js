@@ -1,26 +1,14 @@
 import Element from './core.element.js';
-import {_alignPixel, renderText, clipArea, unclipArea} from '../helpers/helpers.canvas.js';
+import {_alignPixel} from '../helpers/helpers.canvas.js';
 import {callback as call, each, finiteOrDefault, isArray, isFinite, isNullOrUndef, isObject, valueOrDefault} from '../helpers/helpers.core.js';
 import {toDegrees, toRadians, _int16Range, _limitValue, HALF_PI} from '../helpers/helpers.math.js';
 import {_alignStartEnd, _toLeftRightCenter} from '../helpers/helpers.extras.js';
 import {createContext, toFont, toPadding, _addGrace} from '../helpers/helpers.options.js';
-import {getOrCreateSvgClipRect, getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart, resolveSvgPaint} from '../helpers/helpers.svg.js';
-import {renderSvgText} from '../helpers/helpers.svg.text.js';
 import {autoSkip} from './core.scale.autoskip.js';
 
 const reverseAlign = (align) => align === 'left' ? 'right' : align === 'right' ? 'left' : align;
 const offsetFromEdge = (scale, edge, offset) => edge === 'top' || edge === 'left' ? scale[edge] + offset : scale[edge] - offset;
 const getTicksLimit = (ticksLength, maxTicksLimit) => Math.min(maxTicksLimit || ticksLength, ticksLength);
-const svgLayerForZ = (z) => z > 0 ? 'foreground' : 'background';
-
-function setSvgLineStyle(chart, line, style) {
-  line.setAttribute('fill', 'none');
-  line.setAttribute('stroke', resolveSvgPaint(chart, style.color));
-  line.setAttribute('stroke-width', `${style.width}`);
-  line.setAttribute('stroke-dasharray', `${style.borderDash || []}`);
-  line.setAttribute('stroke-dashoffset', `${style.borderDashOffset || 0}`);
-}
-
 /**
  * @typedef { import('../types/index.js').Chart } Chart
  * @typedef {{value:number | string, label?:string, major?:boolean, $context?:any}} Tick
@@ -198,6 +186,7 @@ export default class Scale extends Element {
     this.type = cfg.type;
     /** @type {any} */
     this.options = undefined;
+    // RadialLinearScale still uses this legacy context until its separate presentation move.
     /** @type {CanvasRenderingContext2D} */
     this.ctx = cfg.ctx;
     /** @type {Chart} */
@@ -1456,34 +1445,69 @@ export default class Scale extends Element {
     }
   }
 
+  getGridLineItems(chartArea) {
+    return this._gridLineItems || (this._gridLineItems = this._computeGridLineItems(chartArea));
+  }
+
+  getBorderDrawItem() {
+    const {chart, options: {border, grid}} = this;
+    const borderOpts = border.setContext(this.getContext());
+    const width = border.display ? borderOpts.width : 0;
+    if (!width) return null;
+    const lastLineWidth = grid.setContext(this.getContext(0)).lineWidth;
+    const borderValue = this._borderValue;
+    let x1, x2, y1, y2;
+    if (this.isHorizontal()) {
+      x1 = _alignPixel(chart, this.left, width) - width / 2;
+      x2 = _alignPixel(chart, this.right, lastLineWidth) + lastLineWidth / 2;
+      y1 = y2 = borderValue;
+    } else {
+      y1 = _alignPixel(chart, this.top, width) - width / 2;
+      y2 = _alignPixel(chart, this.bottom, lastLineWidth) + lastLineWidth / 2;
+      x1 = x2 = borderValue;
+    }
+    return {x1, y1, x2, y2, color: borderOpts.color, width, borderDash: borderOpts.dash, borderDashOffset: borderOpts.dashOffset};
+  }
+
+  getLabelArea() {
+    return this._computeLabelArea();
+  }
+
+  getTitleDrawItem() {
+    const {options: {position, title, reverse}} = this;
+    if (!title.display) return null;
+    const font = toFont(title.font);
+    const padding = toPadding(title.padding);
+    const align = title.align;
+    let offset = font.lineHeight / 2;
+    if (position === 'bottom' || position === 'center' || isObject(position)) {
+      offset += padding.bottom;
+      if (isArray(title.text)) offset += font.lineHeight * (title.text.length - 1);
+    } else {
+      offset += padding.top;
+    }
+    const {titleX, titleY, maxWidth, rotation} = titleArgs(this, offset, position, align);
+    return {
+      text: title.text,
+      font,
+      options: {
+        color: title.color,
+        maxWidth,
+        rotation,
+        textAlign: titleAlign(align, position, reverse),
+        textBaseline: 'middle',
+        translation: [titleX, titleY],
+        strokeColor: title.strokeColor,
+        strokeWidth: title.strokeWidth
+      }
+    };
+  }
+
   /**
    * @protected
    */
   drawBackground() {
-    const {chart, ctx, options: {backgroundColor, grid}, left, top, width, height} = this;
-    if (chart.options.renderer === 'svg') {
-      if (!backgroundColor) {
-        removeSvgScalePart(chart, this.id, 'background');
-        return;
-      }
-
-      const group = getOrCreateSvgScalePart(chart, this.id, 'background', svgLayerForZ(valueOrDefault(grid.z, -1)));
-      const rect = getOrCreateSvgElement(group, 'rect');
-      rect.setAttribute('x', `${left}`);
-      rect.setAttribute('y', `${top}`);
-      rect.setAttribute('width', `${width}`);
-      rect.setAttribute('height', `${height}`);
-      rect.setAttribute('fill', resolveSvgPaint(chart, backgroundColor));
-      removeExtraSvgElements(group, 1);
-      return;
-    }
-
-    if (backgroundColor) {
-      ctx.save();
-      ctx.fillStyle = backgroundColor;
-      ctx.fillRect(left, top, width, height);
-      ctx.restore();
-    }
+    this.chart.renderer.drawScale(this, 'background');
   }
 
   getLineWidthForValue(value) {
@@ -1504,271 +1528,28 @@ export default class Scale extends Element {
 	 * @protected
 	 */
   drawGrid(chartArea) {
-    const grid = this.options.grid;
-    const ctx = this.ctx;
-    const items = this._gridLineItems || (this._gridLineItems = this._computeGridLineItems(chartArea));
-    let i, ilen;
-
-    if (this.chart.options.renderer === 'svg') {
-      if (!grid.display) {
-        removeSvgScalePart(this.chart, this.id, 'grid');
-        removeSvgScalePart(this.chart, this.id, 'ticks');
-        return;
-      }
-
-      const layer = svgLayerForZ(valueOrDefault(grid.z, -1));
-      const drawLines = (part, enabled, point1, point2, style) => {
-        if (!enabled) {
-          removeSvgScalePart(this.chart, this.id, part);
-          return;
-        }
-
-        const group = getOrCreateSvgScalePart(this.chart, this.id, part, layer);
-        let count = 0;
-        for (const item of items) {
-          const lineStyle = style(item);
-          if (!lineStyle.width || !lineStyle.color) {
-            continue;
-          }
-          const line = getOrCreateSvgElement(group, 'line', count++);
-          const p1 = point1(item);
-          const p2 = point2(item);
-          line.setAttribute('x1', `${p1.x}`);
-          line.setAttribute('y1', `${p1.y}`);
-          line.setAttribute('x2', `${p2.x}`);
-          line.setAttribute('y2', `${p2.y}`);
-          setSvgLineStyle(this.chart, line, lineStyle);
-        }
-        removeExtraSvgElements(group, count);
-      };
-
-      drawLines(
-        'grid',
-        grid.drawOnChartArea,
-        (item) => ({x: item.x1, y: item.y1}),
-        (item) => ({x: item.x2, y: item.y2}),
-        (item) => item
-      );
-      drawLines(
-        'ticks',
-        grid.drawTicks,
-        (item) => ({x: item.tx1, y: item.ty1}),
-        (item) => ({x: item.tx2, y: item.ty2}),
-        (item) => ({
-          color: item.tickColor,
-          width: item.tickWidth,
-          borderDash: item.tickBorderDash,
-          borderDashOffset: item.tickBorderDashOffset
-        })
-      );
-      return;
-    }
-
-    const drawLine = (p1, p2, style) => {
-      if (!style.width || !style.color) {
-        return;
-      }
-      ctx.save();
-      ctx.lineWidth = style.width;
-      ctx.strokeStyle = style.color;
-      ctx.setLineDash(style.borderDash || []);
-      ctx.lineDashOffset = style.borderDashOffset;
-
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-      ctx.stroke();
-      ctx.restore();
-    };
-
-    if (grid.display) {
-      for (i = 0, ilen = items.length; i < ilen; ++i) {
-        const item = items[i];
-
-        if (grid.drawOnChartArea) {
-          drawLine(
-            {x: item.x1, y: item.y1},
-            {x: item.x2, y: item.y2},
-            item
-          );
-        }
-
-        if (grid.drawTicks) {
-          drawLine(
-            {x: item.tx1, y: item.ty1},
-            {x: item.tx2, y: item.ty2},
-            {
-              color: item.tickColor,
-              width: item.tickWidth,
-              borderDash: item.tickBorderDash,
-              borderDashOffset: item.tickBorderDashOffset
-            }
-          );
-        }
-      }
-    }
+    this.chart.renderer.drawScale(this, 'grid', chartArea);
   }
 
   /**
 	 * @protected
 	 */
   drawBorder() {
-    const {chart, ctx, options: {border, grid}} = this;
-    const borderOpts = border.setContext(this.getContext());
-    const axisWidth = border.display ? borderOpts.width : 0;
-    if (!axisWidth) {
-      if (chart.options.renderer === 'svg') {
-        removeSvgScalePart(chart, this.id, 'border');
-      }
-      return;
-    }
-    const lastLineWidth = grid.setContext(this.getContext(0)).lineWidth;
-    const borderValue = this._borderValue;
-    let x1, x2, y1, y2;
-
-    if (this.isHorizontal()) {
-      x1 = _alignPixel(chart, this.left, axisWidth) - axisWidth / 2;
-      x2 = _alignPixel(chart, this.right, lastLineWidth) + lastLineWidth / 2;
-      y1 = y2 = borderValue;
-    } else {
-      y1 = _alignPixel(chart, this.top, axisWidth) - axisWidth / 2;
-      y2 = _alignPixel(chart, this.bottom, lastLineWidth) + lastLineWidth / 2;
-      x1 = x2 = borderValue;
-    }
-
-    if (chart.options.renderer === 'svg') {
-      const group = getOrCreateSvgScalePart(chart, this.id, 'border', svgLayerForZ(valueOrDefault(border.z, 0)));
-      const line = getOrCreateSvgElement(group, 'line');
-      line.setAttribute('x1', `${x1}`);
-      line.setAttribute('y1', `${y1}`);
-      line.setAttribute('x2', `${x2}`);
-      line.setAttribute('y2', `${y2}`);
-      setSvgLineStyle(chart, line, {
-        color: borderOpts.color,
-        width: borderOpts.width,
-        borderDash: borderOpts.dash,
-        borderDashOffset: borderOpts.dashOffset
-      });
-      removeExtraSvgElements(group, 1);
-      return;
-    }
-
-    ctx.save();
-    ctx.lineWidth = borderOpts.width;
-    ctx.strokeStyle = borderOpts.color;
-
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-
-    ctx.restore();
+    this.chart.renderer.drawScale(this, 'border');
   }
 
   /**
 	 * @protected
 	 */
   drawLabels(chartArea) {
-    const optionTicks = this.options.ticks;
-
-    if (!optionTicks.display) {
-      if (this.chart.options.renderer === 'svg') {
-        removeSvgScalePart(this.chart, this.id, 'labels');
-      }
-      return;
-    }
-
-    const ctx = this.ctx;
-
-    const area = this._computeLabelArea();
-    const items = this.getLabelItems(chartArea);
-    if (this.chart.options.renderer === 'svg') {
-      const group = getOrCreateSvgScalePart(this.chart, this.id, 'labels', svgLayerForZ(valueOrDefault(optionTicks.z, 0)));
-      group.setAttribute('clip-path', area ? getOrCreateSvgClipRect(this.chart, `scale-${this.id}-labels`, area) : 'none');
-      for (let i = 0; i < items.length; ++i) {
-        const item = items[i];
-        renderSvgText(group, i, item.label, item.font, {
-          ...item.options
-        }, undefined, 0, item.textOffset);
-      }
-      removeExtraSvgElements(group, items.length);
-      return;
-    }
-
-    if (area) {
-      clipArea(ctx, area);
-    }
-
-    for (const item of items) {
-      const renderTextOptions = item.options;
-      const tickFont = item.font;
-      const label = item.label;
-      const y = item.textOffset;
-      renderText(ctx, label, 0, y, tickFont, renderTextOptions);
-    }
-
-    if (area) {
-      unclipArea(ctx);
-    }
+    this.chart.renderer.drawScale(this, 'labels', chartArea);
   }
 
   /**
 	 * @protected
 	 */
   drawTitle() {
-    const {ctx, options: {position, title, reverse}} = this;
-
-    if (!title.display) {
-      if (this.chart.options.renderer === 'svg') {
-        removeSvgScalePart(this.chart, this.id, 'title');
-      }
-      return;
-    }
-
-    const font = toFont(title.font);
-    const padding = toPadding(title.padding);
-    const align = title.align;
-    let offset = font.lineHeight / 2;
-
-    if (position === 'bottom' || position === 'center' || isObject(position)) {
-      offset += padding.bottom;
-      if (isArray(title.text)) {
-        offset += font.lineHeight * (title.text.length - 1);
-      }
-    } else {
-      offset += padding.top;
-    }
-
-    const {titleX, titleY, maxWidth, rotation} = titleArgs(this, offset, position, align);
-
-    if (this.chart.options.renderer === 'svg') {
-      const group = getOrCreateSvgScalePart(this.chart, this.id, 'title', svgLayerForZ(valueOrDefault(this.options.grid.z, -1)));
-      const lines = isArray(title.text) ? title.text : [title.text];
-      const textWidths = lines.map((line) => this.chart.renderer.measureText(line, font.string));
-      renderSvgText(group, 0, title.text, font, {
-        color: title.color,
-        maxWidth,
-        rotation,
-        textAlign: titleAlign(align, position, reverse),
-        textBaseline: 'middle',
-        translation: [titleX, titleY],
-        strokeColor: title.strokeColor,
-        strokeWidth: title.strokeWidth
-      }, textWidths);
-      removeExtraSvgElements(group, 1);
-      return;
-    }
-
-    renderText(ctx, title.text, 0, 0, font, {
-      color: title.color,
-      maxWidth,
-      rotation,
-      textAlign: titleAlign(align, position, reverse),
-      textBaseline: 'middle',
-      translation: [titleX, titleY],
-      strokeColor: title.strokeColor,
-      strokeWidth: title.strokeWidth
-    });
+    this.chart.renderer.drawScale(this, 'title');
   }
 
   draw(chartArea) {

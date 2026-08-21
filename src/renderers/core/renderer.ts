@@ -1,3 +1,5 @@
+export type ScaleDrawPart = 'background' | 'grid' | 'border' | 'labels' | 'title';
+
 /**
  * Visual-backend contract owned by Chart. Elements provide resolved geometry and
  * state; the renderer owns every backend-specific drawing operation.
@@ -14,6 +16,7 @@ export interface Renderer {
   endFrame(): void;
   drawElement(element: any, context?: RenderContext): void;
   drawLegend(legend: any): void;
+  drawScale(scale: any, part: ScaleDrawPart, chartArea?: any): void;
   drawTitle(title: any): void;
   beginDataset(index: number, clip: any): void;
   endDataset(clip: any): void;

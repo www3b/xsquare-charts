@@ -76,6 +76,7 @@ test('Chart core can run with a renderer supplied by an isolated registry', () =
       clear() {},
       beginFrame() { beginSvgRender(chart); },
       endFrame() { endSvgRender(chart); },
+      drawScale() {},
       measureText(text) { measurements++; return String(text).length * 8; },
       getEventTarget() { return root; },
       destroy() { destroyed = true; root.remove(); delete chart.$chartjsSvgRoot; }
@@ -114,4 +115,11 @@ test('Legend stays renderer-neutral', () => {
   assert.doesNotMatch(source, /helpers\.svg|renderers\/(?:canvas|svg)|helpers\.canvas|helpers\.path|helpers\.svg\.text/);
   assert.doesNotMatch(source, /this\.ctx|createElementNS|setAttribute\(/);
   assert.doesNotMatch(source, /renderer\s*(?:===|!==)|options\.renderer/);
+});
+
+test('Cartesian Scale stays renderer-neutral', () => {
+  const source = readFileSync(new URL('../src/core/core.scale.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /helpers\.svg|renderers\/(?:canvas|svg)|renderSvgText|renderText|clipArea|unclipArea/);
+  assert.doesNotMatch(source, /renderer\s*(?:===|!==)|options\.renderer/);
+  assert.doesNotMatch(source, /\.fillRect\(|\.beginPath\(|\.stroke\(|\.setAttribute\(/);
 });

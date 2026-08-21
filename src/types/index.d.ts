@@ -546,6 +546,8 @@ export interface ActiveElement extends ActiveDataPoint {
 }
 
 /** Internal visual backend selected by `options.renderer`. */
+export type ScaleDrawPart = 'background' | 'grid' | 'border' | 'labels' | 'title';
+
 export interface Renderer {
   readonly type: 'canvas' | 'svg';
   readonly root: HTMLCanvasElement | SVGSVGElement;
@@ -556,6 +558,9 @@ export interface Renderer {
   clear(): void;
   beginFrame(): void;
   endFrame(): void;
+  drawLegend(legend: any): void;
+  drawScale(scale: any, part: ScaleDrawPart, chartArea?: any): void;
+  drawTitle(title: any): void;
   measureText(text: string | number, font: string): number;
   getEventTarget(): HTMLCanvasElement | SVGSVGElement;
   destroy(removeRoot?: boolean): void;

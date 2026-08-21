@@ -1,4 +1,4 @@
-import type {Renderer, RendererCreateOptions, RenderContext} from '../core/renderer.js';
+import type {Renderer, RendererCreateOptions, RenderContext, ScaleDrawPart} from '../core/renderer.js';
 import {beginSvgRender, endSvgRender, getOrCreateSvgClipRect, getOrCreateSvgDatasetGroup} from '../../helpers/helpers.svg.js';
 import {drawSvgLine} from './elements/line.js';
 import {drawSvgPoint} from './elements/point.js';
@@ -6,6 +6,7 @@ import {drawSvgBar} from './elements/bar.js';
 import {drawSvgArc} from './elements/arc.js';
 import {drawSvgTitle} from './title.js';
 import {drawSvgLegend} from './legend.js';
+import {drawSvgScale} from './scale.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -82,6 +83,10 @@ export default class SvgRenderer implements Renderer {
 
   drawLegend(legend: any): void {
     drawSvgLegend(this.chart, legend);
+  }
+
+  drawScale(scale: any, part: ScaleDrawPart, chartArea?: any): void {
+    drawSvgScale(this.chart, scale, part, chartArea);
   }
 
   beginDataset(index: number, clip: any): void {
