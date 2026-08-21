@@ -121,7 +121,7 @@ function createChart() {
       responsive: false,
     },
   });
-  return {chart, parent};
+  return {canvas, chart, parent};
 }
 
 function pointGroup(chart, datasetIndex) {
@@ -132,8 +132,8 @@ function pointGroup(chart, datasetIndex) {
 
 // eslint-disable-next-line max-statements
 test('SVG PointElement reuses standard point geometry, styles and DOM nodes', () => {
-  const {chart, parent} = createChart();
-  const canvas = chart.canvas;
+  const {canvas, chart, parent} = createChart();
+  assert.equal(chart.canvas, null);
   const points = pointGroup(chart, 0);
   const line = findChild(findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', '0'), 'data-svg-part', 'line');
 
@@ -222,4 +222,75 @@ test('SVG PointElement renders HTMLImageElement point styles without Canvas draw
   assert.equal(first.getAttribute('href'), image.src);
 
   chart.destroy();
+});
+
+test('SVG PointElement snapshots a shared HTMLCanvasElement point style once per render', () => {
+  const {chart} = createChart();
+  let snapshots = 0;
+  let version = 'one';
+  const icon = {
+    height: 12,
+    width: 18,
+    toDataURL() {
+      snapshots++;
+      return `data:image/png;base64,${version}`;
+    },
+    [Symbol.toStringTag]: 'HTMLCanvasElement'
+  };
+
+  chart.data.datasets[0].pointStyle = icon;
+  chart.update('none');
+  const first = pointGroup(chart, 0).children[0];
+  assert.equal(snapshots, 1);
+  assert.equal(first.localName, 'image');
+  assert.equal(first.getAttribute('href'), 'data:image/png;base64,one');
+  assert.equal(first.getAttribute('width'), '18');
+  assert.equal(first.getAttribute('height'), '12');
+
+  version = 'two';
+  icon.width = 24;
+  icon.height = 8;
+  chart.update('none');
+  assert.equal(snapshots, 2);
+  assert.equal(pointGroup(chart, 0).children[0], first);
+  assert.equal(first.getAttribute('href'), 'data:image/png;base64,two');
+  assert.equal(first.getAttribute('width'), '24');
+  assert.equal(first.getAttribute('height'), '8');
+
+  icon.width = 0;
+  chart.update('none');
+  assert.equal(pointGroup(chart, 0).children.length, 0);
+  chart.destroy();
+});
+
+test('SVG PointElement handles an unserializable HTMLCanvasElement point style once per source', () => {
+  const {chart} = createChart();
+  let snapshots = 0;
+  let warnings = 0;
+  const icon = {
+    height: 12,
+    width: 18,
+    toDataURL() {
+      snapshots++;
+      throw new Error('SecurityError');
+    },
+    [Symbol.toStringTag]: 'HTMLCanvasElement'
+  };
+  const warn = console.warn;
+  console.warn = () => {
+    warnings++;
+  };
+  try {
+    chart.data.datasets[0].pointStyle = icon;
+    chart.update('none');
+    assert.equal(snapshots, 1);
+    assert.equal(warnings, 1);
+    assert.equal(pointGroup(chart, 0).children.length, 0);
+    chart.update('none');
+    assert.equal(snapshots, 2);
+    assert.equal(warnings, 1);
+  } finally {
+    console.warn = warn;
+    chart.destroy();
+  }
 });

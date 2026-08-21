@@ -545,6 +545,34 @@ export interface ActiveElement extends ActiveDataPoint {
   element: Element;
 }
 
+/** Internal visual backend selected by `options.renderer`. */
+export interface Renderer {
+  readonly type: 'canvas' | 'svg';
+  readonly root: HTMLCanvasElement | SVGSVGElement;
+  readonly canvas: HTMLCanvasElement | null;
+  readonly context: CanvasRenderingContext2D | null;
+  initialize(aspectRatio?: number): boolean;
+  resize(width: number, height: number, devicePixelRatio: number): boolean;
+  clear(): void;
+  beginFrame(): void;
+  endFrame(): void;
+  measureText(text: string | number, font: string): number;
+  getEventTarget(): HTMLCanvasElement | SVGSVGElement;
+  destroy(removeRoot?: boolean): void;
+}
+
+export interface RendererFactoryOptions {
+  chart: Chart;
+  host: HTMLElement;
+  canvas?: HTMLCanvasElement | null;
+}
+
+export interface RendererRegistry {
+  register(type: 'canvas' | 'svg', factory: (options: RendererFactoryOptions) => Renderer): void;
+  create(type: 'canvas' | 'svg', options: RendererFactoryOptions): Renderer;
+  clone(): RendererRegistry;
+}
+
 export declare class Chart<
   TType extends ChartType = ChartType,
   TData = DefaultDataPoint<TType>,
@@ -552,8 +580,11 @@ export declare class Chart<
 > {
   readonly platform: BasePlatform;
   readonly id: string;
-  readonly canvas: HTMLCanvasElement;
-  readonly ctx: CanvasRenderingContext2D;
+  readonly host: HTMLElement;
+  readonly renderer: Renderer;
+  readonly root: HTMLCanvasElement | SVGSVGElement;
+  readonly canvas: HTMLCanvasElement | null;
+  readonly ctx: CanvasRenderingContext2D | null;
   readonly config: ChartConfiguration<TType, TData, TLabel> | ChartConfigurationCustomTypesPerDataset<TType, TData, TLabel>;
   readonly width: number;
   readonly height: number;
@@ -618,7 +649,9 @@ export declare class Chart<
   static readonly version: string;
   static readonly instances: { [key: string]: Chart };
   static readonly registry: Registry;
-  static getChart(key: string | CanvasRenderingContext2D | HTMLCanvasElement): Chart | undefined;
+  static readonly renderers: RendererRegistry;
+  static createRendererRegistry(): RendererRegistry;
+  static getChart(key: string | CanvasRenderingContext2D | HTMLElement): Chart | undefined;
   static register(...items: ChartComponentLike[]): void;
   static unregister(...items: ChartComponentLike[]): void;
 }
@@ -628,6 +661,7 @@ export declare const registerables: readonly ChartComponentLike[];
 export declare type ChartItem =
   | string
   | CanvasRenderingContext2D
+  | HTMLElement
   | HTMLCanvasElement
   | { canvas: HTMLCanvasElement }
   | ArrayLike<CanvasRenderingContext2D | HTMLCanvasElement>;
@@ -2243,23 +2277,6 @@ export type ElementChartOptions<TType extends ChartType = ChartType> = {
 
 export declare class BasePlatform {
   /**
-   * Called at chart construction time, returns a context2d instance implementing
-   * the [W3C Canvas 2D Context API standard]{@link https://www.w3.org/TR/2dcontext/}.
-   * @param {HTMLCanvasElement} canvas - The canvas from which to acquire context (platform specific)
-   * @param options - The chart options
-   */
-  acquireContext(
-    canvas: HTMLCanvasElement,
-    options?: CanvasRenderingContext2DSettings
-  ): CanvasRenderingContext2D | null;
-  /**
-   * Called at chart destruction time, releases any resources associated to the context
-   * previously returned by the acquireContext() method.
-   * @param {CanvasRenderingContext2D} context - The context2d instance
-   * @returns {boolean} true if the method succeeded, else false
-   */
-  releaseContext(context: CanvasRenderingContext2D): boolean;
-  /**
    * Registers the specified listener on the given chart.
    * @param {Chart} chart - Chart from which to listen for event
    * @param {string} type - The ({@link ChartEvent}) type to listen for
@@ -2285,12 +2302,12 @@ export declare class BasePlatform {
    * @param {number} [aspectRatio] - The aspect ratio to maintain
    * @returns { width: number, height: number } the maximum size available.
    */
-  getMaximumSize(canvas: HTMLCanvasElement, width?: number, height?: number, aspectRatio?: number): { width: number, height: number };
+  getMaximumSize(host: HTMLElement, width?: number, height?: number, aspectRatio?: number): { width: number, height: number };
   /**
    * @param {HTMLCanvasElement} canvas
    * @returns {boolean} true if the canvas is attached to the platform, false if not.
    */
-  isAttached(canvas: HTMLCanvasElement): boolean;
+  isAttached(host: HTMLElement): boolean;
   /**
    * Updates config with platform specific requirements
    * @param {ChartConfiguration | ChartConfigurationCustomTypes} config

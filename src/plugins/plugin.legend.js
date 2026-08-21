@@ -175,7 +175,7 @@ export class Legend extends Element {
   }
 
   fit() {
-    const {options, ctx} = this;
+    const {options} = this;
 
     // The legend may not be displayed for a variety of reasons including
     // the fact that the defaults got set to `false`.
@@ -194,8 +194,6 @@ export class Legend extends Element {
 
     let width, height;
 
-    ctx.font = labelFont.string;
-
     if (this.isHorizontal()) {
       width = this.maxWidth; // fill all the width
       height = this._fitRows(titleHeight, fontSize, boxWidth, itemHeight) + 10;
@@ -212,20 +210,17 @@ export class Legend extends Element {
 	 * @private
 	 */
   _fitRows(titleHeight, fontSize, boxWidth, itemHeight) {
-    const {ctx, maxWidth, options: {labels: {padding}}} = this;
+    const {maxWidth, options: {labels: {padding}}} = this;
     const hitboxes = this.legendHitBoxes = [];
     // Width of each line of legend boxes. Labels wrap onto multiple lines when there are too many to fit on one
     const lineWidths = this.lineWidths = [0];
     const lineHeight = itemHeight + padding;
     let totalHeight = titleHeight;
 
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-
     let row = -1;
     let top = -lineHeight;
     this.legendItems.forEach((legendItem, i) => {
-      const itemWidth = boxWidth + (fontSize / 2) + ctx.measureText(legendItem.text).width;
+      const itemWidth = boxWidth + (fontSize / 2) + this.chart.renderer.measureText(legendItem.text, toFont(this.options.labels.font).string);
 
       if (i === 0 || lineWidths[lineWidths.length - 1] + itemWidth + 2 * padding > maxWidth) {
         totalHeight += lineHeight;
@@ -243,7 +238,7 @@ export class Legend extends Element {
   }
 
   _fitCols(titleHeight, labelFont, boxWidth, _itemHeight) {
-    const {ctx, maxHeight, options: {labels: {padding}}} = this;
+    const {maxHeight, options: {labels: {padding}}} = this;
     const hitboxes = this.legendHitBoxes = [];
     const columnSizes = this.columnSizes = [];
     const heightLimit = maxHeight - titleHeight;
@@ -256,7 +251,7 @@ export class Legend extends Element {
     let col = 0;
 
     this.legendItems.forEach((legendItem, i) => {
-      const {itemWidth, itemHeight} = calculateItemSize(boxWidth, labelFont, ctx, legendItem, _itemHeight);
+      const {itemWidth, itemHeight} = calculateItemSize(boxWidth, labelFont, this.chart.renderer.measureText.bind(this.chart.renderer), legendItem, _itemHeight);
 
       // If too tall, go to new column
       if (i > 0 && currentColHeight + itemHeight + 2 * padding > heightLimit) {
@@ -376,7 +371,9 @@ export class Legend extends Element {
       ctx.textBaseline = 'middle';
       ctx.lineWidth = 0.5;
     }
-    ctx.font = labelFont.string;
+    if (!svg) {
+      ctx.font = labelFont.string;
+    }
 
     const {boxWidth, boxHeight, itemHeight} = getBoxSize(labelOpts, fontSize);
 
@@ -405,7 +402,7 @@ export class Legend extends Element {
 
           if (drawOptions.pointStyle && typeof drawOptions.pointStyle === 'object') {
             const image = getOrCreateLegendChild(itemGroup, 'image', 'symbol-image');
-            if (setSvgImageAttributes(image, drawOptions.pointStyle, centerX, centerY, drawOptions.rotation)) {
+            if (setSvgImageAttributes(image, chart, drawOptions.pointStyle, centerX, centerY, drawOptions.rotation)) {
               const symbol = getLegendChild(itemGroup, 'symbol');
               if (symbol) {
                 symbol.remove();
@@ -544,7 +541,7 @@ export class Legend extends Element {
         ctx.fillStyle = legendItem.fontColor; // render in correct colour
       }
 
-      const textWidth = ctx.measureText(legendItem.text).width;
+      const textWidth = this.chart.renderer.measureText(legendItem.text, labelFont.string);
       const textAlign = rtlHelper.textAlign(legendItem.textAlign || (legendItem.textAlign = labelOpts.textAlign));
       const width = boxWidth + halfFontSize + textWidth;
       let x = cursor.x;
@@ -637,11 +634,9 @@ export class Legend extends Element {
     // X coordinate from the title alignment
     const x = _alignStartEnd(position, left, left + maxWidth);
 
-    ctx.font = titleFont.string;
-
     if (svgGroup) {
       const lines = Array.isArray(titleOpts.text) ? titleOpts.text : [titleOpts.text];
-      const textWidths = lines.map((line) => ctx.measureText(line).width);
+      const textWidths = lines.map((line) => this.chart.renderer.measureText(line, titleFont.string));
       renderSvgText(svgGroup, 0, titleOpts.text, titleFont, {
         color: titleOpts.color,
         maxWidth,
@@ -726,18 +721,18 @@ export class Legend extends Element {
   }
 }
 
-function calculateItemSize(boxWidth, labelFont, ctx, legendItem, _itemHeight) {
-  const itemWidth = calculateItemWidth(legendItem, boxWidth, labelFont, ctx);
+function calculateItemSize(boxWidth, labelFont, measureText, legendItem, _itemHeight) {
+  const itemWidth = calculateItemWidth(legendItem, boxWidth, labelFont, measureText);
   const itemHeight = calculateItemHeight(_itemHeight, legendItem, labelFont.lineHeight);
   return {itemWidth, itemHeight};
 }
 
-function calculateItemWidth(legendItem, boxWidth, labelFont, ctx) {
+function calculateItemWidth(legendItem, boxWidth, labelFont, measureText) {
   let legendItemText = legendItem.text;
   if (legendItemText && typeof legendItemText !== 'string') {
     legendItemText = legendItemText.reduce((a, b) => a.length > b.length ? a : b);
   }
-  return boxWidth + (labelFont.size / 2) + ctx.measureText(legendItemText).width;
+  return boxWidth + (labelFont.size / 2) + measureText(legendItemText, labelFont.string);
 }
 
 function calculateItemHeight(_itemHeight, legendItem, fontLineHeight) {

@@ -13,12 +13,12 @@ export function _isDomSupported(): boolean {
 /**
  * @private
  */
-export function _getParentNode(domNode: HTMLCanvasElement): HTMLCanvasElement {
+export function _getParentNode(domNode: HTMLElement): HTMLElement {
   let parent = domNode.parentNode;
   if (parent && parent.toString() === '[object ShadowRoot]') {
     parent = (parent as ShadowRoot).host;
   }
-  return parent as HTMLCanvasElement;
+  return parent as HTMLElement;
 }
 
 /**
@@ -72,7 +72,7 @@ const useOffsetPos = (x: number, y: number, target: HTMLElement | EventTarget) =
  */
 function getCanvasPosition(
   e: Event | TouchEvent | MouseEvent,
-  canvas: HTMLCanvasElement
+  canvas: HTMLElement
 ): {
     x: number;
     y: number;
@@ -110,12 +110,12 @@ export function getRelativePosition(
     return event;
   }
 
-  const {canvas, currentDevicePixelRatio} = chart;
-  const style = getComputedStyle(canvas);
+  const target = (chart as PrivateChart).renderer.getEventTarget() as HTMLElement;
+  const style = getComputedStyle(target);
   const borderBox = style.boxSizing === 'border-box';
   const paddings = getPositionedStyle(style, 'padding');
   const borders = getPositionedStyle(style, 'border', 'width');
-  const {x, y, box} = getCanvasPosition(event, canvas);
+  const {x, y, box} = getCanvasPosition(event, target);
   const xOffset = paddings.left + (box && borders.left);
   const yOffset = paddings.top + (box && borders.top);
 
@@ -125,29 +125,23 @@ export function getRelativePosition(
     height -= paddings.height + borders.height;
   }
   return {
-    x: Math.round((x - xOffset) / width * canvas.width / currentDevicePixelRatio),
-    y: Math.round((y - yOffset) / height * canvas.height / currentDevicePixelRatio)
+    x: Math.round((x - xOffset) / width * (chart as PrivateChart).width),
+    y: Math.round((y - yOffset) / height * (chart as PrivateChart).height)
   };
 }
 
-function getContainerSize(canvas: HTMLCanvasElement, width: number, height: number): Partial<Scale> {
+function getContainerSize(canvas: HTMLElement, width: number, height: number): Partial<Scale> {
   let maxWidth: number, maxHeight: number;
 
   if (width === undefined || height === undefined) {
-    const container = canvas && _getParentNode(canvas);
-    if (!container) {
-      width = canvas.clientWidth;
-      height = canvas.clientHeight;
-    } else {
-      const rect = container.getBoundingClientRect(); // this is the border box of the container
-      const containerStyle = getComputedStyle(container);
-      const containerBorder = getPositionedStyle(containerStyle, 'border', 'width');
-      const containerPadding = getPositionedStyle(containerStyle, 'padding');
-      width = rect.width - containerPadding.width - containerBorder.width;
-      height = rect.height - containerPadding.height - containerBorder.height;
-      maxWidth = parseMaxStyle(containerStyle.maxWidth, container, 'clientWidth');
-      maxHeight = parseMaxStyle(containerStyle.maxHeight, container, 'clientHeight');
-    }
+    const rect = canvas.getBoundingClientRect();
+    const style = getComputedStyle(canvas);
+    const border = getPositionedStyle(style, 'border', 'width');
+    const padding = getPositionedStyle(style, 'padding');
+    width = width === undefined ? rect.width - padding.width - border.width : width;
+    height = height === undefined ? rect.height - padding.height - border.height : height;
+    maxWidth = parseMaxStyle(style.maxWidth, canvas, 'clientWidth');
+    maxHeight = parseMaxStyle(style.maxHeight, canvas, 'clientHeight');
   }
   return {
     width,
@@ -161,7 +155,7 @@ const round1 = (v: number) => Math.round(v * 10) / 10;
 
 // eslint-disable-next-line complexity
 export function getMaximumSize(
-  canvas: HTMLCanvasElement,
+  canvas: HTMLElement,
   bbWidth?: number,
   bbHeight?: number,
   aspectRatio?: number

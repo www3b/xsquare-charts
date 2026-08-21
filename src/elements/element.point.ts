@@ -55,7 +55,7 @@ function drawSvgImagePoint(point: PointElement, options: PointOptions & PointHov
 
   const group = getOrCreateSvgDatasetPart(context.chart, context.datasetIndex, 'points');
   const element = getOrCreateSvgElementFor(group, point, 'image') as SVGImageElement;
-  if (!setSvgImageAttributes(element, options.pointStyle, point.x, point.y, options.rotation)) {
+  if (!setSvgImageAttributes(element, context.chart, options.pointStyle, point.x, point.y, options.rotation)) {
     removeSvgElementFor(point);
     return false;
   }

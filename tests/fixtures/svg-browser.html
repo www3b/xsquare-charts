@@ -13,6 +13,10 @@
 <div id="fixtures"></div>
 <output id="result"></output>
 <script type="module">
+  window.addEventListener('error', (event) => {
+    document.querySelector('#result').textContent = JSON.stringify({error: event.message});
+    document.body.dataset.svgReady = 'true';
+  });
   import {
     ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController, HistogramController,
     BubbleController, Filler, Legend, LineController, LineElement, LinearScale, LogarithmicScale, PieController, PointElement, PolarAreaController, RadialLinearScale, RadarController, ScatterController, TimeScale, TimeSeriesScale, Tooltip, _adapters,
@@ -63,12 +67,12 @@
     card.className = 'fixture';
     card.dataset.case = `${name}-${renderer}`;
     card.innerHTML = `<h2>${name} (${renderer})</h2>`;
-    const canvas = document.createElement('canvas');
-    canvas.width = 420;
-    canvas.height = 250;
-    card.appendChild(canvas);
+    const host = document.createElement('div');
+    host.style.width = '420px';
+    host.style.height = '250px';
+    card.appendChild(host);
     document.querySelector('#fixtures').appendChild(card);
-    return new Chart(canvas, {type, data, options: {...common, ...options, renderer}});
+    return new Chart(host, {type, data, options: {...common, ...options, renderer}});
   }
 
   const charts = new Map();
@@ -104,9 +108,17 @@
     tileContext.fillRect(0, 0, 5, 5);
     tileContext.fillRect(5, 5, 5, 5);
     const pattern = context.createPattern(tile, 'repeat');
-    const commonPaint = {animation: false, plugins: {legend: true}, renderer, responsive: false};
+    const icon = document.createElement('canvas');
+    icon.width = 18;
+    icon.height = 12;
+    const iconContext = icon.getContext('2d');
+    iconContext.fillStyle = '#0f172a';
+    iconContext.fillRect(0, 0, 18, 12);
+    iconContext.fillStyle = '#f8fafc';
+    iconContext.fillRect(3, 3, 12, 6);
+    const commonPaint = {animation: false, plugins: {legend: {labels: {usePointStyle: true}}}, renderer, responsive: false};
     const config = type === 'line'
-      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Native paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7}]}}
+      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Native paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7, pointStyle: icon}]}}
       : type === 'bar'
         ? {data: {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Pattern bars', backgroundColor: pattern, borderColor: linear, borderWidth: 3, data: [4, 7, 5]}]}}
         : {data: {labels: ['One', 'Two', 'Three'], datasets: [{backgroundColor: [linear, pattern, radial], borderColor: linear, borderWidth: 3, data: [4, 3, 5]}]}};
@@ -133,7 +145,7 @@
   const exportsValid = exported.every(({source, svg, unchanged}) => {
     const xml = new DOMParser().parseFromString(source.toSVG(), 'image/svg+xml');
     return unchanged && svg?.getAttribute('xmlns') === 'http://www.w3.org/2000/svg'
-      && svg?.getAttribute('width') === '420' && !svg?.getAttribute('style')
+      && svg?.getAttribute('width') === String(source.width) && !svg?.getAttribute('style')
       && !svg?.hasAttribute('aria-hidden') && !svg?.querySelector('[data-render-id]')
       && !xml.querySelector('parsererror');
   });
@@ -189,6 +201,79 @@
   htmlTooltipChart.draw();
   const tooltipRestoredForSvg = document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]')?.getAttribute('aria-hidden') === 'false';
 
+  function assertSvgNoCanvas() {
+    const host = document.createElement('div');
+    host.style.width = '320px';
+    host.style.height = '180px';
+    document.body.appendChild(host);
+    const createElement = document.createElement.bind(document);
+    const getContext = HTMLCanvasElement.prototype.getContext;
+    const OriginalOffscreenCanvas = window.OffscreenCanvas;
+    let forbidden = false;
+    document.createElement = function(name, ...args) {
+      if (String(name).toLowerCase() === 'canvas') {
+        forbidden = true;
+      }
+      return createElement(name, ...args);
+    };
+    HTMLCanvasElement.prototype.getContext = function(...args) {
+      if (args[0] === '2d') {
+        forbidden = true;
+      }
+      return getContext.call(this, ...args);
+    };
+    if (OriginalOffscreenCanvas) {
+      window.OffscreenCanvas = function(...args) {
+        forbidden = true;
+        return new OriginalOffscreenCanvas(...args);
+      };
+    }
+    try {
+      const chart = new Chart(host, {
+        type: 'line',
+        data: {labels: ['A', 'B'], datasets: [{data: [1, 2]}]},
+        options: {animation: false, plugins: {legend: false}, renderer: 'svg', responsive: false}
+      });
+      chart.resize(320, 180);
+      chart.update('none');
+      const valid = !forbidden && chart.canvas === null && chart.ctx === null
+        && host.querySelectorAll('svg').length === 1 && host.querySelectorAll('canvas').length === 0;
+      chart.destroy();
+      return valid && host.querySelectorAll('svg, canvas').length === 0;
+    } finally {
+      document.createElement = createElement;
+      HTMLCanvasElement.prototype.getContext = getContext;
+      if (OriginalOffscreenCanvas) {
+        window.OffscreenCanvas = OriginalOffscreenCanvas;
+      }
+      host.remove();
+    }
+  }
+
+  function assertRendererSurfaceSwitch() {
+    const host = document.createElement('div');
+    host.style.width = '320px';
+    host.style.height = '180px';
+    document.body.appendChild(host);
+    const chart = new Chart(host, {
+      type: 'line',
+      data: {labels: ['A', 'B'], datasets: [{data: [1, 2]}]},
+      options: {animation: false, plugins: {legend: false}, renderer: 'canvas', responsive: false}
+    });
+    const canvasOnly = host.querySelectorAll('canvas').length === 1 && host.querySelectorAll('svg').length === 0;
+    chart.options.renderer = 'svg';
+    chart.update('none');
+    const svgOnly = host.querySelectorAll('canvas').length === 0 && host.querySelectorAll('svg').length === 1;
+    chart.options.renderer = 'canvas';
+    chart.update('none');
+    const canvasAgain = host.querySelectorAll('canvas').length === 1 && host.querySelectorAll('svg').length === 0;
+    chart.destroy();
+    host.remove();
+    return canvasOnly && svgOnly && canvasAgain;
+  }
+
+  const svgNoCanvas = assertSvgNoCanvas();
+  const rendererSurfaceSwitch = assertRendererSurfaceSwitch();
   const svgCharts = document.querySelectorAll('[data-case$="-svg"] svg[data-chart-svg]');
   const line = document.querySelector('[data-case="line-svg"] [data-svg-part="line"] path');
   const fill = document.querySelector('[data-case="area-svg"] [data-svg-part="fill"] path');
@@ -208,6 +293,8 @@
   const paintChart = charts.get('paint-line-svg');
   const paintRoot = document.querySelector('[data-case="paint-line-svg"] svg[data-chart-svg]');
   const paintDefinitions = paintRoot?.querySelectorAll('defs pattern[data-svg-paint]').length || 0;
+  const canvasPointStyle = document.querySelectorAll('[data-case="paint-line-svg"] [data-svg-part="points"] image').length === 4
+    && Boolean(document.querySelector('[data-case="paint-line-svg"] [data-legend-role="symbol-image"]'));
   const paintAttributes = [...document.querySelectorAll('[data-case^="paint-"] svg [fill], [data-case^="paint-"] svg [stroke]')]
     .map((element) => `${element.getAttribute('fill')} ${element.getAttribute('stroke')}`).join(' ');
   const paintExport = paintChart.toSVG();
@@ -229,11 +316,15 @@
     legacySvgRoots: document.querySelectorAll('svg[data-chart-svg-layer]').length,
     line: Boolean(line?.getAttribute('d')),
     svgCharts: svgCharts.length,
-    paintDefinitions: paintDefinitions >= 3,
+    svgNoCanvas,
+    rendererSurfaceSwitch,
+    paintDefinitions: paintDefinitions >= 2,
+    canvasPointStyle,
+    canvasPointExport: /data-svg-part="points"[\s\S]*?<image[^>]+href="data:image\/png;base64,/.test(paintExport),
     paintExport: paintExport.includes('data:image/png;base64,') && !paintExport.includes('[object Canvas'),
     paintSafe: !paintAttributes.includes('[object CanvasGradient]') && !paintAttributes.includes('[object CanvasPattern]'),
     paintUpdated,
-    text: document.querySelectorAll('[data-case="line-svg"] text').length,
+    text: document.querySelectorAll('[data-case="line-svg"] text:not([data-svg-measurement])').length,
     tooltipHidden,
     tooltipPointStyle,
     tooltipRemovedForCanvas,

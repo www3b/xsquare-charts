@@ -96,7 +96,7 @@ function createPointMarker(document, chart, options, labelColor, pointStyle) {
   svg.setAttribute('aria-hidden', 'true');
   if (pointStyle.pointStyle && typeof pointStyle.pointStyle === 'object') {
     const image = document.createElementNS(SVG_NS, 'image');
-    if (setSvgImageAttributes(image, pointStyle.pointStyle, boxWidth / 2, boxHeight / 2, pointStyle.rotation)) {
+    if (setSvgImageAttributes(image, chart, pointStyle.pointStyle, boxWidth / 2, boxHeight / 2, pointStyle.rotation)) {
       svg.appendChild(image);
       marker.appendChild(svg);
       return marker;
@@ -272,7 +272,7 @@ function updateContent(state, tooltip, options) {
 }
 
 function createState(chart) {
-  const document = chart.canvas.ownerDocument;
+  const document = chart.host.ownerDocument;
   const root = createElement(document, 'div', 'data-chart-tooltip');
   const caret = createElement(document, 'div', 'data-chart-tooltip-caret');
   const background = createElement(document, 'div', 'data-chart-tooltip-background');
@@ -296,7 +296,7 @@ function createState(chart) {
   root.appendChild(caret);
   root.appendChild(background);
   root.appendChild(content);
-  chart.canvas.parentNode.appendChild(root);
+  chart.host.appendChild(root);
   const state = {background, caret, content, document, root, signature: undefined};
   htmlTooltips.set(chart, state);
   return state;

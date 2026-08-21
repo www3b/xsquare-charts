@@ -4,6 +4,7 @@ const OVERLAY_STYLE_PROPERTIES = [
   'top',
   'right',
   'bottom',
+  'display',
   'left',
   'pointer-events',
   'z-index',
@@ -22,6 +23,9 @@ function removeOverlayStyles(svg) {
 }
 
 function removeTransientAttributes(svg) {
+  for (const element of svg.querySelectorAll('[data-svg-measurement]')) {
+    element.remove();
+  }
   svg.removeAttribute('aria-hidden');
   svg.removeAttribute('data-render-id');
   for (const element of svg.querySelectorAll('[data-render-id]')) {

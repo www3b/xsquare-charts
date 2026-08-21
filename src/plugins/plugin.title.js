@@ -103,10 +103,7 @@ export class Title extends Element {
     if (this.chart.options.renderer === 'svg') {
       const group = getOrCreateSvgChartPart(this.chart, this._svgPart, 'background');
       const lines = isArray(opts.text) ? opts.text : [opts.text];
-      ctx.save();
-      ctx.font = fontOpts.string;
-      const textWidths = lines.map((line) => ctx.measureText(line).width);
-      ctx.restore();
+      const textWidths = lines.map((line) => this.chart.renderer.measureText(line, fontOpts.string));
       renderSvgText(group, 0, opts.text, fontOpts, {
         color: opts.color,
         maxWidth,

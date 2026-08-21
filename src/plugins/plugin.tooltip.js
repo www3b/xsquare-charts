@@ -147,7 +147,7 @@ function createTooltipItem(chart, item) {
  * Get the size of the tooltip
  */
 function getTooltipSize(tooltip, options) {
-  const ctx = tooltip.chart.ctx;
+  const renderer = tooltip.chart.renderer;
   const {body, footer, title} = tooltip;
   const {boxWidth, boxHeight} = options;
   const bodyFont = toFont(options.bodyFont);
@@ -185,17 +185,14 @@ function getTooltipSize(tooltip, options) {
 
   // Title width
   let widthPadding = 0;
+  let font = titleFont.string;
   const maxLineWidth = function(line) {
-    width = Math.max(width, ctx.measureText(line).width + widthPadding);
+    width = Math.max(width, renderer.measureText(line, font) + widthPadding);
   };
-
-  ctx.save();
-
-  ctx.font = titleFont.string;
   each(tooltip.title, maxLineWidth);
 
   // Body width
-  ctx.font = bodyFont.string;
+  font = bodyFont.string;
   each(tooltip.beforeBody.concat(tooltip.afterBody), maxLineWidth);
 
   // Body lines may include some extra width due to the color box
@@ -210,10 +207,8 @@ function getTooltipSize(tooltip, options) {
   widthPadding = 0;
 
   // Footer width
-  ctx.font = footerFont.string;
+  font = footerFont.string;
   each(tooltip.footer, maxLineWidth);
-
-  ctx.restore();
 
   // Add padding
   width += padding.width;
@@ -1247,7 +1242,7 @@ export default {
   afterDraw(chart) {
     const tooltip = chart.tooltip;
 
-    if (chart.options.renderer === 'svg') {
+    if (chart.renderer.type === 'svg') {
       if (!tooltip || !tooltip._willRender()) {
         hideHtmlTooltip(chart);
         return;

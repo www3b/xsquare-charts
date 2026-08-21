@@ -132,11 +132,9 @@ export function _alignPixel(chart: Chart, pixel: number, width: number) {
  * Clears the entire canvas.
  */
 export function clearCanvas(canvas?: HTMLCanvasElement, ctx?: CanvasRenderingContext2D) {
-  if (!ctx && !canvas) {
+  if (!ctx || !canvas) {
     return;
   }
-
-  ctx = ctx || canvas.getContext('2d');
 
   ctx.save();
   // canvas.width and canvas.height do not consider the canvas transform,

@@ -4,9 +4,12 @@ const svgElementContexts = new WeakMap();
 const svgElements = new WeakMap();
 const svgPaints = new WeakMap();
 const svgCharts = new WeakMap();
+const svgCanvasImages = new WeakMap();
 
 function createSvgElement(chart, name) {
-  return chart.canvas.ownerDocument.createElementNS(SVG_NS, name);
+  const root = chart.$chartjsSvgRoot || (chart.renderer && chart.renderer.root);
+  const document = root ? root.ownerDocument : chart.host && chart.host.ownerDocument || chart.canvas && chart.canvas.ownerDocument;
+  return document.createElementNS(SVG_NS, name);
 }
 
 function isCanvasPaint(value) {
@@ -15,6 +18,46 @@ function isCanvasPaint(value) {
   }
   const type = Object.prototype.toString.call(value);
   return type === '[object CanvasGradient]' || type === '[object CanvasPattern]';
+}
+
+function isCanvasImage(value) {
+  return value && typeof value === 'object' && Object.prototype.toString.call(value) === '[object HTMLCanvasElement]';
+}
+
+function getSvgCanvasImageState(chart) {
+  let state = svgCanvasImages.get(chart);
+  if (!state) {
+    state = new WeakMap();
+    svgCanvasImages.set(chart, state);
+  }
+  return state;
+}
+
+function getSvgCanvasImageHref(chart, canvas) {
+  if (!canvas.width || !canvas.height) {
+    return undefined;
+  }
+  const root = getOrCreateSvgRoot(chart);
+  const renderId = root.getAttribute('data-render-id') || '0';
+  const sources = getSvgCanvasImageState(chart);
+  let source = sources.get(canvas);
+  if (!source) {
+    source = {renderId: undefined, url: undefined, warned: false};
+    sources.set(canvas, source);
+  }
+  if (source.renderId !== renderId) {
+    source.renderId = renderId;
+    try {
+      source.url = canvas.toDataURL('image/png');
+    } catch (error) {
+      source.url = undefined;
+      if (!source.warned) {
+        source.warned = true;
+        console.warn('Chart.js SVG renderer could not serialize an HTMLCanvasElement pointStyle; point is not rendered.', error);
+      }
+    }
+  }
+  return source.url;
 }
 
 function getSvgPaintState(chart) {
@@ -45,8 +88,8 @@ function getSvgPaintDescriptor(chart, value) {
 }
 
 function rasterizeSvgPaint(chart, value) {
-  const {canvas: source, ctx: sourceContext, currentDevicePixelRatio, height, width} = chart;
-  const document = source && source.ownerDocument;
+  const {currentDevicePixelRatio, height, width} = chart;
+  const document = chart.host && chart.host.ownerDocument || chart.canvas && chart.canvas.ownerDocument;
   const canvas = document && document.createElement && document.createElement('canvas');
   if (!canvas || !width || !height) {
     return undefined;
@@ -61,10 +104,7 @@ function rasterizeSvgPaint(chart, value) {
   }
 
   try {
-    const transform = sourceContext && sourceContext.getTransform && sourceContext.getTransform();
-    if (transform && context.setTransform) {
-      context.setTransform(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f);
-    } else if (context.setTransform) {
+    if (context.setTransform) {
       context.setTransform(ratio, 0, 0, ratio, 0, 0);
     }
     context.fillStyle = value;
@@ -179,18 +219,23 @@ function getOrCreateSvgDefs(chart) {
 }
 
 function syncSvgRoot(chart, root) {
-  const {canvas, width, height} = chart;
-  const parent = canvas.parentNode;
+  const {canvas, host, width, height} = chart;
+  const parent = host || canvas && canvas.parentNode;
 
   root.setAttribute('width', width);
   root.setAttribute('height', height);
   root.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  root.style.left = `${canvas.offsetLeft}px`;
-  root.style.top = `${canvas.offsetTop}px`;
   root.style.width = `${width}px`;
   root.style.height = `${height}px`;
 
-  if (parent && parent.style && !root.hasAttribute('data-positioned-parent')) {
+  // Legacy helper callers can still mount an SVG next to a supplied canvas.
+  // Renderer-owned SVG roots are normal host children and do not borrow canvas geometry.
+  if (!chart.renderer && canvas) {
+    root.style.left = `${canvas.offsetLeft}px`;
+    root.style.top = `${canvas.offsetTop}px`;
+  }
+
+  if (!chart.renderer && parent && parent.style && !root.hasAttribute('data-positioned-parent')) {
     const position = parent.style.position;
     const view = canvas.ownerDocument.defaultView;
     const computedPosition = view && view.getComputedStyle ? view.getComputedStyle(parent).position : position;
@@ -209,6 +254,12 @@ function syncSvgRoot(chart, root) {
 export function getOrCreateSvgRoot(chart) {
   let root = chart.$chartjsSvgRoot;
   if (!root) {
+    if (chart.renderer && chart.renderer.type === 'svg') {
+      root = chart.renderer.root;
+      chart.$chartjsSvgRoot = root;
+    }
+  }
+  if (!root) {
     root = createSvgElement(chart, 'svg');
     root.setAttribute('aria-hidden', 'true');
     root.setAttribute('data-chart-svg', 'true');
@@ -216,8 +267,10 @@ export function getOrCreateSvgRoot(chart) {
     root.style.pointerEvents = 'none';
     root.style.overflow = 'visible';
 
-    const parent = chart.canvas.parentNode;
-    parent.insertBefore(root, chart.canvas.nextSibling);
+    const host = chart.host || chart.canvas && chart.canvas.parentNode;
+    if (host) {
+      host.appendChild(root);
+    }
     chart.$chartjsSvgRoot = root;
   }
   svgCharts.set(root, chart);
@@ -536,18 +589,18 @@ export function getOrCreateSvgElementFor(group, owner, name) {
 }
 
 /**
- * Returns the source of an image point style that SVG can reference directly.
- * Canvas point styles deliberately return nothing: serializing a mutable or
- * tainted canvas is neither lossless nor reliably available.
+ * Returns a snapshot source for image-like point styles. Canvas sources are
+ * snapshot once per chart render because their native pixels are mutable.
  *
+ * @param {any} chart
  * @param {any} source
  * @returns {string|undefined}
  */
-export function getSvgImageHref(source) {
-  if (Object.prototype.toString.call(source) !== '[object HTMLImageElement]') {
-    return undefined;
+export function getSvgImageHref(chart, source) {
+  if (Object.prototype.toString.call(source) === '[object HTMLImageElement]') {
+    return source.currentSrc || source.src || undefined;
   }
-  return source.currentSrc || source.src || undefined;
+  return isCanvasImage(source) ? getSvgCanvasImageHref(chart, source) : undefined;
 }
 
 /**
@@ -555,14 +608,15 @@ export function getSvgImageHref(source) {
  * Canvas drawImage() in drawPointLegend().
  *
  * @param {SVGImageElement} element
+ * @param {any} chart
  * @param {any} source
  * @param {number} x
  * @param {number} y
  * @param {number} [rotation]
  * @returns {boolean}
  */
-export function setSvgImageAttributes(element, source, x, y, rotation = 0) {
-  const href = getSvgImageHref(source);
+export function setSvgImageAttributes(element, chart, source, x, y, rotation = 0) {
+  const href = getSvgImageHref(chart, source);
   const width = source && source.width;
   const height = source && source.height;
   if (!href || !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {

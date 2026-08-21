@@ -5,10 +5,11 @@ import layouts from './core.layouts.js';
 import {_detectPlatform} from '../platform/index.js';
 import PluginService from './core.plugins.js';
 import registry from './core.registry.js';
+import renderers from '../renderers/index.js';
 import Config, {determineAxis, getIndexAxis} from './core.config.js';
 import {each, callback as callCallback, uid, valueOrDefault, _elementsEqual, isNullOrUndef, setsEqual, defined, isFunction, _isClickEvent} from '../helpers/helpers.core.js';
-import {clearCanvas, clipArea, createContext, unclipArea, _isPointInArea, _isDomSupported, retinaScale, getDatasetClipArea} from '../helpers/index.js';
-import {beginSvgRender, endSvgRender, getOrCreateSvgClipRect, getOrCreateSvgDatasetGroup, removeSvgRoot} from '../helpers/helpers.svg.js';
+import {clipArea, createContext, unclipArea, _isPointInArea, _isDomSupported, getDatasetClipArea} from '../helpers/index.js';
+import {getOrCreateSvgClipRect, getOrCreateSvgDatasetGroup} from '../helpers/helpers.svg.js';
 import {serializeSvgChart} from '../helpers/helpers.svg.export.js';
 // @ts-ignore
 import {version} from '../../package.json';
@@ -47,10 +48,9 @@ function onAnimationProgress(context) {
 }
 
 /**
- * Chart.js can take a string id of a canvas element, a 2d context, or a canvas element itself.
- * Attempt to unwrap the item passed into the chart constructor so that it is a canvas element (if possible).
+ * Unwrap DOM ids, collections and legacy CanvasRenderingContext2D inputs.
  */
-function getCanvas(item) {
+function getItem(item) {
   if (_isDomSupported() && typeof item === 'string') {
     item = document.getElementById(item);
   } else if (item && item.length) {
@@ -67,9 +67,17 @@ function getCanvas(item) {
 
 const instances = {};
 const getChart = (key) => {
-  const canvas = getCanvas(key);
-  return Object.values(instances).filter((c) => c.canvas === canvas).pop();
+  const item = getItem(key);
+  return Object.values(instances).filter((c) => c.host === item || c.canvas === item || c.renderer && c.renderer.root === item).pop();
 };
+
+function isCanvasLike(item) {
+  return item && typeof item.getContext === 'function';
+}
+
+function getHost(item) {
+  return isCanvasLike(item) ? item.parentNode || item : item;
+}
 
 function moveNumericKeys(obj, start, move) {
   const keys = Object.keys(obj);
@@ -108,6 +116,10 @@ class Chart {
   static instances = instances;
   static overrides = overrides;
   static registry = registry;
+  static renderers = renderers;
+  static createRendererRegistry() {
+    return renderers.clone();
+  }
   static version = version;
   static getChart = getChart;
 
@@ -124,31 +136,30 @@ class Chart {
   // eslint-disable-next-line max-statements
   constructor(item, userConfig) {
     const config = this.config = new Config(userConfig);
-    const initialCanvas = getCanvas(item);
-    const existingChart = getChart(initialCanvas);
+    const initialItem = getItem(item);
+    const host = getHost(initialItem);
+    const existingChart = getChart(initialItem) || getChart(host);
     if (existingChart) {
       throw new Error(
-        'Canvas is already in use. Chart with ID \'' + existingChart.id + '\'' +
-				' must be destroyed before the canvas with ID \'' + existingChart.canvas.id + '\' can be reused.'
+        'Chart host is already in use. Chart with ID \'' + existingChart.id + '\'' +
+				' must be destroyed before it can be reused.'
       );
     }
 
-    const options = config.createResolver(config.chartOptionScopes(), this.getContext());
-
-    this.platform = new (config.platform || _detectPlatform(initialCanvas))();
+    this.platform = new (config.platform || _detectPlatform(initialItem))();
     this.platform.updateConfig(config);
 
-    const context = this.platform.acquireContext(initialCanvas, options.aspectRatio);
-    const canvas = context && context.canvas;
-    const height = canvas && canvas.height;
-    const width = canvas && canvas.width;
-
     this.id = uid();
-    this.ctx = context;
-    this.canvas = canvas;
-    this.width = width;
-    this.height = height;
-    this._options = options;
+    this.host = host;
+    this._rendererRegistry = config._config.rendererRegistry || Chart.renderers;
+    this._canvasSeed = isCanvasLike(initialItem) ? initialItem : null;
+    this.renderer = null;
+    this.canvas = null;
+    this.ctx = null;
+    this.width = this._canvasSeed && this._canvasSeed.width || 0;
+    this.height = this._canvasSeed && this._canvasSeed.height || 0;
+    this._options = config.createResolver(config.chartOptionScopes(), this.getContext());
+    this._createRenderer(this._options.renderer);
     // Store the previously used aspect ratio to determine if a resize
     // is needed during updates. Do this after _options is set since
     // aspectRatio uses a getter
@@ -172,18 +183,14 @@ class Chart {
     this.attached = false;
     this._animationsDisabled = undefined;
     this.$context = undefined;
-    this._doResize = debounce(mode => this.update(mode), options.resizeDelay || 0);
+    this._doResize = debounce(mode => this.update(mode), this._options.resizeDelay || 0);
     this._dataChanges = [];
 
     // Add the chart instance to the global namespace
     instances[this.id] = this;
 
-    if (!context || !canvas) {
-      // The given item is not a compatible context2d element, let's return before finalizing
-      // the chart initialization but after setting basic chart / controller properties that
-      // can help to figure out that the chart is not valid (e.g chart.canvas !== null);
-      // https://github.com/chartjs/Chart.js/issues/2807
-      console.error("Failed to create chart: can't acquire context from the given item");
+    if (!this.renderer) {
+      console.error("Failed to create chart: can't initialize renderer");
       return;
     }
 
@@ -232,6 +239,53 @@ class Chart {
     return registry;
   }
 
+  _createRenderer(type) {
+    const renderer = this._rendererRegistry.create(type, {
+      chart: this,
+      host: this.host,
+      canvas: this._canvasSeed
+    });
+    if (!renderer.initialize(this.options.aspectRatio)) {
+      renderer.destroy(true);
+      return;
+    }
+    this.renderer = renderer;
+    this.root = renderer.root;
+    this.canvas = renderer.canvas;
+    this.ctx = renderer.context;
+    if (renderer.canvas) {
+      this._canvasSeed = renderer.canvas;
+      this.width = this.width || renderer.canvas.width;
+      this.height = this.height || renderer.canvas.height;
+    }
+  }
+
+  _ensureRenderer(type) {
+    if (this.renderer && this.renderer.type === type) {
+      return;
+    }
+    const width = this.width;
+    const height = this.height;
+    this.unbindEvents();
+    if (this.renderer) {
+      this.renderer.destroy(true);
+    }
+    this.renderer = null;
+    this.root = null;
+    this.canvas = null;
+    this.ctx = null;
+    this._createRenderer(type);
+    each(this.scales, (scale) => {
+      scale.ctx = this.ctx;
+    });
+    each(this._metasets, (meta) => {
+      if (meta && meta.controller) {
+        meta.controller._ctx = this.ctx;
+      }
+    });
+    this._resize(width, height);
+  }
+
   /**
 	 * @private
 	 */
@@ -242,7 +296,7 @@ class Chart {
     if (this.options.responsive) {
       this.resize();
     } else {
-      retinaScale(this, this.options.devicePixelRatio);
+      this._resize(this.width || undefined, this.height || undefined);
     }
 
     this.bindEvents();
@@ -254,7 +308,7 @@ class Chart {
   }
 
   clear() {
-    clearCanvas(this.canvas, this.ctx);
+    this.renderer.clear();
     return this;
   }
 
@@ -278,16 +332,17 @@ class Chart {
 
   _resize(width, height) {
     const options = this.options;
-    const canvas = this.canvas;
     const aspectRatio = options.maintainAspectRatio && this.aspectRatio;
-    const newSize = this.platform.getMaximumSize(canvas, width, height, aspectRatio);
+    const newSize = this.platform.getMaximumSize(this.host, width, height, aspectRatio);
     const newRatio = options.devicePixelRatio || this.platform.getDevicePixelRatio();
     const mode = this.width ? 'resize' : 'attach';
 
     this.width = newSize.width;
     this.height = newSize.height;
     this._aspectRatio = this.aspectRatio;
-    if (!retinaScale(this, newRatio, true)) {
+    const changed = this.renderer.resize(newSize.width, newSize.height, newRatio);
+    this.currentDevicePixelRatio = this.renderer.type === 'canvas' ? newRatio : 1;
+    if (!changed) {
       return;
     }
 
@@ -479,6 +534,7 @@ class Chart {
 
     config.update();
     const options = this._options = config.createResolver(config.chartOptionScopes(), this.getContext());
+    this._ensureRenderer(options.renderer);
     const animsDisabled = this._animationsDisabled = !options.animation;
 
     this._updateScales();
@@ -706,15 +762,15 @@ class Chart {
       this._resize(width, height);
     }
     this.clear();
-    beginSvgRender(this);
+    this.renderer.beginFrame();
 
     if (this.width <= 0 || this.height <= 0) {
-      endSvgRender(this);
+      this.renderer.endFrame();
       return;
     }
 
     if (this.notifyPlugins('beforeDraw', {cancelable: true}) === false) {
-      endSvgRender(this);
+      this.renderer.endFrame();
       return;
     }
 
@@ -733,7 +789,7 @@ class Chart {
       layers[i].draw(this.chartArea);
     }
 
-    endSvgRender(this);
+    this.renderer.endFrame();
     this.notifyPlugins('afterDraw');
   }
 
@@ -800,7 +856,7 @@ class Chart {
       return;
     }
 
-    const svg = this.options.renderer === 'svg';
+    const svg = this.renderer.type === 'svg';
     if (svg) {
       const group = getOrCreateSvgDatasetGroup(this, meta.index);
       group.setAttribute('clip-path', clip ? getOrCreateSvgClipRect(this, `dataset-${meta.index}`, clip) : 'none');
@@ -946,19 +1002,21 @@ class Chart {
 
   destroy() {
     this.notifyPlugins('beforeDestroy');
-    const {canvas, ctx} = this;
 
     this._stop();
-    removeSvgRoot(this);
     this.config.clearCache();
-
-    if (canvas) {
-      this.unbindEvents();
-      clearCanvas(canvas, ctx);
-      this.platform.releaseContext(ctx);
-      this.canvas = null;
-      this.ctx = null;
+    this.unbindEvents();
+    const wasSvg = this.renderer.type === 'svg';
+    this.renderer.destroy();
+    // Legacy `new Chart(canvas, {renderer: 'svg'})` callers keep ownership of
+    // their supplied canvas after destroy; a host-based SVG chart has no seed.
+    if (wasSvg && this._canvasSeed && !this._canvasSeed.parentNode) {
+      this.host.appendChild(this._canvasSeed);
     }
+    this.renderer = null;
+    this.root = null;
+    this.canvas = null;
+    this.ctx = null;
 
     delete instances[this.id];
 
@@ -966,6 +1024,9 @@ class Chart {
   }
 
   toBase64Image(...args) {
+    if (!this.canvas) {
+      throw new Error("toBase64Image() is available only when renderer is 'canvas'");
+    }
     return this.canvas.toDataURL(...args);
   }
 
@@ -1028,7 +1089,7 @@ class Chart {
     };
 
     const listener = (width, height) => {
-      if (this.canvas) {
+      if (this.renderer) {
         this.resize(width, height);
       }
     };
@@ -1056,7 +1117,7 @@ class Chart {
       _add('attach', attached);
     };
 
-    if (platform.isAttached(this.canvas)) {
+    if (platform.isAttached(this.host)) {
       attached();
     } else {
       detached();

@@ -590,7 +590,7 @@ export default class TimeScale extends Scale {
 	 */
   _getLabelSize(label) {
     const ticksOpts = this.options.ticks;
-    const tickLabelWidth = this.ctx.measureText(label).width;
+    const tickLabelWidth = this.chart.renderer.measureText(label, this._resolveTickFontOptions(0).string);
     const angle = toRadians(this.isHorizontal() ? ticksOpts.maxRotation : ticksOpts.minRotation);
     const cosRotation = Math.cos(angle);
     const sinRotation = Math.sin(angle);

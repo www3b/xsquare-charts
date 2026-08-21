@@ -1,5 +1,5 @@
 import defaults from '../core/core.defaults.js';
-import {_longestText, addRoundedRectPath, renderText, _isPointInArea} from '../helpers/helpers.canvas.js';
+import {addRoundedRectPath, renderText, _isPointInArea} from '../helpers/helpers.canvas.js';
 import {HALF_PI, TAU, toDegrees, toRadians, _normalizeAngle, PI} from '../helpers/helpers.math.js';
 import LinearScaleBase from './scale.linearbase.js';
 import Ticks from '../core/core.ticks.js';
@@ -31,10 +31,10 @@ function getTickBackdropHeight(opts) {
   return 0;
 }
 
-function measureLabelSize(ctx, font, label) {
+function measureLabelSize(scale, font, label) {
   label = isArray(label) ? label : [label];
   return {
-    w: _longestText(ctx, font.string, label),
+    w: Math.max(...label.map(line => scale.chart.renderer.measureText(line, font.string))),
     h: label.length * font.lineHeight
   };
 }
@@ -109,7 +109,7 @@ function fitWithPointLabels(scale) {
     padding[i] = opts.padding;
     const pointPosition = scale.getPointPosition(i, scale.drawingArea + padding[i], additionalAngle);
     const plFont = toFont(opts.font);
-    const textSize = measureLabelSize(scale.ctx, plFont, scale._pointLabels[i]);
+    const textSize = measureLabelSize(scale, plFont, scale._pointLabels[i]);
     labelSizes[i] = textSize;
 
     const angleRadians = _normalizeAngle(scale.getIndexAngle(i) + additionalAngle);
@@ -816,9 +816,7 @@ export default class RadialLinearScale extends LinearScaleBase {
 
   _drawSvgTickLabels(startAngle, tickOpts) {
     const group = getOrCreateSvgScalePart(this.chart, this.id, 'radial-ticks', svgLayerForZ(valueOrDefault(tickOpts.z, 0)));
-    const ctx = this.ctx;
     let count = 0;
-    ctx.save();
     for (let index = 0; index < this.ticks.length; ++index) {
       if (index === 0 && this.min >= 0 && !this.options.reverse) {
         continue;
@@ -831,8 +829,7 @@ export default class RadialLinearScale extends LinearScaleBase {
       label.setAttribute('transform', `translate(${this.xCenter} ${this.yCenter}) rotate(${toDegrees(startAngle)})`);
       const backdrop = getOrCreateSvgElement(label, 'rect', 0);
       if (opts.showLabelBackdrop) {
-        ctx.font = font.string;
-        const width = ctx.measureText(tick.label).width;
+        const width = this.chart.renderer.measureText(tick.label, font.string);
         const padding = toPadding(opts.backdropPadding);
         backdrop.setAttribute('x', String(-width / 2 - padding.left));
         backdrop.setAttribute('y', String(-offset - font.size / 2 - padding.top));
@@ -851,7 +848,6 @@ export default class RadialLinearScale extends LinearScaleBase {
         textBaseline: 'middle',
       }, undefined, 0, -offset);
     }
-    ctx.restore();
     removeExtraSvgElements(group, count);
   }
 }

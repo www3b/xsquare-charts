@@ -1,5 +1,5 @@
 import Element from './core.element.js';
-import {_alignPixel, _measureText, renderText, clipArea, unclipArea} from '../helpers/helpers.canvas.js';
+import {_alignPixel, renderText, clipArea, unclipArea} from '../helpers/helpers.canvas.js';
 import {callback as call, each, finiteOrDefault, isArray, isFinite, isNullOrUndef, isObject, valueOrDefault} from '../helpers/helpers.core.js';
 import {toDegrees, toRadians, _int16Range, _limitValue, HALF_PI} from '../helpers/helpers.math.js';
 import {_alignStartEnd, _toLeftRightCenter} from '../helpers/helpers.extras.js';
@@ -91,6 +91,16 @@ function garbageCollect(caches, length) {
       gc.splice(0, gcLen);
     }
   });
+}
+
+function measureText(renderer, cache, gc, longest, text, font) {
+  const string = String(text);
+  let width = cache[string];
+  if (width === undefined) {
+    width = cache[string] = renderer.measureText(string, font);
+    gc.push(string);
+  }
+  return Math.max(longest, width);
 }
 
 /**
@@ -828,7 +838,7 @@ export default class Scale extends Element {
 	 * @private
 	 */
   _computeLabelSizes(ticks, length, maxTicksLimit) {
-    const {ctx, _longestTextCache: caches} = this;
+    const {_longestTextCache: caches} = this;
     const widths = [];
     const heights = [];
     const increment = Math.floor(length / getTicksLimit(length, maxTicksLimit));
@@ -839,13 +849,13 @@ export default class Scale extends Element {
     for (i = 0; i < length; i += increment) {
       label = ticks[i].label;
       tickFont = this._resolveTickFontOptions(i);
-      ctx.font = fontString = tickFont.string;
+      fontString = tickFont.string;
       cache = caches[fontString] = caches[fontString] || {data: {}, gc: []};
       lineHeight = tickFont.lineHeight;
       width = height = 0;
       // Undefined labels and arrays should not be measured
       if (!isNullOrUndef(label) && !isArray(label)) {
-        width = _measureText(ctx, cache.data, cache.gc, width, label);
+        width = measureText(this.chart.renderer, cache.data, cache.gc, width, label, fontString);
         height = lineHeight;
       } else if (isArray(label)) {
         // if it is an array let's measure each element
@@ -853,7 +863,7 @@ export default class Scale extends Element {
           nestedLabel = /** @type {string} */ (label[j]);
           // Undefined labels and arrays should not be measured
           if (!isNullOrUndef(nestedLabel) && !isArray(nestedLabel)) {
-            width = _measureText(ctx, cache.data, cache.gc, width, nestedLabel);
+            width = measureText(this.chart.renderer, cache.data, cache.gc, width, nestedLabel, fontString);
             height += lineHeight;
           }
         }
@@ -1734,10 +1744,7 @@ export default class Scale extends Element {
     if (this.chart.options.renderer === 'svg') {
       const group = getOrCreateSvgScalePart(this.chart, this.id, 'title', svgLayerForZ(valueOrDefault(this.options.grid.z, -1)));
       const lines = isArray(title.text) ? title.text : [title.text];
-      ctx.save();
-      ctx.font = font.string;
-      const textWidths = lines.map((line) => ctx.measureText(line).width);
-      ctx.restore();
+      const textWidths = lines.map((line) => this.chart.renderer.measureText(line, font.string));
       renderSvgText(group, 0, title.text, font, {
         color: title.color,
         maxWidth,
