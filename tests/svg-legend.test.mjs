@@ -83,6 +83,27 @@ function createContext(canvas) {
   });
 }
 
+function createRecordingContext(canvas) {
+  const calls = [];
+  const context = {
+    canvas,
+    calls,
+    measureText: (value) => ({
+      actualBoundingBoxAscent: 8,
+      actualBoundingBoxDescent: 2,
+      actualBoundingBoxLeft: 0,
+      actualBoundingBoxRight: String(value).length * 8,
+      width: String(value).length * 8
+    })
+  };
+  return new Proxy(context, {
+    get(target, property) {
+      if (property in target) return target[property];
+      return (...args) => calls.push([property, ...args]);
+    }
+  });
+}
+
 function createChart(type = 'line', dataSets, options = {}) {
   const document = {
     defaultView: {getComputedStyle: () => ({position: 'static'})},
@@ -358,4 +379,70 @@ test('SVG legend reuses nodes through resize, renderer switching and cleanup', (
   assert.ok(legend(chart));
   chart.destroy();
   assert.deepEqual(parent.children, [canvas]);
+});
+
+test('Canvas legend presentation consumes the shared model', () => {
+  const document = {
+    defaultView: {getComputedStyle: () => ({position: 'static'})},
+    createElementNS: () => new SvgNode(document)
+  };
+  const parent = new SvgNode(document);
+  const canvas = new SvgNode(document);
+  canvas.width = 440;
+  canvas.height = 300;
+  canvas.offsetLeft = 0;
+  canvas.offsetTop = 0;
+  const context = createRecordingContext(canvas);
+  canvas.getContext = () => context;
+  parent.appendChild(canvas);
+
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: ['One', 'Two'],
+      datasets: [
+        {backgroundColor: '#60a5fa', borderColor: '#1d4ed8', data: [1, 2], label: 'Visible', pointRadius: 0, pointStyle: 'triangle'},
+        {backgroundColor: '#34d399', borderColor: '#047857', data: [2, 1], hidden: true, label: 'Hidden', pointRadius: 0},
+      ]
+    },
+    options: {
+      animation: false,
+      plugins: {
+        legend: {
+          rtl: true,
+          labels: {borderRadius: 6, useBorderRadius: true, usePointStyle: true},
+          title: {display: true, text: 'Canvas heading'}
+        }
+      },
+      renderer: 'canvas',
+      responsive: false
+    }
+  });
+
+  assert.ok(context.calls.some(([name]) => name === 'fill'));
+  assert.ok(context.calls.some(([name, text]) => name === 'fillText' && text === 'Canvas heading'));
+  assert.ok(context.calls.some(([name]) => name === 'stroke'));
+  context.calls.length = 0;
+  chart.options.plugins.legend.labels.usePointStyle = false;
+  chart.update('none');
+  assert.ok(context.calls.some(([name]) => name === 'arc'));
+  chart.destroy();
+});
+
+test('Legend survives canvas to SVG to canvas switching while enabled', () => {
+  const {chart} = createChart('line', datasets());
+  chart.options.renderer = 'canvas';
+  chart.update('none');
+  assert.equal(chart.$chartjsSvgRoot, undefined);
+  assert.ok(chart.legend.buildLegendDrawItems().items.length);
+
+  chart.options.renderer = 'svg';
+  chart.update('none');
+  assert.ok(legend(chart));
+
+  chart.options.renderer = 'canvas';
+  chart.update('none');
+  assert.equal(chart.$chartjsSvgRoot, undefined);
+  assert.ok(chart.legend.buildLegendDrawItems().items.length);
+  chart.destroy();
 });

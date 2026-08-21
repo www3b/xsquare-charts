@@ -5,6 +5,7 @@ import {drawCanvasPoint} from './elements/point.js';
 import {drawCanvasBar} from './elements/bar.js';
 import {drawCanvasArc} from './elements/arc.js';
 import {drawCanvasTitle} from './title.js';
+import {drawCanvasLegend} from './legend.js';
 
 const EXPANDO_KEY = '$chartjs';
 
@@ -106,6 +107,10 @@ export default class CanvasRenderer implements Renderer {
 
   drawTitle(title: any): void {
     if (this.context) drawCanvasTitle(this.context, title);
+  }
+
+  drawLegend(legend: any): void {
+    if (this.context) drawCanvasLegend(this.context, legend);
   }
 
   beginDataset(_index: number, clip: any): void {

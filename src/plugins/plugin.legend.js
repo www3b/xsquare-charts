@@ -1,24 +1,13 @@
-import defaults from '../core/core.defaults.js';
 import Element from '../core/core.element.js';
 import layouts from '../core/core.layouts.js';
-import {addRoundedRectPath, drawPointLegend, renderText, tracePoint} from '../helpers/helpers.canvas.js';
-import {Path} from '../helpers/helpers.path.js';
-import {getOrCreateSvgChartPart, getOrCreateSvgClipRect, removeSvgChartPart, resolveSvgPaint, setSvgImageAttributes} from '../helpers/helpers.svg.js';
-import {renderSvgText} from '../helpers/helpers.svg.text.js';
 import {
   _isBetween,
   callback as call,
-  clipArea,
   getRtlAdapter,
-  overrideTextDirection,
-  restoreTextDirection,
   toFont,
   toPadding,
-  unclipArea,
-  valueOrDefault,
 } from '../helpers/index.js';
 import {_alignStartEnd, _textX, _toLeftRightCenter} from '../helpers/helpers.extras.js';
-import {toTRBLCorners} from '../helpers/helpers.options.js';
 
 /**
  * @typedef { import('../types/index.js').ChartEvent } ChartEvent
@@ -41,61 +30,10 @@ const getBoxSize = (labelOpts, fontSize) => {
 
 const itemsEqual = (a, b) => a !== null && b !== null && a.datasetIndex === b.datasetIndex && a.index === b.index;
 
-function getOrCreateLegendChild(parent, name, role) {
-  let child = getLegendChild(parent, role);
-  if (!child) {
-    child = parent.ownerDocument.createElementNS('http://www.w3.org/2000/svg', name);
-    child.setAttribute('data-legend-role', role);
-    parent.appendChild(child);
-  }
-  return child;
-}
-
-function getLegendChild(parent, role) {
-  return Array.from(parent.children).find((element) => element.getAttribute('data-legend-role') === role);
-}
-
-function legendItemKey(item, index) {
-  const datasetIndex = item.datasetIndex === undefined ? 'none' : item.datasetIndex;
-  const itemIndex = item.index === undefined ? index : item.index;
-  return `dataset-${datasetIndex}-index-${itemIndex}`;
-}
-
-function getOrCreateLegendItem(parent, item, index) {
-  const key = legendItemKey(item, index);
-  let group = Array.from(parent.children).find((element) => element.getAttribute('data-legend-item') === key);
-  if (!group) {
-    group = parent.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'g');
-    group.setAttribute('data-legend-item', key);
-    parent.appendChild(group);
-  }
-  parent.appendChild(group);
-  return group;
-}
-
-function removeStaleLegendItems(parent, keys) {
-  for (const group of Array.from(parent.children)) {
-    if (!keys.has(group.getAttribute('data-legend-item'))) {
-      group.remove();
-    }
-  }
-}
-
-function setSvgLegendSymbolStyle(chart, element, item, defaultColor) {
-  const lineWidth = valueOrDefault(item.lineWidth, 1);
-  element.setAttribute('fill', resolveSvgPaint(chart, valueOrDefault(item.fillStyle, defaultColor)));
-  element.setAttribute('stroke', lineWidth ? resolveSvgPaint(chart, valueOrDefault(item.strokeStyle, defaultColor)) : 'none');
-  element.setAttribute('stroke-width', String(lineWidth));
-  element.setAttribute('stroke-dasharray', String(valueOrDefault(item.lineDash, [])));
-  element.setAttribute('stroke-dashoffset', String(valueOrDefault(item.lineDashOffset, 0)));
-  element.setAttribute('stroke-linecap', String(valueOrDefault(item.lineCap, 'butt')));
-  element.setAttribute('stroke-linejoin', String(valueOrDefault(item.lineJoin, 'miter')));
-}
-
 export class Legend extends Element {
 
   /**
-	 * @param {{ ctx: any; options: any; chart: any; }} config
+	 * @param {{ options: any; chart: any; }} config
 	 */
   constructor(config) {
     super();
@@ -116,7 +54,6 @@ export class Legend extends Element {
 
     this.chart = config.chart;
     this.options = config.options;
-    this.ctx = config.ctx;
     this.legendItems = undefined;
     this.columnSizes = undefined;
     this.lineWidths = undefined;
@@ -384,311 +321,7 @@ export class Legend extends Element {
   }
 
   draw() {
-    if (!this.options.display) {
-      if (this.chart.options.renderer === 'svg') {
-        removeSvgChartPart(this.chart, 'legend');
-      }
-      return;
-    }
-
-    if (this.chart.options.renderer === 'svg') {
-      const group = getOrCreateSvgChartPart(this.chart, 'legend', 'background');
-      const {left, top, width, height} = this;
-      group.setAttribute('clip-path', getOrCreateSvgClipRect(this.chart, 'legend', {
-        left,
-        top,
-        right: left + width,
-        bottom: top + height
-      }));
-      group.setAttribute('direction', this.options.textDirection || (this.options.rtl ? 'rtl' : 'ltr'));
-      this._draw(group);
-      return;
-    }
-
-    const ctx = this.ctx;
-    clipArea(ctx, this);
-    this._draw();
-    unclipArea(ctx);
-  }
-
-  /**
-	 * @private
-	 */
-  // eslint-disable-next-line max-statements
-  _draw(svgGroup) {
-    const {options: opts, ctx, chart} = this;
-    const drawItems = this.buildLegendDrawItems();
-    const {labels: labelOpts} = opts;
-    const defaultColor = defaults.color;
-    const rtlHelper = getRtlAdapter(opts.rtl, this.left, this.width);
-    const labelFont = toFont(labelOpts.font);
-    const fontSize = labelFont.size;
-    const halfFontSize = fontSize / 2;
-
-    const svg = !!svgGroup;
-    const svgTitle = svg && getOrCreateLegendChild(svgGroup, 'g', 'title');
-    const svgItems = svg && getOrCreateLegendChild(svgGroup, 'g', 'items');
-    const svgItemKeys = new Set();
-
-    this.drawTitle(svgTitle, drawItems.title);
-
-    // Canvas setup
-    if (!svg) {
-      ctx.textAlign = rtlHelper.textAlign('left');
-      ctx.textBaseline = 'middle';
-      ctx.lineWidth = 0.5;
-    }
-    if (!svg) {
-      ctx.font = labelFont.string;
-    }
-
-    const {boxWidth, boxHeight, itemHeight} = drawItems;
-
-    // current position
-    // eslint-disable-next-line complexity, max-statements
-    const drawLegendBox = function(symbolGeometry, legendItem, index) {
-      if (isNaN(boxWidth) || boxWidth <= 0 || isNaN(boxHeight) || boxHeight < 0) {
-        return;
-      }
-
-      if (svg) {
-        const itemGroup = getOrCreateLegendItem(svgItems, legendItem, index);
-        const lineWidth = valueOrDefault(legendItem.lineWidth, 1);
-        const path = new Path();
-        let drawOptions, centerX, centerY;
-
-        if (labelOpts.usePointStyle) {
-          drawOptions = {
-            radius: boxHeight * Math.SQRT2 / 2,
-            pointStyle: legendItem.pointStyle,
-            rotation: legendItem.rotation,
-            borderWidth: lineWidth
-          };
-          centerX = symbolGeometry.centerX;
-          centerY = symbolGeometry.centerY;
-
-          if (drawOptions.pointStyle && typeof drawOptions.pointStyle === 'object') {
-            const image = getOrCreateLegendChild(itemGroup, 'image', 'symbol-image');
-            if (setSvgImageAttributes(image, chart, drawOptions.pointStyle, centerX, centerY, drawOptions.rotation)) {
-              const symbol = getLegendChild(itemGroup, 'symbol');
-              if (symbol) {
-                symbol.remove();
-              }
-              return;
-            }
-            image.remove();
-          }
-        }
-
-        const image = getLegendChild(itemGroup, 'symbol-image');
-        if (image) {
-          image.remove();
-        }
-        const symbol = getOrCreateLegendChild(itemGroup, 'path', 'symbol');
-        if (labelOpts.usePointStyle) {
-          tracePoint(path, drawOptions, centerX, centerY, labelOpts.pointStyleWidth && boxWidth);
-          symbol.setAttribute('d', path.toString());
-        } else {
-          const yBoxTop = symbolGeometry.y;
-          const xBoxLeft = symbolGeometry.x;
-          const borderRadius = toTRBLCorners(legendItem.borderRadius);
-          if (Object.values(borderRadius).some(v => v !== 0)) {
-            addRoundedRectPath(path, {x: xBoxLeft, y: yBoxTop, w: boxWidth, h: boxHeight, radius: borderRadius});
-          } else {
-            path.rect(xBoxLeft, yBoxTop, boxWidth, boxHeight);
-          }
-          symbol.setAttribute('d', path.toString());
-        }
-        setSvgLegendSymbolStyle(chart, symbol, legendItem, defaultColor);
-        return;
-      }
-
-      // Set the ctx for the box
-      ctx.save();
-
-      const lineWidth = valueOrDefault(legendItem.lineWidth, 1);
-      ctx.fillStyle = valueOrDefault(legendItem.fillStyle, defaultColor);
-      ctx.lineCap = valueOrDefault(legendItem.lineCap, 'butt');
-      ctx.lineDashOffset = valueOrDefault(legendItem.lineDashOffset, 0);
-      ctx.lineJoin = valueOrDefault(legendItem.lineJoin, 'miter');
-      ctx.lineWidth = lineWidth;
-      ctx.strokeStyle = valueOrDefault(legendItem.strokeStyle, defaultColor);
-
-      ctx.setLineDash(valueOrDefault(legendItem.lineDash, []));
-
-      if (labelOpts.usePointStyle) {
-        // Recalculate x and y for drawPoint() because its expecting
-        // x and y to be center of figure (instead of top left)
-        const drawOptions = {
-          radius: boxHeight * Math.SQRT2 / 2,
-          pointStyle: legendItem.pointStyle,
-          rotation: legendItem.rotation,
-          borderWidth: lineWidth
-        };
-        const centerX = symbolGeometry.centerX;
-        const centerY = symbolGeometry.centerY;
-
-        // Draw pointStyle as legend symbol
-        drawPointLegend(ctx, drawOptions, centerX, centerY, labelOpts.pointStyleWidth && boxWidth);
-      } else {
-        // Draw box as legend symbol
-        // Adjust position when boxHeight < fontSize (want it centered)
-        const yBoxTop = symbolGeometry.y;
-        const xBoxLeft = symbolGeometry.x;
-        const borderRadius = toTRBLCorners(legendItem.borderRadius);
-
-        ctx.beginPath();
-
-        if (Object.values(borderRadius).some(v => v !== 0)) {
-          addRoundedRectPath(ctx, {
-            x: xBoxLeft,
-            y: yBoxTop,
-            w: boxWidth,
-            h: boxHeight,
-            radius: borderRadius,
-          });
-        } else {
-          ctx.rect(xBoxLeft, yBoxTop, boxWidth, boxHeight);
-        }
-
-        ctx.fill();
-        if (lineWidth !== 0) {
-          ctx.stroke();
-        }
-      }
-
-      ctx.restore();
-    };
-
-    const fillText = function(textGeometry, legendItem, index) {
-      if (svg) {
-        const itemGroup = getOrCreateLegendItem(svgItems, legendItem, index);
-        const labelGroup = getOrCreateLegendChild(itemGroup, 'g', 'label');
-        renderSvgText(labelGroup, 0, legendItem.text, labelFont, {
-          color: legendItem.fontColor || defaultColor,
-          strikethrough: legendItem.hidden,
-          textAlign: textGeometry.align,
-          textBaseline: 'middle',
-          translation: [textGeometry.x, textGeometry.y]
-        });
-        return;
-      }
-      renderText(ctx, legendItem.text, textGeometry.x, textGeometry.y, labelFont, {
-        strikethrough: legendItem.hidden,
-        textAlign: textGeometry.align
-      });
-    };
-
-    if (!svg) {
-      overrideTextDirection(this.ctx, opts.textDirection);
-    }
-    // eslint-disable-next-line complexity
-    drawItems.items.forEach((drawItem) => {
-      const {legendItem, index: i} = drawItem;
-      if (!svg) {
-        ctx.strokeStyle = legendItem.fontColor; // for strikethrough effect
-        ctx.fillStyle = legendItem.fontColor; // render in correct colour
-      }
-
-      drawLegendBox(drawItem.symbol, legendItem, i);
-      fillText(drawItem.text, legendItem, i);
-      if (svg) {
-        svgItemKeys.add(legendItemKey(legendItem, i));
-      }
-
-    });
-
-    if (svg) {
-      removeStaleLegendItems(svgItems, svgItemKeys);
-    } else {
-      restoreTextDirection(this.ctx, opts.textDirection);
-    }
-  }
-
-  /**
-	 * @protected
-	 */
-  // eslint-disable-next-line max-statements
-  drawTitle(svgGroup, drawItem) {
-    if (drawItem) {
-      if (svgGroup) {
-        const lines = Array.isArray(drawItem.text) ? drawItem.text : [drawItem.text];
-        const textWidths = lines.map((line) => this.chart.renderer.measureText(line, drawItem.font.string));
-        renderSvgText(svgGroup, 0, drawItem.text, drawItem.font, {
-          color: drawItem.color,
-          maxWidth: drawItem.maxWidth,
-          textAlign: drawItem.textAlign,
-          textBaseline: 'middle',
-          translation: [drawItem.x, drawItem.y],
-        }, textWidths);
-      } else {
-        this.ctx.textAlign = drawItem.textAlign;
-        this.ctx.textBaseline = 'middle';
-        this.ctx.strokeStyle = drawItem.color;
-        this.ctx.fillStyle = drawItem.color;
-        renderText(this.ctx, drawItem.text, drawItem.x, drawItem.y, drawItem.font);
-      }
-      return;
-    }
-    const opts = this.options;
-    const titleOpts = opts.title;
-    const titleFont = toFont(titleOpts.font);
-    const titlePadding = toPadding(titleOpts.padding);
-
-    if (!titleOpts.display) {
-      if (svgGroup) {
-        svgGroup.remove();
-      }
-      return;
-    }
-
-    const rtlHelper = getRtlAdapter(opts.rtl, this.left, this.width);
-    const ctx = this.ctx;
-    const position = titleOpts.position;
-    const halfFontSize = titleFont.size / 2;
-    const topPaddingPlusHalfFontSize = titlePadding.top + halfFontSize;
-    let y;
-
-    // These defaults are used when the legend is vertical.
-    // When horizontal, they are computed below.
-    let left = this.left;
-    let maxWidth = this.width;
-
-    if (this.isHorizontal()) {
-      // Move left / right so that the title is above the legend lines
-      maxWidth = Math.max(...this.lineWidths);
-      y = this.top + topPaddingPlusHalfFontSize;
-      left = _alignStartEnd(opts.align, left, this.right - maxWidth);
-    } else {
-      // Move down so that the title is above the legend stack in every alignment
-      const maxHeight = this.columnSizes.reduce((acc, size) => Math.max(acc, size.height), 0);
-      y = topPaddingPlusHalfFontSize + _alignStartEnd(opts.align, this.top, this.bottom - maxHeight - opts.labels.padding - this._computeTitleHeight());
-    }
-
-    // Now that we know the left edge of the inner legend box, compute the correct
-    // X coordinate from the title alignment
-    const x = _alignStartEnd(position, left, left + maxWidth);
-
-    if (svgGroup) {
-      const lines = Array.isArray(titleOpts.text) ? titleOpts.text : [titleOpts.text];
-      const textWidths = lines.map((line) => this.chart.renderer.measureText(line, titleFont.string));
-      renderSvgText(svgGroup, 0, titleOpts.text, titleFont, {
-        color: titleOpts.color,
-        maxWidth,
-        textAlign: rtlHelper.textAlign(_toLeftRightCenter(position)),
-        textBaseline: 'middle',
-        translation: [x, y],
-      }, textWidths);
-      return;
-    }
-
-    // Canvas setup
-    ctx.textAlign = rtlHelper.textAlign(_toLeftRightCenter(position));
-    ctx.textBaseline = 'middle';
-    ctx.strokeStyle = titleOpts.color;
-    ctx.fillStyle = titleOpts.color;
-
-    renderText(ctx, titleOpts.text, x, y, titleFont);
+    this.chart.renderer.drawLegend(this);
   }
 
   /**
@@ -803,7 +436,7 @@ export default {
   _element: Legend,
 
   start(chart, _args, options) {
-    const legend = chart.legend = new Legend({ctx: chart.ctx, options, chart});
+    const legend = chart.legend = new Legend({options, chart});
     layouts.configure(chart, legend, options);
     layouts.addBox(chart, legend);
   },

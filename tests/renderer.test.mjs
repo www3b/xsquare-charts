@@ -108,3 +108,10 @@ test('Elements stay renderer-neutral', () => {
     assert.doesNotMatch(source, /renderer\s*(?:===|!==)|options\.renderer/);
   }
 });
+
+test('Legend stays renderer-neutral', () => {
+  const source = readFileSync(new URL('../src/plugins/plugin.legend.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /helpers\.svg|renderers\/(?:canvas|svg)|helpers\.canvas|helpers\.path|helpers\.svg\.text/);
+  assert.doesNotMatch(source, /this\.ctx|createElementNS|setAttribute\(/);
+  assert.doesNotMatch(source, /renderer\s*(?:===|!==)|options\.renderer/);
+});
