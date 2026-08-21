@@ -4,7 +4,7 @@ import {callback as call, each, finiteOrDefault, isArray, isFinite, isNullOrUnde
 import {toDegrees, toRadians, _int16Range, _limitValue, HALF_PI} from '../helpers/helpers.math.js';
 import {_alignStartEnd, _toLeftRightCenter} from '../helpers/helpers.extras.js';
 import {createContext, toFont, toPadding, _addGrace} from '../helpers/helpers.options.js';
-import {getOrCreateSvgClipRect, getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart} from '../helpers/helpers.svg.js';
+import {getOrCreateSvgClipRect, getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart, resolveSvgPaint} from '../helpers/helpers.svg.js';
 import {renderSvgText} from '../helpers/helpers.svg.text.js';
 import {autoSkip} from './core.scale.autoskip.js';
 
@@ -13,9 +13,9 @@ const offsetFromEdge = (scale, edge, offset) => edge === 'top' || edge === 'left
 const getTicksLimit = (ticksLength, maxTicksLimit) => Math.min(maxTicksLimit || ticksLength, ticksLength);
 const svgLayerForZ = (z) => z > 0 ? 'foreground' : 'background';
 
-function setSvgLineStyle(line, style) {
+function setSvgLineStyle(chart, line, style) {
   line.setAttribute('fill', 'none');
-  line.setAttribute('stroke', `${style.color}`);
+  line.setAttribute('stroke', resolveSvgPaint(chart, style.color));
   line.setAttribute('stroke-width', `${style.width}`);
   line.setAttribute('stroke-dasharray', `${style.borderDash || []}`);
   line.setAttribute('stroke-dashoffset', `${style.borderDashOffset || 0}`);
@@ -1463,7 +1463,7 @@ export default class Scale extends Element {
       rect.setAttribute('y', `${top}`);
       rect.setAttribute('width', `${width}`);
       rect.setAttribute('height', `${height}`);
-      rect.setAttribute('fill', `${backgroundColor}`);
+      rect.setAttribute('fill', resolveSvgPaint(chart, backgroundColor));
       removeExtraSvgElements(group, 1);
       return;
     }
@@ -1527,7 +1527,7 @@ export default class Scale extends Element {
           line.setAttribute('y1', `${p1.y}`);
           line.setAttribute('x2', `${p2.x}`);
           line.setAttribute('y2', `${p2.y}`);
-          setSvgLineStyle(line, lineStyle);
+          setSvgLineStyle(this.chart, line, lineStyle);
         }
         removeExtraSvgElements(group, count);
       };
@@ -1633,7 +1633,7 @@ export default class Scale extends Element {
       line.setAttribute('y1', `${y1}`);
       line.setAttribute('x2', `${x2}`);
       line.setAttribute('y2', `${y2}`);
-      setSvgLineStyle(line, {
+      setSvgLineStyle(chart, line, {
         color: borderOpts.color,
         width: borderOpts.width,
         borderDash: borderOpts.dash,

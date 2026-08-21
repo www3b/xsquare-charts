@@ -12,8 +12,9 @@ import {
 Chart.register(CategoryScale, LineController, LineElement, LinearScale, PointElement);
 
 class SvgNode {
-  constructor(document) {
+  constructor(document, localName) {
     this.ownerDocument = document;
+    this.localName = localName;
     this.children = [];
     this.attributes = new Map();
     this.style = {};
@@ -72,7 +73,7 @@ function createContext(canvas) {
 function createCanvas() {
   const document = {
     defaultView: {getComputedStyle: () => ({position: 'static'})},
-    createElementNS: () => new SvgNode(document)
+    createElementNS: (_, name) => new SvgNode(document, name)
   };
   const parent = new SvgNode(document);
   const canvas = new SvgNode(document);
@@ -192,4 +193,33 @@ test('SVG PointElement reuses standard point geometry, styles and DOM nodes', ()
   assert.ok(chart.$chartjsSvgRoot);
   chart.destroy();
   assert.deepEqual(parent.children, [canvas]);
+});
+
+test('SVG PointElement renders HTMLImageElement point styles without Canvas drawing', () => {
+  const {chart} = createChart();
+  const image = {
+    height: 12,
+    src: 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E',
+    width: 18,
+    [Symbol.toStringTag]: 'HTMLImageElement'
+  };
+
+  chart.data.datasets[0].pointStyle = image;
+  chart.data.datasets[0].pointRotation = 30;
+  chart.update('none');
+
+  const points = pointGroup(chart, 0);
+  const first = points.children[0];
+  assert.equal(first.localName, 'image');
+  assert.equal(first.getAttribute('href'), image.src);
+  assert.equal(first.getAttribute('width'), '18');
+  assert.equal(first.getAttribute('height'), '12');
+  assert.match(first.getAttribute('transform'), /^rotate\(30 /);
+
+  image.src = 'data:image/svg+xml,%3Csvg%20id%3D%22updated%22%2F%3E';
+  chart.update('none');
+  assert.equal(pointGroup(chart, 0).children[0], first);
+  assert.equal(first.getAttribute('href'), image.src);
+
+  chart.destroy();
 });

@@ -1,6 +1,7 @@
 import {tracePoint} from '../helpers/helpers.canvas.js';
 import {toFont, toPadding, toTRBLCorners} from '../helpers/helpers.options.js';
 import {Path} from '../helpers/helpers.path.js';
+import {resolveSvgPaint, resolveSvgPaintDataUrl, setSvgImageAttributes} from '../helpers/helpers.svg.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const htmlTooltips = new WeakMap();
@@ -49,6 +50,23 @@ function borderWidth(value) {
   return value && typeof value === 'object' ? Math.max(...Object.values(value)) : (value || 1);
 }
 
+function setHtmlPaint(style, property, chart, value) {
+  const url = resolveSvgPaintDataUrl(chart, value);
+  if (!url) {
+    style[property] = value;
+    style.backgroundImage = '';
+    return;
+  }
+  style[property] = 'transparent';
+  style.backgroundImage = `url("${url}")`;
+  style.backgroundRepeat = 'no-repeat';
+  style.backgroundSize = `${chart.width}px ${chart.height}px`;
+  if (property === 'color') {
+    style.backgroundClip = 'text';
+    style.webkitBackgroundClip = 'text';
+  }
+}
+
 function markerPath(width, height, pointStyle) {
   const path = new Path();
   tracePoint(path, {
@@ -60,7 +78,7 @@ function markerPath(width, height, pointStyle) {
   return path.toString();
 }
 
-function createPointMarker(document, options, labelColor, pointStyle) {
+function createPointMarker(document, chart, options, labelColor, pointStyle) {
   const marker = createElement(document, 'span', 'data-chart-tooltip-marker');
   const svg = document.createElementNS(SVG_NS, 'svg');
   const background = document.createElementNS(SVG_NS, 'path');
@@ -76,12 +94,20 @@ function createPointMarker(document, options, labelColor, pointStyle) {
   svg.setAttribute('height', boxHeight);
   svg.setAttribute('viewBox', `0 0 ${boxWidth} ${boxHeight}`);
   svg.setAttribute('aria-hidden', 'true');
+  if (pointStyle.pointStyle && typeof pointStyle.pointStyle === 'object') {
+    const image = document.createElementNS(SVG_NS, 'image');
+    if (setSvgImageAttributes(image, pointStyle.pointStyle, boxWidth / 2, boxHeight / 2, pointStyle.rotation)) {
+      svg.appendChild(image);
+      marker.appendChild(svg);
+      return marker;
+    }
+  }
   background.setAttribute('d', d);
-  background.setAttribute('fill', options.multiKeyBackground);
-  background.setAttribute('stroke', options.multiKeyBackground);
+  background.setAttribute('fill', resolveSvgPaint(chart, options.multiKeyBackground));
+  background.setAttribute('stroke', resolveSvgPaint(chart, options.multiKeyBackground));
   foreground.setAttribute('d', d);
-  foreground.setAttribute('fill', labelColor.backgroundColor);
-  foreground.setAttribute('stroke', labelColor.borderColor);
+  foreground.setAttribute('fill', resolveSvgPaint(chart, labelColor.backgroundColor));
+  foreground.setAttribute('stroke', resolveSvgPaint(chart, labelColor.borderColor));
   foreground.setAttribute('stroke-width', '1');
   svg.appendChild(background);
   svg.appendChild(foreground);
@@ -89,7 +115,7 @@ function createPointMarker(document, options, labelColor, pointStyle) {
   return marker;
 }
 
-function createColorMarker(document, options, labelColor) {
+function createColorMarker(document, chart, options, labelColor) {
   const marker = createElement(document, 'span', 'data-chart-tooltip-marker');
   const fill = createElement(document, 'span');
   const corners = toTRBLCorners(labelColor.borderRadius);
@@ -101,12 +127,17 @@ function createColorMarker(document, options, labelColor) {
   marker.style.width = `${options.boxWidth}px`;
   marker.style.height = `${options.boxHeight}px`;
   marker.style.marginInlineEnd = `${options.boxPadding + 2}px`;
-  marker.style.backgroundColor = options.multiKeyBackground;
-  marker.style.border = `${borderWidth(labelColor.borderWidth)}px ${labelColor.borderDash && labelColor.borderDash.length ? 'dashed' : 'solid'} ${labelColor.borderColor}`;
+  setHtmlPaint(marker.style, 'backgroundColor', chart, options.multiKeyBackground);
+  setHtmlPaint(marker.style, 'borderColor', chart, labelColor.borderColor);
+  marker.style.borderWidth = `${borderWidth(labelColor.borderWidth)}px`;
+  marker.style.borderStyle = labelColor.borderDash && labelColor.borderDash.length ? 'dashed' : 'solid';
+  if (!resolveSvgPaintDataUrl(chart, labelColor.borderColor)) {
+    marker.style.border = `${borderWidth(labelColor.borderWidth)}px ${labelColor.borderDash && labelColor.borderDash.length ? 'dashed' : 'solid'} ${labelColor.borderColor}`;
+  }
   setCorners(marker.style, corners);
   fill.style.position = 'absolute';
   fill.style.inset = '1px';
-  fill.style.backgroundColor = labelColor.backgroundColor;
+  setHtmlPaint(fill.style, 'backgroundColor', chart, labelColor.backgroundColor);
   setCorners(fill.style, corners);
   marker.appendChild(fill);
   return marker;
@@ -119,7 +150,7 @@ function createBodyItem(document, tooltip, options, item, index) {
   const bodyFont = toFont(options.bodyFont);
   const direction = options.textDirection || (options.rtl ? 'rtl' : 'ltr');
 
-  bodyItem.style.color = tooltip.labelTextColors[index];
+  setHtmlPaint(bodyItem.style, 'color', tooltip.chart, tooltip.labelTextColors[index]);
   bodyItem.style.direction = direction;
   bodyItem.style.textAlign = options.bodyAlign;
   setFont(bodyItem.style, bodyFont);
@@ -134,8 +165,8 @@ function createBodyItem(document, tooltip, options, item, index) {
     first.style.flexDirection = options.rtl ? 'row-reverse' : 'row';
     if (options.displayColors) {
       first.appendChild(options.usePointStyle
-        ? createPointMarker(document, options, tooltip.labelColors[index], tooltip.labelPointStyles[index])
-        : createColorMarker(document, options, tooltip.labelColors[index]));
+        ? createPointMarker(document, tooltip.chart, options, tooltip.labelColors[index], tooltip.labelPointStyles[index])
+        : createColorMarker(document, tooltip.chart, options, tooltip.labelColors[index]));
     }
     const firstLine = createElement(document, 'span');
     firstLine.textContent = item.lines[0];
@@ -189,7 +220,7 @@ function updateContent(state, tooltip, options) {
   content.style.paddingRight = `${padding.right}px`;
   content.style.paddingBottom = `${padding.bottom}px`;
   content.style.paddingLeft = `${padding.left}px`;
-  title.style.color = options.titleColor;
+  setHtmlPaint(title.style, 'color', tooltip.chart, options.titleColor);
   title.style.textAlign = options.titleAlign;
   title.style.marginBottom = tooltip.title.length ? `${options.titleMarginBottom}px` : '0';
   setFont(title.style, titleFont);
@@ -200,11 +231,11 @@ function updateContent(state, tooltip, options) {
   if (title.lastChild) {
     title.lastChild.style.marginBottom = '0';
   }
-  beforeBody.style.color = options.bodyColor;
+  setHtmlPaint(beforeBody.style, 'color', tooltip.chart, options.bodyColor);
   beforeBody.style.textAlign = options.bodyAlign;
   setFont(beforeBody.style, bodyFont);
   const bodyLineElements = addLines(document, beforeBody, tooltip.beforeBody, 'data-chart-tooltip-before-body-line');
-  body.style.color = options.bodyColor;
+  setHtmlPaint(body.style, 'color', tooltip.chart, options.bodyColor);
   body.style.textAlign = options.bodyAlign;
   setFont(body.style, bodyFont);
   for (let i = 0; i < tooltip.body.length; ++i) {
@@ -212,7 +243,7 @@ function updateContent(state, tooltip, options) {
     body.appendChild(item.element);
     bodyLineElements.push(...item.lineElements);
   }
-  afterBody.style.color = options.bodyColor;
+  setHtmlPaint(afterBody.style, 'color', tooltip.chart, options.bodyColor);
   afterBody.style.textAlign = options.bodyAlign;
   setFont(afterBody.style, bodyFont);
   bodyLineElements.push(...addLines(document, afterBody, tooltip.afterBody, 'data-chart-tooltip-after-body-line'));
@@ -222,7 +253,7 @@ function updateContent(state, tooltip, options) {
   if (bodyLineElements.length) {
     bodyLineElements[bodyLineElements.length - 1].style.marginBottom = '0';
   }
-  footer.style.color = options.footerColor;
+  setHtmlPaint(footer.style, 'color', tooltip.chart, options.footerColor);
   footer.style.textAlign = options.footerAlign;
   footer.style.marginTop = tooltip.footer.length ? `${options.footerMarginTop}px` : '0';
   setFont(footer.style, footerFont);
@@ -284,7 +315,7 @@ function setCaret(state, tooltip, options) {
   state.caret.style.top = `${top}px`;
   state.caret.style.width = `${Math.max(...points.map(([x]) => x)) - left}px`;
   state.caret.style.height = `${Math.max(...points.map(([, y]) => y)) - top}px`;
-  state.caret.style.backgroundColor = options.backgroundColor;
+  setHtmlPaint(state.caret.style, 'backgroundColor', tooltip.chart, options.backgroundColor);
   state.caret.style.clipPath = `polygon(${points.map(([x, y]) => `${x - left}px ${y - top}px`).join(', ')})`;
 }
 
@@ -321,6 +352,13 @@ export function renderHtmlTooltip(tooltip) {
 
   const state = htmlTooltips.get(tooltip.chart) || createState(tooltip.chart);
   const corners = toTRBLCorners(options.cornerRadius);
+  for (const color of [options.backgroundColor, options.borderColor, options.bodyColor, options.footerColor, options.titleColor, options.multiKeyBackground, ...tooltip.labelTextColors]) {
+    resolveSvgPaint(tooltip.chart, color);
+  }
+  for (const color of tooltip.labelColors) {
+    resolveSvgPaint(tooltip.chart, color.backgroundColor);
+    resolveSvgPaint(tooltip.chart, color.borderColor);
+  }
   updateContent(state, tooltip, options);
   state.root.style.display = 'block';
   state.root.style.left = `${tooltip.x}px`;
@@ -329,8 +367,10 @@ export function renderHtmlTooltip(tooltip) {
   state.root.style.height = `${tooltip.height}px`;
   state.root.style.opacity = `${opacity}`;
   state.root.setAttribute('aria-hidden', 'false');
-  state.background.style.backgroundColor = options.backgroundColor;
-  state.background.style.border = `${options.borderWidth}px solid ${options.borderColor}`;
+  setHtmlPaint(state.background.style, 'backgroundColor', tooltip.chart, options.backgroundColor);
+  setHtmlPaint(state.background.style, 'borderColor', tooltip.chart, options.borderColor);
+  state.background.style.borderWidth = `${options.borderWidth}px`;
+  state.background.style.borderStyle = 'solid';
   setCorners(state.background.style, corners);
   setCaret(state, tooltip, options);
   return true;

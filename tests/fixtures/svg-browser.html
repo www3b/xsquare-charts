@@ -77,6 +77,49 @@
     charts.set(`${name}-svg`, mount(name, type, data, options, 'svg'));
   }
 
+  function mountPaint(name, type, renderer) {
+    const card = document.createElement('section');
+    card.className = 'fixture';
+    card.dataset.case = `${name}-${renderer}`;
+    card.innerHTML = `<h2>${name} (${renderer})</h2>`;
+    const canvas = document.createElement('canvas');
+    canvas.width = 420;
+    canvas.height = 250;
+    card.appendChild(canvas);
+    document.querySelector('#fixtures').appendChild(card);
+    const context = canvas.getContext('2d');
+    const linear = context.createLinearGradient(0, 0, canvas.width, 0);
+    linear.addColorStop(0, 'rgba(37, 99, 235, .15)');
+    linear.addColorStop(.5, '#8b5cf6');
+    linear.addColorStop(1, '#ec4899');
+    const radial = context.createRadialGradient(210, 125, 10, 210, 125, 180);
+    radial.addColorStop(0, 'rgba(16, 185, 129, .7)');
+    radial.addColorStop(1, 'rgba(16, 185, 129, .05)');
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = 10;
+    const tileContext = tile.getContext('2d');
+    tileContext.fillStyle = '#f59e0b';
+    tileContext.fillRect(0, 0, 10, 10);
+    tileContext.fillStyle = '#7c2d12';
+    tileContext.fillRect(0, 0, 5, 5);
+    tileContext.fillRect(5, 5, 5, 5);
+    const pattern = context.createPattern(tile, 'repeat');
+    const commonPaint = {animation: false, plugins: {legend: true}, renderer, responsive: false};
+    const config = type === 'line'
+      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Native paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7}]}}
+      : type === 'bar'
+        ? {data: {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Pattern bars', backgroundColor: pattern, borderColor: linear, borderWidth: 3, data: [4, 7, 5]}]}}
+        : {data: {labels: ['One', 'Two', 'Three'], datasets: [{backgroundColor: [linear, pattern, radial], borderColor: linear, borderWidth: 3, data: [4, 3, 5]}]}};
+    const chart = new Chart(canvas, {type, ...config, options: commonPaint});
+    chart.$paint = {linear, pattern, radial};
+    return chart;
+  }
+
+  for (const [name, type] of [['paint-line', 'line'], ['paint-bar', 'bar'], ['paint-doughnut', 'doughnut']]) {
+    charts.set(`${name}-canvas`, mountPaint(name, type, 'canvas'));
+    charts.set(`${name}-svg`, mountPaint(name, type, 'svg'));
+  }
+
   const exported = ['area', 'histogram', 'pie', 'radar', 'polar', 'scatter', 'bubble', 'log', 'time', 'timeseries'].map((name) => {
     const source = charts.get(`${name}-svg`);
     const before = source.$chartjsSvgRoot.outerHTML;
@@ -162,6 +205,17 @@
     return document.querySelector(`${root} [data-svg-part="grid"]`)
       && document.querySelector(`${root} [data-svg-part="labels"] text`);
   });
+  const paintChart = charts.get('paint-line-svg');
+  const paintRoot = document.querySelector('[data-case="paint-line-svg"] svg[data-chart-svg]');
+  const paintDefinitions = paintRoot?.querySelectorAll('defs pattern[data-svg-paint]').length || 0;
+  const paintAttributes = [...document.querySelectorAll('[data-case^="paint-"] svg [fill], [data-case^="paint-"] svg [stroke]')]
+    .map((element) => `${element.getAttribute('fill')} ${element.getAttribute('stroke')}`).join(' ');
+  const paintExport = paintChart.toSVG();
+  const firstPaintPattern = paintRoot?.querySelector('defs pattern[data-svg-paint] image');
+  const firstPaintHref = firstPaintPattern?.getAttribute('href');
+  paintChart.$paint.linear.addColorStop(.75, '#ffffff');
+  paintChart.update('none');
+  const paintUpdated = firstPaintPattern === paintRoot?.querySelector('defs pattern[data-svg-paint] image');
   const result = {
     fill: Boolean(fill?.getAttribute('clip-path')),
     exportsValid,
@@ -175,6 +229,10 @@
     legacySvgRoots: document.querySelectorAll('svg[data-chart-svg-layer]').length,
     line: Boolean(line?.getAttribute('d')),
     svgCharts: svgCharts.length,
+    paintDefinitions: paintDefinitions >= 3,
+    paintExport: paintExport.includes('data:image/png;base64,') && !paintExport.includes('[object Canvas'),
+    paintSafe: !paintAttributes.includes('[object CanvasGradient]') && !paintAttributes.includes('[object CanvasPattern]'),
+    paintUpdated,
     text: document.querySelectorAll('[data-case="line-svg"] text').length,
     tooltipHidden,
     tooltipPointStyle,

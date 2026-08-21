@@ -256,3 +256,18 @@ test('SVG LineElement follows Chart.js draw order without recreating datasets', 
   chart.destroy();
   assert.deepEqual(parent.children, [canvas]);
 });
+
+test('SVG dataset groups apply the resolved Chart.js clip area', () => {
+  const {chart} = createChart([lineDataset({clip: {bottom: 4, left: 5, right: 6, top: 3}})]);
+  const group = dataset(chart, 0);
+  const clip = group.getAttribute('clip-path');
+
+  assert.ok(clip.startsWith('url(#chartjs-'));
+  assert.match(clip, /dataset-0/);
+
+  chart.data.datasets[0].clip = false;
+  chart.update('none');
+  assert.equal(dataset(chart, 0), group);
+  assert.equal(group.getAttribute('clip-path'), 'none');
+  chart.destroy();
+});

@@ -6,16 +6,16 @@ import Ticks from '../core/core.ticks.js';
 import {valueOrDefault, isArray, isFinite, callback as callCallback, isNullOrUndef} from '../helpers/helpers.core.js';
 import {createContext, toFont, toPadding, toTRBLCorners} from '../helpers/helpers.options.js';
 import {Path} from '../helpers/helpers.path.js';
-import {getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart} from '../helpers/helpers.svg.js';
+import {getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart, resolveSvgPaint} from '../helpers/helpers.svg.js';
 import {renderSvgText} from '../helpers/helpers.svg.text.js';
 
 function svgLayerForZ(z) {
   return z > 0 ? 'foreground' : 'background';
 }
 
-function setSvgStroke(element, color, lineWidth, dash = [], dashOffset = 0) {
+function setSvgStroke(chart, element, color, lineWidth, dash = [], dashOffset = 0) {
   element.setAttribute('fill', 'none');
-  element.setAttribute('stroke', String(color));
+  element.setAttribute('stroke', resolveSvgPaint(chart, color));
   element.setAttribute('stroke-width', String(lineWidth));
   element.setAttribute('stroke-dasharray', String(dash || []));
   element.setAttribute('stroke-dashoffset', String(dashOffset || 0));
@@ -574,7 +574,7 @@ export default class RadialLinearScale extends LinearScaleBase {
       path.closePath();
       const element = getOrCreateSvgElement(group, 'path');
       element.setAttribute('d', path.toString());
-      element.setAttribute('fill', String(backgroundColor));
+      element.setAttribute('fill', resolveSvgPaint(this.chart, backgroundColor));
       element.setAttribute('stroke', 'none');
       removeExtraSvgElements(group, 1);
       return;
@@ -625,7 +625,7 @@ export default class RadialLinearScale extends LinearScaleBase {
           path.closePath();
           const element = getOrCreateSvgElement(group, 'path', count++);
           element.setAttribute('d', path.toString());
-          setSvgStroke(element, gridOpts.color, gridOpts.lineWidth, borderOpts.dash, borderOpts.dashOffset);
+          setSvgStroke(this.chart, element, gridOpts.color, gridOpts.lineWidth, borderOpts.dash, borderOpts.dashOffset);
         });
         removeExtraSvgElements(group, count);
       }
@@ -648,7 +648,7 @@ export default class RadialLinearScale extends LinearScaleBase {
         line.setAttribute('y1', String(this.yCenter));
         line.setAttribute('x2', String(position.x));
         line.setAttribute('y2', String(position.y));
-        setSvgStroke(line, angleOpts.color, angleOpts.lineWidth, angleOpts.borderDash, angleOpts.borderDashOffset);
+        setSvgStroke(this.chart, line, angleOpts.color, angleOpts.lineWidth, angleOpts.borderDash, angleOpts.borderDashOffset);
       }
       removeExtraSvgElements(group, count);
       return;
@@ -800,7 +800,7 @@ export default class RadialLinearScale extends LinearScaleBase {
           radius: toTRBLCorners(opts.borderRadius),
         });
         backdrop.setAttribute('d', path.toString());
-        backdrop.setAttribute('fill', String(opts.backdropColor));
+        backdrop.setAttribute('fill', resolveSvgPaint(this.chart, opts.backdropColor));
         backdrop.setAttribute('stroke', 'none');
         backdrop.setAttribute('display', '');
       }
@@ -838,7 +838,7 @@ export default class RadialLinearScale extends LinearScaleBase {
         backdrop.setAttribute('y', String(-offset - font.size / 2 - padding.top));
         backdrop.setAttribute('width', String(width + padding.width));
         backdrop.setAttribute('height', String(font.size + padding.height));
-        backdrop.setAttribute('fill', String(opts.backdropColor));
+        backdrop.setAttribute('fill', resolveSvgPaint(this.chart, opts.backdropColor));
         backdrop.setAttribute('display', '');
       } else {
         backdrop.setAttribute('display', 'none');

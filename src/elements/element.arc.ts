@@ -10,6 +10,7 @@ import {
   getOrCreateSvgElement,
   getOrCreateSvgElementFor,
   getSvgElementContext,
+  resolveSvgPaint,
   removeSvgElementFor
 } from '../helpers/helpers.svg.js';
 import {getDatasetClipArea} from '../helpers/helpers.dataset.js';
@@ -49,6 +50,31 @@ function clipSelf(ctx: CanvasRenderingContext2D, element: ArcElement, endAngle: 
   ctx.rect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
   ctx.clip('evenodd');
+}
+
+function traceSelfClip(ctx: PathContext, chart: Chart, element: ArcElement, endAngle: number) {
+  const {startAngle, x, y, outerRadius, innerRadius, options} = element;
+  const {borderWidth, borderJoinStyle} = options;
+  const outerAngleClip = Math.min(borderWidth / outerRadius, _normalizeAngle(startAngle - endAngle));
+  ctx.arc(x, y, outerRadius - borderWidth / 2, startAngle + outerAngleClip / 2, endAngle - outerAngleClip / 2);
+
+  if (innerRadius > 0) {
+    const innerAngleClip = Math.min(borderWidth / innerRadius, _normalizeAngle(startAngle - endAngle));
+    ctx.arc(x, y, innerRadius + borderWidth / 2, endAngle - innerAngleClip / 2, startAngle + innerAngleClip / 2, true);
+  } else {
+    const clipWidth = Math.min(borderWidth / 2, outerRadius * _normalizeAngle(startAngle - endAngle));
+
+    if (borderJoinStyle === 'round') {
+      ctx.arc(x, y, clipWidth, endAngle - PI / 2, startAngle + PI / 2, true);
+    } else if (borderJoinStyle === 'bevel') {
+      const r = 2 * clipWidth * clipWidth;
+      ctx.lineTo(-r * Math.cos(endAngle + PI / 2) + x, -r * Math.sin(endAngle + PI / 2) + y);
+      ctx.lineTo(r * Math.cos(startAngle + PI / 2) + x, r * Math.sin(startAngle + PI / 2) + y);
+    }
+  }
+  ctx.closePath();
+  ctx.moveTo(0, 0);
+  ctx.rect(0, 0, chart.width, chart.height);
 }
 
 
@@ -381,7 +407,7 @@ function drawBorder(
 function drawSvgArc(element: ArcElement, context: SvgArcContext, offset: number, spacing: number, circular: boolean) {
   const {chart, datasetIndex, dataIndex} = context;
   const {options, circumference} = element;
-  const {borderAlign, borderColor, borderDash, borderDashOffset, borderJoinStyle, borderWidth, backgroundColor} = options;
+  const {borderAlign, borderColor, borderDash, borderDashOffset, borderJoinStyle, borderRadius, borderWidth, backgroundColor, selfJoin} = options;
   const halfAngle = (element.startAngle + element.endAngle) / 2;
   const translateX = Math.cos(halfAngle) * offset;
   const translateY = Math.sin(halfAngle) * offset;
@@ -390,14 +416,18 @@ function drawSvgArc(element: ArcElement, context: SvgArcContext, offset: number,
   const path = new Path();
   const group = getOrCreateSvgDatasetPart(chart, datasetIndex, 'arcs');
   const arcGroup = getOrCreateSvgElementFor(group, element, 'g');
-  const arc = getOrCreateSvgElement(arcGroup, 'path');
+  const shapeGroup = getOrCreateSvgElement(arcGroup, 'g');
+  const arc = getOrCreateSvgElement(shapeGroup, 'path');
+  const isFullCircle = Math.abs(element.endAngle - element.startAngle) >= TAU - 1e-4;
+  const skipSelfClip = isFullCircle && element.innerRadius > 0;
+  const selfClip = borderWidth && !skipSelfClip && selfJoin && element.endAngle - element.startAngle >= PI && borderRadius === 0 && borderJoinStyle !== 'miter';
 
   pathArc(path, element, radiusOffset, spacing, element.endAngle, circular);
   arcGroup.setAttribute('transform', `translate(${translateX} ${translateY})`);
   arc.setAttribute('data-role', 'arc');
   arc.setAttribute('d', path.toString());
-  arc.setAttribute('fill', String(backgroundColor));
-  arc.setAttribute('stroke', borderWidth ? String(borderColor) : 'none');
+  arc.setAttribute('fill', resolveSvgPaint(chart, backgroundColor));
+  arc.setAttribute('stroke', borderWidth ? resolveSvgPaint(chart, borderColor) : 'none');
   arc.setAttribute('stroke-width', (borderAlign === 'inner' ? borderWidth * 2 : borderWidth).toString());
   arc.setAttribute('stroke-linejoin', borderAlign === 'inner' ? borderJoinStyle || 'round' : borderJoinStyle || 'bevel');
   arc.setAttribute('stroke-dasharray', borderDash && borderDash.length ? borderDash.toString() : '');
@@ -409,11 +439,17 @@ function drawSvgArc(element: ArcElement, context: SvgArcContext, offset: number,
     arc.setAttribute('clip-path', 'none');
   }
 
+  if (selfClip) {
+    const selfClipPath = new Path();
+    traceSelfClip(selfClipPath, chart, element, element.endAngle);
+    shapeGroup.setAttribute('clip-path', getOrCreateSvgClipPath(chart, `arc-self-${datasetIndex}-${dataIndex}`, selfClipPath.toString(), 'evenodd'));
+  } else {
+    shapeGroup.setAttribute('clip-path', 'none');
+  }
+
   const clip = getDatasetClipArea(chart, chart.getDatasetMeta(datasetIndex));
   arcGroup.setAttribute('clip-path', clip ? getOrCreateSvgClipRect(chart, `arc-dataset-${datasetIndex}`, clip) : 'none');
 
-  // TODO: Canvas clipSelf() uses an inverse wedge for a rare selfJoin edge
-  // case. Native SVG joins are used here until that difference is observable.
 }
 
 export interface ArcProps extends Point {

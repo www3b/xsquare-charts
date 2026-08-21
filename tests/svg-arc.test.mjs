@@ -101,7 +101,7 @@ function createChart(type, datasets, options = {}) {
 function arcs(chart, datasetIndex) {
   const datasetGroup = findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', String(datasetIndex));
   const group = datasetGroup && findChild(datasetGroup, 'data-svg-part', 'arcs');
-  return group ? group.children.map((arc) => arc.children[0]) : [];
+  return group ? group.children.map((arc) => arc.children[0].children[0]) : [];
 }
 
 function dataset(data, overrides = {}) {
@@ -183,7 +183,7 @@ test('SVG ArcElement handles doughnut borders, transforms and arc variants', () 
     spacing: 6,
   })]);
   const first = arcs(inner.chart, 0)[0];
-  const group = first.parentNode;
+  const group = first.parentNode.parentNode;
 
   assert.equal(first.getAttribute('stroke-width'), '6');
   assert.equal(first.getAttribute('stroke-dasharray'), '4,2');
@@ -201,6 +201,10 @@ test('SVG ArcElement handles doughnut borders, transforms and arc variants', () 
   const full = createChart('doughnut', [dataset([10], {selfJoin: true})]);
   assert.ok(arcs(full.chart, 0)[0].getAttribute('d').match(/A.*A/));
   full.chart.destroy();
+
+  const joined = createChart('doughnut', [dataset([10], {borderJoinStyle: 'round', selfJoin: true})], {circumference: 270});
+  assert.ok(arcs(joined.chart, 0)[0].parentNode.getAttribute('clip-path').startsWith('url(#chartjs-'));
+  joined.chart.destroy();
 
   const rings = createChart('doughnut', [dataset([10, 20]), dataset([5, 15])]);
   assert.equal(arcs(rings.chart, 0).length, 2);

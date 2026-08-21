@@ -6,7 +6,8 @@ import {
   getOrCreateSvgDatasetPart,
   getOrCreateSvgElement,
   removeExtraSvgElements,
-  removeSvgDatasetPart
+  removeSvgDatasetPart,
+  resolveSvgPaint
 } from '../../helpers/helpers.svg.js';
 import {_findSegmentEnd, _getBounds, _segments} from './filler.segment.js';
 import {_getTarget} from './filler.target.js';
@@ -201,7 +202,7 @@ function drawSvgFill(source, target, area) {
     item.setAttribute('clip-path', clipPath);
     path.setAttribute('data-role', 'fill');
     path.setAttribute('d', entry.d);
-    path.setAttribute('fill', String(entry.color));
+    path.setAttribute('fill', resolveSvgPaint(chart, entry.color));
     path.setAttribute('fill-rule', entry.fillRule);
     path.setAttribute('stroke', 'none');
     path.setAttribute('clip-path', side || 'none');

@@ -5,7 +5,9 @@ import {
   getOrCreateSvgDatasetPart,
   getOrCreateSvgElementFor,
   getSvgElementContext,
-  removeSvgElementFor
+  removeSvgElementFor,
+  resolveSvgPaint,
+  setSvgImageAttributes
 } from '../helpers/helpers.svg.js';
 import type {
   CartesianParsedData,
@@ -40,9 +42,25 @@ function drawSvgPoint(point: PointElement, options: PointOptions & PointHoverOpt
   const element = getOrCreateSvgElementFor(group, point, 'path');
   element.setAttribute('data-dataset-index', datasetIndex.toString());
   element.setAttribute('d', path.toString());
-  element.setAttribute('fill', String(options.backgroundColor));
-  element.setAttribute('stroke', options.borderWidth > 0 ? String(options.borderColor) : 'none');
+  element.setAttribute('fill', resolveSvgPaint(chart, options.backgroundColor));
+  element.setAttribute('stroke', options.borderWidth > 0 ? resolveSvgPaint(chart, options.borderColor) : 'none');
   element.setAttribute('stroke-width', options.borderWidth.toString());
+}
+
+function drawSvgImagePoint(point: PointElement, options: PointOptions & PointHoverOptions) {
+  const context = getSvgElementContext(point);
+  if (!context) {
+    return false;
+  }
+
+  const group = getOrCreateSvgDatasetPart(context.chart, context.datasetIndex, 'points');
+  const element = getOrCreateSvgElementFor(group, point, 'image') as SVGImageElement;
+  if (!setSvgImageAttributes(element, options.pointStyle, point.x, point.y, options.rotation)) {
+    removeSvgElementFor(point);
+    return false;
+  }
+  element.setAttribute('data-dataset-index', context.datasetIndex.toString());
+  return true;
 }
 
 export type PointProps = Point
@@ -128,17 +146,18 @@ export default class PointElement extends Element<PointProps, PointOptions & Poi
       return;
     }
 
-    if (svg && !isObjectPointStyle(options.pointStyle) && options.pointStyle !== false) {
-      drawSvgPoint(this, options);
+    if (svg) {
+      if (!isObjectPointStyle(options.pointStyle) && options.pointStyle !== false) {
+        drawSvgPoint(this, options);
+        return;
+      }
+      if (isObjectPointStyle(options.pointStyle) && drawSvgImagePoint(this, options)) {
+        return;
+      }
+      removeSvgElementFor(this);
       return;
     }
 
-    if (svg) {
-      removeSvgElementFor(this);
-    }
-
-    // Image and canvas point styles have no lossless SVG representation. Keep
-    // the existing Canvas drawImage path for them while SVG points are enabled.
     ctx.strokeStyle = options.borderColor;
     ctx.lineWidth = options.borderWidth;
     ctx.fillStyle = options.backgroundColor;

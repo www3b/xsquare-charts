@@ -87,7 +87,8 @@ export function renderSvgText(parent, index, value, font, options = {}, textWidt
     backdrop.setAttribute('y', String(top));
     backdrop.setAttribute('width', String(width));
     backdrop.setAttribute('height', String(height));
-    backdrop.setAttribute('fill', String(color));
+    // eslint-disable-next-line no-use-before-define
+    backdrop.setAttribute('fill', resolveSvgElementPaint(backdrop, color));
     roles.unshift('backdrop');
   }
 
@@ -96,12 +97,14 @@ export function renderSvgText(parent, index, value, font, options = {}, textWidt
   const lineHeight = Number(font.lineHeight);
   text.setAttribute('x', String(x));
   text.setAttribute('y', String(y));
-  text.setAttribute('fill', options.color === undefined ? 'currentColor' : String(options.color));
+  // eslint-disable-next-line no-use-before-define
+  text.setAttribute('fill', options.color === undefined ? 'currentColor' : resolveSvgElementPaint(text, options.color));
   text.setAttribute('text-anchor', svgTextAnchor(options.textAlign));
   text.setAttribute('dominant-baseline', svgBaseline(options.textBaseline));
   text.setAttribute('paint-order', 'stroke fill');
   setOptionalAttribute(text, 'text-decoration', options.strikethrough ? 'line-through' : undefined);
-  text.setAttribute('stroke', options.strokeWidth > 0 && options.strokeColor !== '' ? String(options.strokeColor) : 'none');
+  // eslint-disable-next-line no-use-before-define
+  text.setAttribute('stroke', options.strokeWidth > 0 && options.strokeColor !== '' ? resolveSvgElementPaint(text, options.strokeColor) : 'none');
   text.setAttribute('stroke-width', options.strokeWidth > 0 ? String(options.strokeWidth) : '0');
   setSvgFont(text, font);
 
@@ -118,3 +121,4 @@ export function renderSvgText(parent, index, value, font, options = {}, textWidt
   removeUnusedChildren(group, roles);
   return /** @type {SVGGElement} */ (group);
 }
+import {resolveSvgElementPaint} from './helpers.svg.js';

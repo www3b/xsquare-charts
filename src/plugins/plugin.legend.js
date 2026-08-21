@@ -3,7 +3,7 @@ import Element from '../core/core.element.js';
 import layouts from '../core/core.layouts.js';
 import {addRoundedRectPath, drawPointLegend, renderText, tracePoint} from '../helpers/helpers.canvas.js';
 import {Path} from '../helpers/helpers.path.js';
-import {getOrCreateSvgChartPart, getOrCreateSvgClipRect, removeSvgChartPart} from '../helpers/helpers.svg.js';
+import {getOrCreateSvgChartPart, getOrCreateSvgClipRect, removeSvgChartPart, resolveSvgPaint, setSvgImageAttributes} from '../helpers/helpers.svg.js';
 import {renderSvgText} from '../helpers/helpers.svg.text.js';
 import {
   _isBetween,
@@ -42,13 +42,17 @@ const getBoxSize = (labelOpts, fontSize) => {
 const itemsEqual = (a, b) => a !== null && b !== null && a.datasetIndex === b.datasetIndex && a.index === b.index;
 
 function getOrCreateLegendChild(parent, name, role) {
-  let child = Array.from(parent.children).find((element) => element.getAttribute('data-legend-role') === role);
+  let child = getLegendChild(parent, role);
   if (!child) {
     child = parent.ownerDocument.createElementNS('http://www.w3.org/2000/svg', name);
     child.setAttribute('data-legend-role', role);
     parent.appendChild(child);
   }
   return child;
+}
+
+function getLegendChild(parent, role) {
+  return Array.from(parent.children).find((element) => element.getAttribute('data-legend-role') === role);
 }
 
 function legendItemKey(item, index) {
@@ -77,10 +81,10 @@ function removeStaleLegendItems(parent, keys) {
   }
 }
 
-function setSvgLegendSymbolStyle(element, item, defaultColor) {
+function setSvgLegendSymbolStyle(chart, element, item, defaultColor) {
   const lineWidth = valueOrDefault(item.lineWidth, 1);
-  element.setAttribute('fill', String(valueOrDefault(item.fillStyle, defaultColor)));
-  element.setAttribute('stroke', lineWidth ? String(valueOrDefault(item.strokeStyle, defaultColor)) : 'none');
+  element.setAttribute('fill', resolveSvgPaint(chart, valueOrDefault(item.fillStyle, defaultColor)));
+  element.setAttribute('stroke', lineWidth ? resolveSvgPaint(chart, valueOrDefault(item.strokeStyle, defaultColor)) : 'none');
   element.setAttribute('stroke-width', String(lineWidth));
   element.setAttribute('stroke-dasharray', String(valueOrDefault(item.lineDash, [])));
   element.setAttribute('stroke-dashoffset', String(valueOrDefault(item.lineDashOffset, 0)));
@@ -349,7 +353,7 @@ export class Legend extends Element {
 	 */
   // eslint-disable-next-line max-statements
   _draw(svgGroup) {
-    const {options: opts, columnSizes, lineWidths, ctx} = this;
+    const {options: opts, columnSizes, lineWidths, ctx, chart} = this;
     const {align, labels: labelOpts} = opts;
     const defaultColor = defaults.color;
     const rtlHelper = getRtlAdapter(opts.rtl, this.left, this.width);
@@ -385,32 +389,41 @@ export class Legend extends Element {
 
       if (svg) {
         const itemGroup = getOrCreateLegendItem(svgItems, legendItem, index);
-        const symbol = getOrCreateLegendChild(itemGroup, 'path', 'symbol');
         const lineWidth = valueOrDefault(legendItem.lineWidth, 1);
         const path = new Path();
+        let drawOptions, centerX, centerY;
 
         if (labelOpts.usePointStyle) {
-          const drawOptions = {
+          drawOptions = {
             radius: boxHeight * Math.SQRT2 / 2,
             pointStyle: legendItem.pointStyle,
             rotation: legendItem.rotation,
             borderWidth: lineWidth
           };
-          const centerX = rtlHelper.xPlus(x, boxWidth / 2);
-          const centerY = y + halfFontSize;
+          centerX = rtlHelper.xPlus(x, boxWidth / 2);
+          centerY = y + halfFontSize;
 
           if (drawOptions.pointStyle && typeof drawOptions.pointStyle === 'object') {
-            ctx.save();
-            ctx.fillStyle = valueOrDefault(legendItem.fillStyle, defaultColor);
-            ctx.strokeStyle = valueOrDefault(legendItem.strokeStyle, defaultColor);
-            ctx.lineWidth = lineWidth;
-            drawPointLegend(ctx, drawOptions, centerX, centerY, labelOpts.pointStyleWidth && boxWidth);
-            ctx.restore();
-            symbol.setAttribute('d', '');
-          } else {
-            tracePoint(path, drawOptions, centerX, centerY, labelOpts.pointStyleWidth && boxWidth);
-            symbol.setAttribute('d', path.toString());
+            const image = getOrCreateLegendChild(itemGroup, 'image', 'symbol-image');
+            if (setSvgImageAttributes(image, drawOptions.pointStyle, centerX, centerY, drawOptions.rotation)) {
+              const symbol = getLegendChild(itemGroup, 'symbol');
+              if (symbol) {
+                symbol.remove();
+              }
+              return;
+            }
+            image.remove();
           }
+        }
+
+        const image = getLegendChild(itemGroup, 'symbol-image');
+        if (image) {
+          image.remove();
+        }
+        const symbol = getOrCreateLegendChild(itemGroup, 'path', 'symbol');
+        if (labelOpts.usePointStyle) {
+          tracePoint(path, drawOptions, centerX, centerY, labelOpts.pointStyleWidth && boxWidth);
+          symbol.setAttribute('d', path.toString());
         } else {
           const yBoxTop = y + Math.max((fontSize - boxHeight) / 2, 0);
           const xBoxLeft = rtlHelper.leftForLtr(x, boxWidth);
@@ -422,7 +435,7 @@ export class Legend extends Element {
           }
           symbol.setAttribute('d', path.toString());
         }
-        setSvgLegendSymbolStyle(symbol, legendItem, defaultColor);
+        setSvgLegendSymbolStyle(chart, symbol, legendItem, defaultColor);
         return;
       }
 

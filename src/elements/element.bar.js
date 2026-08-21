@@ -9,6 +9,7 @@ import {
   getOrCreateSvgDatasetPart,
   getOrCreateSvgElement,
   getOrCreateSvgElementFor,
+  resolveSvgPaint,
   getSvgElementContext
 } from '../helpers/helpers.svg.js';
 
@@ -169,7 +170,7 @@ function drawSvg(bar, context) {
   addRectPath(backgroundPath, backgroundRect);
   background.setAttribute('data-role', 'background');
   background.setAttribute('d', backgroundPath.toString());
-  background.setAttribute('fill', String(backgroundColor));
+  background.setAttribute('fill', resolveSvgPaint(chart, backgroundColor));
   background.setAttribute('stroke', 'none');
 
   if (hasBorder) {
@@ -181,7 +182,7 @@ function drawSvg(bar, context) {
     border.setAttribute('data-role', 'border');
     border.setAttribute('d', borderPath.toString());
     border.setAttribute('display', '');
-    border.setAttribute('fill', String(borderColor));
+    border.setAttribute('fill', resolveSvgPaint(chart, borderColor));
     border.setAttribute('fill-rule', 'evenodd');
     border.setAttribute('stroke', 'none');
     shapeGroup.setAttribute('clip-path', getOrCreateSvgClipPath(chart, `bar-${datasetIndex}-${dataIndex}`, clipPath.toString()));

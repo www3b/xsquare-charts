@@ -5,7 +5,7 @@ import {_steppedLineTo, _bezierCurveTo} from '../helpers/helpers.canvas.js';
 import {_updateBezierControlPoints} from '../helpers/helpers.curve.js';
 import {valueOrDefault} from '../helpers/index.js';
 import {Path} from '../helpers/helpers.path.js';
-import {getOrCreateSvgDatasetPart, getOrCreateSvgPath, removeExtraSvgPaths, removeSvgDatasetPart} from '../helpers/helpers.svg.js';
+import {getOrCreateSvgDatasetPart, getOrCreateSvgPath, removeExtraSvgPaths, removeSvgDatasetPart, resolveSvgPaint} from '../helpers/helpers.svg.js';
 
 /**
  * @typedef { import('./element.point.js').default } PointElement
@@ -242,9 +242,9 @@ function draw(ctx, line, start, count) {
   }
 }
 
-function setSvgStyle(path, options, style = options) {
+function setSvgStyle(chart, path, options, style = options) {
   path.setAttribute('fill', 'none');
-  path.setAttribute('stroke', valueOrDefault(style.borderColor, options.borderColor));
+  path.setAttribute('stroke', resolveSvgPaint(chart, valueOrDefault(style.borderColor, options.borderColor)));
   path.setAttribute('stroke-width', valueOrDefault(style.borderWidth, options.borderWidth));
   path.setAttribute('stroke-linecap', valueOrDefault(style.borderCapStyle, options.borderCapStyle));
   path.setAttribute('stroke-linejoin', valueOrDefault(style.borderJoinStyle, options.borderJoinStyle));
@@ -272,7 +272,7 @@ function drawSvg(line, start, count) {
     const element = getOrCreateSvgPath(group, i);
     element.setAttribute('data-dataset-index', datasetIndex.toString());
     element.setAttribute('d', path.toString());
-    setSvgStyle(element, options, segment && segment.style);
+    setSvgStyle(chart, element, options, segment && segment.style);
   }
 
   removeExtraSvgPaths(group, paths.length);
