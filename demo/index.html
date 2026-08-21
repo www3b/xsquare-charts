@@ -20,6 +20,12 @@
       .chart-card p { margin: 0 0 10px; font-size: 14px; }
       .chart-frame { position: relative; height: 300px; padding: 18px; border: 1px solid #344054; border-radius: 12px; background: #182230; }
       .chart-card.wide .chart-frame { height: 390px; }
+      .editor { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; margin: 28px 0; padding: 18px; border: 1px solid #344054; border-radius: 12px; background: #182230; }
+      .editor h2 { margin: 0 0 8px; font-size: 17px; }
+      select, textarea { width: 100%; box-sizing: border-box; border: 1px solid #44546a; border-radius: 6px; background: #101828; color: inherit; padding: 9px; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+      textarea { min-height: 240px; resize: vertical; }
+      .editor-actions { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+      #editor-error { color: #fda4af; }
       canvas { max-width: 100%; }
       code { color: #93c5fd; }
       @media (max-width: 700px) { body { padding: 20px; } .charts { grid-template-columns: 1fr; } .chart-card.wide { grid-column: auto; } .chart-card.wide .chart-frame { height: 300px; } }
@@ -94,7 +100,46 @@
           <p>Несколько колец одного chart.</p>
           <div class="chart-frame"><canvas id="doughnut-rings-chart"></canvas></div>
         </section>
+        <section class="chart-card">
+          <h2>Bubble</h2>
+          <p>Значение <code>r</code> задаёт размер каждой точки.</p>
+          <div class="chart-frame"><canvas id="bubble-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Radar</h2>
+          <p>Радиальная шкала, polygon grid, точки и заливка.</p>
+          <div class="chart-frame"><canvas id="radar-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Polar area</h2>
+          <p>Секторы с радиусом, зависящим от значения.</p>
+          <div class="chart-frame"><canvas id="polar-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Logarithmic line</h2>
+          <p>Логарифмические x и y шкалы.</p>
+          <div class="chart-frame"><canvas id="log-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Time scale</h2>
+          <p>Даты на временной шкале.</p>
+          <div class="chart-frame"><canvas id="time-chart"></canvas></div>
+        </section>
+        <section class="chart-card">
+          <h2>Time series scale</h2>
+          <p>Равномерное распределение временных точек.</p>
+          <div class="chart-frame"><canvas id="timeseries-chart"></canvas></div>
+        </section>
       </div>
+      <section class="editor" aria-labelledby="editor-heading">
+        <div>
+          <h2 id="editor-heading">Редактор данных примера</h2>
+          <p>Выберите любой график, измените его <code>data</code> в JSON и примените изменения. Конфигурация и renderer сохраняются.</p>
+          <label>График <select id="chart-picker"></select></label>
+          <div class="editor-actions"><button id="apply-data">Применить JSON</button><button id="reset-data">Сбросить</button><output id="editor-error" aria-live="polite"></output></div>
+        </div>
+        <label>Данные <textarea id="data-editor" spellcheck="false"></textarea></label>
+      </section>
       <p>Resize the page or hover points to verify that normal Chart.js interactions still work.</p>
     </main>
     <script type="module" src="/demo/main.js"></script>

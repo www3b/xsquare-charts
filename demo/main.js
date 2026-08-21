@@ -11,12 +11,20 @@ import {
   LineController,
   LineElement,
   LinearScale,
+  LogarithmicScale,
   PointElement,
+  PolarAreaController,
+  RadarController,
+  RadialLinearScale,
   ScatterController,
   SubTitle,
   Title,
   Tooltip,
   PieController,
+  BubbleController,
+  TimeScale,
+  TimeSeriesScale,
+  _adapters,
 } from '/dist/chart.js';
 import {createHistogramBins} from '/helpers/helpers.js';
 
@@ -24,6 +32,7 @@ Chart.register(
   ArcElement,
   BarController,
   BarElement,
+  BubbleController,
   CategoryScale,
   DoughnutController,
   Filler,
@@ -32,13 +41,29 @@ Chart.register(
   LineController,
   LineElement,
   LinearScale,
+  LogarithmicScale,
   PointElement,
+  PolarAreaController,
+  RadarController,
+  RadialLinearScale,
   ScatterController,
   SubTitle,
   Title,
   Tooltip,
   PieController,
+  TimeScale,
+  TimeSeriesScale,
 );
+
+_adapters._date.override({
+  formats: () => ({datetime: 'x', day: 'x', month: 'x', year: 'x'}),
+  parse: (value) => value instanceof Date ? +value : typeof value === 'number' ? value : Date.parse(value),
+  format: (value) => new Date(value).toISOString().slice(0, 10),
+  add: (value, amount, unit) => value + amount * (unit === 'day' ? 864e5 : unit === 'month' ? 2592e6 : 1),
+  diff: (a, b, unit) => (a - b) / (unit === 'day' ? 864e5 : unit === 'month' ? 2592e6 : 1),
+  startOf: (value) => value,
+  endOf: (value) => value,
+});
 
 const axisOptions = {
   backgroundColor: 'rgba(15, 23, 42, 0.25)',
@@ -373,17 +398,92 @@ const svgCharts = [
       responsive: true,
     },
   }),
+
+  new Chart(document.getElementById('bubble-chart'), {
+    type: 'bubble',
+    data: {datasets: [{label: 'Pipeline', data: [{x: 1, y: 7, r: 7}, {x: 3, y: 4, r: 16}, {x: 5, y: 8, r: 11}, {x: 7, y: 3, r: 24}], backgroundColor: 'rgba(52, 211, 153, .55)', borderColor: '#34d399', borderWidth: 2}]},
+    options: {...barOptions({x: {...axisOptions, type: 'linear'}, y: {...axisOptions, type: 'linear'}})},
+  }),
+
+  new Chart(document.getElementById('radar-chart'), {
+    type: 'radar',
+    data: {labels: ['Speed', 'Quality', 'Cost', 'Reach', 'Support'], datasets: [{label: 'Current', data: [7, 9, 5, 8, 6], backgroundColor: 'rgba(96, 165, 250, .25)', borderColor: '#60a5fa', borderWidth: 2, pointBackgroundColor: '#f8fafc', pointRadius: 4}, {label: 'Target', data: [8, 7, 7, 9, 8], borderColor: '#fbbf24', borderDash: [5, 4], borderWidth: 2, pointRadius: 3}]},
+    options: {maintainAspectRatio: false, plugins: {legend: {labels: {color: '#f8fafc'}}}, renderer: 'canvas', responsive: true, scales: {r: {backgroundColor: '#1d2939', grid: {color: '#475467'}, angleLines: {color: '#475467'}, pointLabels: {color: '#dbeafe'}, ticks: {backdropColor: 'transparent', color: '#b6c2d3'}}}},
+  }),
+
+  new Chart(document.getElementById('polar-chart'), {
+    type: 'polarArea',
+    data: {labels: ['North', 'East', 'South', 'West', 'Centre'], datasets: [{data: [11, 16, 8, 13, 6], backgroundColor: ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa'], borderColor: '#182230', borderWidth: 3}]},
+    options: {maintainAspectRatio: false, plugins: {legend: {labels: {color: '#f8fafc'}}}, renderer: 'canvas', responsive: true, scales: {r: {grid: {color: '#475467'}, ticks: {backdropColor: 'transparent', color: '#b6c2d3'}}}},
+  }),
+
+  new Chart(document.getElementById('log-chart'), {
+    type: 'line',
+    data: {datasets: [{label: 'Orders of magnitude', data: [{x: 1, y: 1}, {x: 2, y: 8}, {x: 10, y: 90}, {x: 50, y: 850}, {x: 100, y: 9000}], borderColor: '#fb7185', pointBackgroundColor: '#fda4af', pointRadius: 4}]},
+    options: {...barOptions({x: {...axisOptions, type: 'logarithmic'}, y: {...axisOptions, type: 'logarithmic'}})},
+  }),
+
+  new Chart(document.getElementById('time-chart'), {
+    type: 'line',
+    data: {datasets: [{label: 'Daily signups', data: [{x: '2026-01-01', y: 12}, {x: '2026-01-04', y: 28}, {x: '2026-01-10', y: 19}, {x: '2026-01-20', y: 36}], borderColor: '#22d3ee', backgroundColor: 'rgba(34, 211, 238, .18)', fill: true, tension: .25}]},
+    options: {...barOptions({x: {...axisOptions, type: 'time', time: {unit: 'day'}}, y: {...axisOptions, type: 'linear'}})},
+  }),
+
+  new Chart(document.getElementById('timeseries-chart'), {
+    type: 'line',
+    data: {datasets: [{label: 'Release health', data: [{x: '2026-01-01', y: 42}, {x: '2026-01-02', y: 57}, {x: '2026-01-16', y: 48}, {x: '2026-03-30', y: 73}], borderColor: '#c084fc', pointBackgroundColor: '#e9d5ff', pointRadius: 5}]},
+    options: {...barOptions({x: {...axisOptions, type: 'timeseries', time: {unit: 'day'}}, y: {...axisOptions, type: 'linear'}})},
+  }),
 ];
 
-new Chart(document.getElementById('bar-chart'), {
+const canvasBarChart = new Chart(document.getElementById('bar-chart'), {
   type: 'bar',
   data: groupedBarData(),
   options: barOptions(),
 });
 
+const allCharts = [...svgCharts, canvasBarChart];
+const initialData = new Map(allCharts.map((chart) => [chart, structuredClone(chart.data)]));
+const picker = document.getElementById('chart-picker');
+const editor = document.getElementById('data-editor');
+const editorError = document.getElementById('editor-error');
+
+allCharts.forEach((chart, index) => {
+  const option = document.createElement('option');
+  option.value = String(index);
+  option.textContent = `${index + 1}. ${chart.config.type}`;
+  picker.appendChild(option);
+});
+
+function selectedChart() {
+  return allCharts[Number(picker.value)];
+}
+
+function loadChartData() {
+  editor.value = JSON.stringify(selectedChart().data, null, 2);
+  editorError.textContent = '';
+}
+
+picker.addEventListener('change', loadChartData);
+document.getElementById('apply-data').addEventListener('click', () => {
+  try {
+    selectedChart().data = JSON.parse(editor.value);
+    selectedChart().update();
+    editorError.textContent = 'Готово';
+  } catch (error) {
+    editorError.textContent = `JSON: ${error.message}`;
+  }
+});
+document.getElementById('reset-data').addEventListener('click', () => {
+  selectedChart().data = structuredClone(initialData.get(selectedChart()));
+  selectedChart().update();
+  loadChartData();
+});
+loadChartData();
+
 for (const button of document.querySelectorAll('[data-renderer]')) {
   button.addEventListener('click', () => {
-    for (const chart of svgCharts) {
+    for (const chart of allCharts) {
       chart.options.renderer = button.dataset.renderer;
       chart.update();
     }
