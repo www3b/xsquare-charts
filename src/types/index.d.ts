@@ -548,6 +548,7 @@ export interface ActiveElement extends ActiveDataPoint {
 /** Internal visual backend selected by `options.renderer`. */
 export type ScaleDrawPart = 'background' | 'grid' | 'border' | 'labels' | 'title';
 export type RadialScaleDrawPart = 'background' | 'grid' | 'labels';
+export type FillerDrawTime = 'beforeDraw' | 'beforeDatasetsDraw' | 'beforeDatasetDraw';
 
 export interface Renderer {
   readonly type: 'canvas' | 'svg';
@@ -562,6 +563,8 @@ export interface Renderer {
   drawLegend(legend: any): void;
   drawScale(scale: any, part: ScaleDrawPart, chartArea?: any): void;
   drawRadialScale(scale: any, part: RadialScaleDrawPart): void;
+  drawFiller(models: any[], drawTime: FillerDrawTime): void;
+  removeFiller(source: any): void;
   drawTitle(title: any): void;
   measureText(text: string | number, font: string): number;
   getEventTarget(): HTMLCanvasElement | SVGSVGElement;

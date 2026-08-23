@@ -1,5 +1,6 @@
 export type ScaleDrawPart = 'background' | 'grid' | 'border' | 'labels' | 'title';
 export type RadialScaleDrawPart = 'background' | 'grid' | 'labels';
+export type FillerDrawTime = 'beforeDraw' | 'beforeDatasetsDraw' | 'beforeDatasetDraw';
 
 /**
  * Visual-backend contract owned by Chart. Elements provide resolved geometry and
@@ -19,6 +20,8 @@ export interface Renderer {
   drawLegend(legend: any): void;
   drawScale(scale: any, part: ScaleDrawPart, chartArea?: any): void;
   drawRadialScale(scale: any, part: RadialScaleDrawPart): void;
+  drawFiller(models: any[], drawTime: FillerDrawTime): void;
+  removeFiller(source: any): void;
   drawTitle(title: any): void;
   beginDataset(index: number, clip: any): void;
   endDataset(clip: any): void;

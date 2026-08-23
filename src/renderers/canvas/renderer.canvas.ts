@@ -1,4 +1,4 @@
-import type {RadialScaleDrawPart, Renderer, RendererCreateOptions, RenderContext, ScaleDrawPart} from '../core/renderer.js';
+import type {FillerDrawTime, RadialScaleDrawPart, Renderer, RendererCreateOptions, RenderContext, ScaleDrawPart} from '../core/renderer.js';
 import {clipArea, unclipArea} from '../../helpers/helpers.canvas.js';
 import {drawCanvasLine} from './elements/line.js';
 import {drawCanvasPoint} from './elements/point.js';
@@ -8,6 +8,7 @@ import {drawCanvasTitle} from './title.js';
 import {drawCanvasLegend} from './legend.js';
 import {drawCanvasScale} from './scale.js';
 import {drawCanvasRadialScale} from './radialScale.js';
+import {drawCanvasFiller, removeCanvasFiller} from './filler.js';
 
 const EXPANDO_KEY = '$chartjs';
 
@@ -121,6 +122,14 @@ export default class CanvasRenderer implements Renderer {
 
   drawRadialScale(scale: any, part: RadialScaleDrawPart): void {
     if (this.context) drawCanvasRadialScale(this.context, scale, part);
+  }
+
+  drawFiller(models: any[], drawTime: FillerDrawTime): void {
+    if (this.context) drawCanvasFiller(this.context, models, drawTime);
+  }
+
+  removeFiller(source: any): void {
+    removeCanvasFiller(source);
   }
 
   beginDataset(_index: number, clip: any): void {

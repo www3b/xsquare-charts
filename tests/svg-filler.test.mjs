@@ -8,9 +8,11 @@ import {
   LineElement,
   LinearScale,
   PointElement,
+  RadarController,
+  RadialLinearScale,
 } from '../dist/chart.js';
 
-Chart.register(CategoryScale, Filler, LineController, LineElement, LinearScale, PointElement);
+Chart.register(CategoryScale, Filler, LineController, LineElement, LinearScale, PointElement, RadarController, RadialLinearScale);
 
 class SvgNode {
   constructor(document) {
@@ -98,6 +100,37 @@ function createChart(datasets, filler = {}) {
     },
   });
   return {canvas, chart, parent};
+}
+
+function createCanvasChart(datasets, filler = {}) {
+  const document = {
+    defaultView: {getComputedStyle: () => ({position: 'static'})},
+    createElementNS: () => new SvgNode(document)
+  };
+  const parent = new SvgNode(document);
+  const canvas = new SvgNode(document);
+  const calls = [];
+  const context = new Proxy({
+    canvas,
+    measureText: () => ({width: 10})
+  }, {
+    get(target, property) {
+      if (property in target) return target[property];
+      return (...args) => calls.push([property, ...args]);
+    },
+    set(target, property, value) {
+      calls.push(['set', property, value]);
+      target[property] = value;
+      return true;
+    }
+  });
+  Object.assign(canvas, {width: 400, height: 300, offsetLeft: 0, offsetTop: 0, getContext: () => context});
+  parent.appendChild(canvas);
+  const chart = new Chart(canvas, {
+    type: 'line', data: {labels: [0, 1, 2, 3], datasets},
+    options: {animation: false, plugins: {filler, legend: false}, renderer: 'canvas', responsive: false}
+  });
+  return {canvas, chart, parent, calls};
 }
 
 function fillGroup(chart, datasetIndex) {
@@ -210,4 +243,86 @@ test('SVG filler preserves source segments for gaps and spanGaps', () => {
   const spanning = createChart([areaDataset('origin', {data: [2, null, 4, 3], spanGaps: true})]);
   assert.equal(fillPaths(spanning.chart, 0).length, 1);
   spanning.chart.destroy();
+});
+
+test('SVG filler places global drawTime phases before datasets and cleans up runtime switches', () => {
+  const {chart} = createChart([
+    areaDataset('origin', {order: 2, backgroundColor: '#f00'}),
+    areaDataset('origin', {order: 1, backgroundColor: '#0f0'}),
+  ], {drawTime: 'beforeDatasetsDraw'});
+  const root = chart.$chartjsSvgRoot;
+  const datasets = findChild(root, 'data-svg-layer', 'datasets');
+  const phase = findChild(datasets, 'data-filler-phase', 'before-datasets');
+  assert.ok(phase);
+  assert.equal(datasets.children[0], phase);
+  assert.equal(phase.children.length, 2);
+  assert.deepEqual(phase.children.map((child) => child.getAttribute('data-filler-index')), ['0', '1']);
+  assert.equal(fillGroup(chart, 0), undefined);
+
+  chart.options.plugins.filler.drawTime = 'beforeDraw';
+  chart.update('none');
+  const background = findChild(root, 'data-svg-layer', 'background');
+  const beforeDraw = findChild(background, 'data-chart-svg-part', 'filler-before-draw');
+  assert.ok(beforeDraw);
+  assert.equal(background.children[0], beforeDraw);
+  assert.equal(findChild(datasets, 'data-filler-phase', 'before-datasets'), undefined);
+
+  chart.options.plugins.filler.drawTime = 'beforeDatasetDraw';
+  chart.update('none');
+  assert.equal(findChild(background, 'data-chart-svg-part', 'filler-before-draw'), undefined);
+  const dataset = findChild(datasets, 'data-dataset-index', '0');
+  assert.ok(fillGroup(chart, 0));
+  assert.equal(dataset.children[0], fillGroup(chart, 0));
+  chart.destroy();
+});
+
+test('Canvas filler consumes shared models for sides, gaps, segment styles and renderer switching', () => {
+  const {canvas, chart, parent, calls} = createCanvasChart([
+    areaDataset({target: 'origin', above: '#0a0', below: '#a00'}, {
+      data: [-2, null, 4, -1],
+      segment: {backgroundColor: '#f0f'},
+      stepped: true,
+    })
+  ], {drawTime: 'beforeDatasetsDraw'});
+  assert.ok(calls.some(([name]) => name === 'clip'));
+  assert.ok(calls.some(([name]) => name === 'fill'));
+  assert.ok(calls.some(([name, property, value]) => name === 'set' && property === 'fillStyle' && value === '#f0f'));
+  chart.options.renderer = 'svg';
+  chart.update('none');
+  assert.ok(chart.$chartjsSvgRoot);
+  chart.options.renderer = 'canvas';
+  chart.update('none');
+  assert.equal(chart.$chartjsSvgRoot, undefined);
+  assert.ok(parent.children.includes(canvas));
+  assert.ok(calls.filter(([name]) => name === 'fill').length > 1);
+  chart.destroy();
+});
+
+test('Radar filler preserves loop geometry and fill rule in SVG and Canvas', () => {
+  const document = {
+    defaultView: {getComputedStyle: () => ({position: 'static'})},
+    createElementNS: () => new SvgNode(document)
+  };
+  const parent = new SvgNode(document);
+  const canvas = new SvgNode(document);
+  canvas.width = 400;
+  canvas.height = 300;
+  canvas.offsetLeft = 0;
+  canvas.offsetTop = 0;
+  canvas.getContext = () => createContext(canvas);
+  parent.appendChild(canvas);
+  const chart = new Chart(canvas, {
+    type: 'radar',
+    data: {labels: ['A', 'B', 'C', 'D'], datasets: [{data: [2, 5, 3, 4], fill: 'shape', backgroundColor: '#60a5fa'}]},
+    options: {animation: false, plugins: {filler: {}, legend: false}, renderer: 'svg', responsive: false}
+  });
+  const group = fillGroup(chart, 0);
+  const path = fillPaths(chart, 0)[0];
+  assert.ok(group);
+  assert.match(path.getAttribute('d'), /Z$/);
+  assert.equal(path.getAttribute('fill-rule'), 'evenodd');
+  chart.options.renderer = 'canvas';
+  chart.update('none');
+  assert.equal(chart.$chartjsSvgRoot, undefined);
+  chart.destroy();
 });

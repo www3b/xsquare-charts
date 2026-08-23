@@ -7,4 +7,4 @@ renderers.register('canvas', options => new CanvasRenderer(options));
 renderers.register('svg', options => new SvgRenderer(options));
 
 export default renderers;
-export type {RadialScaleDrawPart, Renderer, RendererCreateOptions, RendererFactory, ScaleDrawPart} from './core/renderer.js';
+export type {FillerDrawTime, RadialScaleDrawPart, Renderer, RendererCreateOptions, RendererFactory, ScaleDrawPart} from './core/renderer.js';

@@ -131,3 +131,10 @@ test('RadialLinearScale stays renderer-neutral and Scale no longer stores a cont
   assert.doesNotMatch(radial, /\.fill\(|\.stroke\(|\.beginPath\(|\.setAttribute\(|this\.ctx/);
   assert.doesNotMatch(scale, /this\.ctx\s*=\s*cfg\.ctx/);
 });
+
+test('Filler lifecycle and shared model stay renderer-neutral', () => {
+  const lifecycle = readFileSync(new URL('../src/plugins/plugin.filler/index.js', import.meta.url), 'utf8');
+  const model = readFileSync(new URL('../src/plugins/plugin.filler/filler.model.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(lifecycle, /helpers\.svg|renderers\/(?:canvas|svg)|chart\.ctx|renderer\s*(?:===|!==)|options\.renderer/);
+  assert.doesNotMatch(model, /helpers\.svg|createElementNS|setAttribute\(|\.fill\(|\.stroke\(|\.clip\(|renderer\s*(?:===|!==)/);
+});

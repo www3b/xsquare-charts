@@ -5,15 +5,25 @@
  */
 
 import LineElement from '../../elements/element.line.js';
-import {_drawfill} from './filler.drawing.js';
 import {_shouldApplyFill} from './filler.helper.js';
+import {buildFillDrawModel} from './filler.model.js';
 import {_decodeFill, _resolveTarget} from './filler.options.js';
-import {removeSvgDatasetPart} from '../../helpers/helpers.svg.js';
 
-function removeSvgFill(source) {
-  if (source && source.chart.options.renderer === 'svg') {
-    removeSvgDatasetPart(source.chart, source.index, 'fill');
+function drawFillers(chart, sources, drawTime) {
+  const models = [];
+  for (const source of sources) {
+    if (_shouldApplyFill(source)) {
+      const model = buildFillDrawModel(source, chart.chartArea);
+      if (model) {
+        models.push(model);
+      } else {
+        chart.renderer.removeFiller(source);
+      }
+    } else if (source) {
+      chart.renderer.removeFiller(source);
+    }
   }
+  chart.renderer.drawFiller(models, drawTime);
 }
 
 export default {
@@ -52,8 +62,8 @@ export default {
       }
 
       source.fill = _resolveTarget(sources, i, options.propagate);
-      if (source.fill === false) {
-        removeSvgFill(source);
+      if (source.fill === false || !source.visible) {
+        chart.renderer.removeFiller(source);
       }
     }
   },
@@ -62,6 +72,7 @@ export default {
     const draw = options.drawTime === 'beforeDraw';
     const metasets = chart.getSortedVisibleDatasetMetas();
     const area = chart.chartArea;
+    const sources = [];
     for (let i = metasets.length - 1; i >= 0; --i) {
       const source = metasets[i].$filler;
       if (!source) {
@@ -69,14 +80,18 @@ export default {
       }
 
       source.line.updateControlPoints(area, source.axis);
-      if (draw && source.fill) {
-        _drawfill(chart.ctx, source, area);
-      }
+      sources.push(source);
+    }
+    if (draw) {
+      drawFillers(chart, sources, 'beforeDraw');
+    } else {
+      chart.renderer.drawFiller([], 'beforeDraw');
     }
   },
 
   beforeDatasetsDraw(chart, _args, options) {
     if (options.drawTime !== 'beforeDatasetsDraw') {
+      chart.renderer.drawFiller([], 'beforeDatasetsDraw');
       return;
     }
 
@@ -85,15 +100,7 @@ export default {
     // cannot globally interleave every dataset fill before every dataset line
     // without introducing a separate SVG scene graph.
     const metasets = chart.getSortedVisibleDatasetMetas();
-    for (let i = metasets.length - 1; i >= 0; --i) {
-      const source = metasets[i].$filler;
-
-      if (_shouldApplyFill(source)) {
-        _drawfill(chart.ctx, source, chart.chartArea);
-      } else {
-        removeSvgFill(source);
-      }
-    }
+    drawFillers(chart, metasets.slice().reverse().map((meta) => meta.$filler), 'beforeDatasetsDraw');
   },
 
   beforeDatasetDraw(chart, args, options) {
@@ -101,12 +108,12 @@ export default {
 
     if (!_shouldApplyFill(source) || options.drawTime !== 'beforeDatasetDraw') {
       if (!_shouldApplyFill(source)) {
-        removeSvgFill(source);
+        chart.renderer.removeFiller(source);
       }
       return;
     }
 
-    _drawfill(chart.ctx, source, chart.chartArea);
+    drawFillers(chart, [source], 'beforeDatasetDraw');
   },
 
   defaults: {
