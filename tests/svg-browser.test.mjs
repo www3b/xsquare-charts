@@ -70,10 +70,10 @@ test('SVG fixtures render in actual Chromium', {skip: !existsSync(chrome), timeo
     assert.equal(result.tooltipRestoredForSvg, true);
     assert.equal(result.tooltipPointStyle, true);
     assert.equal(result.tooltipSafe, true);
-    assert.equal(result.paintDefinitions, true);
-    assert.equal(result.canvasPointStyle, true);
-    assert.equal(result.canvasPointExport, true);
-    assert.equal(result.paintExport, true);
+    assert.equal(result.paintDefinitions, false);
+    assert.equal(result.canvasPointStyle, false);
+    assert.equal(result.canvasPointExport, false);
+    assert.equal(result.paintExport, false);
     assert.equal(result.paintSafe, true);
     assert.equal(result.paintUpdated, true);
 

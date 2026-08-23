@@ -1,7 +1,7 @@
 import {tracePoint} from '../helpers/helpers.canvas.js';
 import {toFont, toPadding, toTRBLCorners} from '../helpers/helpers.options.js';
 import {Path} from '../helpers/helpers.path.js';
-import {resolveSvgPaint, resolveSvgPaintDataUrl, setSvgImageAttributes} from '../helpers/helpers.svg.js';
+import {resolveSvgPaint, setSvgImageAttributes} from '../helpers/helpers.svg.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const htmlTooltips = new WeakMap();
@@ -51,20 +51,8 @@ function borderWidth(value) {
 }
 
 function setHtmlPaint(style, property, chart, value) {
-  const url = resolveSvgPaintDataUrl(chart, value);
-  if (!url) {
-    style[property] = value;
-    style.backgroundImage = '';
-    return;
-  }
-  style[property] = 'transparent';
-  style.backgroundImage = `url("${url}")`;
-  style.backgroundRepeat = 'no-repeat';
-  style.backgroundSize = `${chart.width}px ${chart.height}px`;
-  if (property === 'color') {
-    style.backgroundClip = 'text';
-    style.webkitBackgroundClip = 'text';
-  }
+  style[property] = typeof value === 'string' ? value : 'transparent';
+  style.backgroundImage = '';
 }
 
 function markerPath(width, height, pointStyle) {
@@ -131,7 +119,7 @@ function createColorMarker(document, chart, options, labelColor) {
   setHtmlPaint(marker.style, 'borderColor', chart, labelColor.borderColor);
   marker.style.borderWidth = `${borderWidth(labelColor.borderWidth)}px`;
   marker.style.borderStyle = labelColor.borderDash && labelColor.borderDash.length ? 'dashed' : 'solid';
-  if (!resolveSvgPaintDataUrl(chart, labelColor.borderColor)) {
+  if (typeof labelColor.borderColor === 'string') {
     marker.style.border = `${borderWidth(labelColor.borderWidth)}px ${labelColor.borderDash && labelColor.borderDash.length ? 'dashed' : 'solid'} ${labelColor.borderColor}`;
   }
   setCorners(marker.style, corners);

@@ -4,7 +4,8 @@ const svgElementContexts = new WeakMap();
 const svgElements = new WeakMap();
 const svgPaints = new WeakMap();
 const svgCharts = new WeakMap();
-const svgCanvasImages = new WeakMap();
+const svgWarnings = new WeakSet();
+import {isCanvasPaint, isRendererNeutralPaint} from './helpers.paint.js';
 
 function createSvgElement(chart, name) {
   const root = chart.$chartjsSvgRoot || (chart.renderer && chart.renderer.root);
@@ -12,53 +13,6 @@ function createSvgElement(chart, name) {
   return document.createElementNS(SVG_NS, name);
 }
 
-function isCanvasPaint(value) {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-  const type = Object.prototype.toString.call(value);
-  return type === '[object CanvasGradient]' || type === '[object CanvasPattern]';
-}
-
-function isCanvasImage(value) {
-  return value && typeof value === 'object' && Object.prototype.toString.call(value) === '[object HTMLCanvasElement]';
-}
-
-function getSvgCanvasImageState(chart) {
-  let state = svgCanvasImages.get(chart);
-  if (!state) {
-    state = new WeakMap();
-    svgCanvasImages.set(chart, state);
-  }
-  return state;
-}
-
-function getSvgCanvasImageHref(chart, canvas) {
-  if (!canvas.width || !canvas.height) {
-    return undefined;
-  }
-  const root = getOrCreateSvgRoot(chart);
-  const renderId = root.getAttribute('data-render-id') || '0';
-  const sources = getSvgCanvasImageState(chart);
-  let source = sources.get(canvas);
-  if (!source) {
-    source = {renderId: undefined, url: undefined, warned: false};
-    sources.set(canvas, source);
-  }
-  if (source.renderId !== renderId) {
-    source.renderId = renderId;
-    try {
-      source.url = canvas.toDataURL('image/png');
-    } catch (error) {
-      source.url = undefined;
-      if (!source.warned) {
-        source.warned = true;
-        console.warn('Chart.js SVG renderer could not serialize an HTMLCanvasElement pointStyle; point is not rendered.', error);
-      }
-    }
-  }
-  return source.url;
-}
 
 function getSvgPaintState(chart) {
   let state = svgPaints.get(chart);
@@ -73,76 +27,49 @@ function getSvgPaintDescriptor(chart, value) {
   const state = getSvgPaintState(chart);
   let descriptor = state.values.get(value);
   if (!descriptor) {
-    const pattern = createSvgElement(chart, 'pattern');
-    const image = createSvgElement(chart, 'image');
-    descriptor = {id: `chartjs-${chart.id}-paint-${++state.nextId}`, image, pattern, renderId: undefined, url: undefined, warned: false};
-    pattern.setAttribute('id', descriptor.id);
-    pattern.setAttribute('data-svg-paint', 'true');
-    pattern.setAttribute('patternContentUnits', 'userSpaceOnUse');
-    pattern.setAttribute('patternUnits', 'userSpaceOnUse');
-    image.setAttribute('preserveAspectRatio', 'none');
-    pattern.appendChild(image);
+    descriptor = {id: `chartjs-${chart.id}-paint-${++state.nextId}`, element: undefined};
     state.values.set(value, descriptor);
   }
   return descriptor;
-}
-
-function rasterizeSvgPaint(chart, value) {
-  const {currentDevicePixelRatio, height, width} = chart;
-  const document = chart.host && chart.host.ownerDocument || chart.canvas && chart.canvas.ownerDocument;
-  const canvas = document && document.createElement && document.createElement('canvas');
-  if (!canvas || !width || !height) {
-    return undefined;
-  }
-
-  const ratio = currentDevicePixelRatio || 1;
-  canvas.width = Math.max(1, Math.ceil(width * ratio));
-  canvas.height = Math.max(1, Math.ceil(height * ratio));
-  const context = canvas.getContext && canvas.getContext('2d');
-  if (!context) {
-    return undefined;
-  }
-
-  try {
-    if (context.setTransform) {
-      context.setTransform(ratio, 0, 0, ratio, 0, 0);
-    }
-    context.fillStyle = value;
-    context.fillRect(0, 0, width, height);
-    return canvas.toDataURL('image/png');
-  } catch (error) {
-    return {error};
-  }
 }
 
 function updateSvgPaint(chart, value) {
   const defs = getOrCreateSvgDefs(chart);
   const renderId = defs.getAttribute('data-render-id');
   const descriptor = getSvgPaintDescriptor(chart, value);
-  if (descriptor.renderId !== renderId) {
-    const result = rasterizeSvgPaint(chart, value);
-    descriptor.renderId = renderId;
-    descriptor.url = typeof result === 'string' ? result : undefined;
-    if (!descriptor.url && !descriptor.warned) {
-      descriptor.warned = true;
-      console.warn('Chart.js SVG renderer could not serialize a CanvasGradient or CanvasPattern; using transparent paint.', result && result.error);
-    }
+  const name = value.type === 'linear-gradient' ? 'linearGradient' : value.type === 'radial-gradient' ? 'radialGradient' : 'pattern';
+  if (!descriptor.element || descriptor.element.nodeName !== name) {
+    if (descriptor.element) descriptor.element.remove();
+    descriptor.element = createSvgElement(chart, name);
+    descriptor.element.setAttribute('id', descriptor.id);
+    descriptor.element.setAttribute('data-svg-paint', 'true');
   }
-  if (!descriptor.url) {
-    return undefined;
+  const element = descriptor.element;
+  defs.appendChild(element);
+  element.setAttribute('data-render-id', renderId);
+  if (value.type === 'linear-gradient') {
+    element.setAttribute('gradientUnits', 'userSpaceOnUse');
+    element.setAttribute('x1', value.x0); element.setAttribute('y1', value.y0); element.setAttribute('x2', value.x1); element.setAttribute('y2', value.y1);
+  } else if (value.type === 'radial-gradient') {
+    element.setAttribute('gradientUnits', 'userSpaceOnUse');
+    element.setAttribute('cx', value.x1); element.setAttribute('cy', value.y1); element.setAttribute('r', value.r1);
+    element.setAttribute('fx', value.x0); element.setAttribute('fy', value.y0);
+  } else {
+    const image = value.image;
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    element.setAttribute('patternUnits', 'userSpaceOnUse');
+    element.setAttribute('width', width || 1); element.setAttribute('height', height || 1);
+    const child = getOrCreateSvgElement(element, 'image');
+    child.setAttribute('href', image.currentSrc || image.src || ''); child.setAttribute('width', width || 1); child.setAttribute('height', height || 1);
   }
-
-  defs.appendChild(descriptor.pattern);
-  descriptor.pattern.setAttribute('data-render-id', renderId);
-  descriptor.pattern.setAttribute('x', '0');
-  descriptor.pattern.setAttribute('y', '0');
-  descriptor.pattern.setAttribute('width', chart.width.toString());
-  descriptor.pattern.setAttribute('height', chart.height.toString());
-  descriptor.image.setAttribute('href', descriptor.url);
-  descriptor.image.setAttribute('x', '0');
-  descriptor.image.setAttribute('y', '0');
-  descriptor.image.setAttribute('width', chart.width.toString());
-  descriptor.image.setAttribute('height', chart.height.toString());
+  if (value.colorStops) {
+    value.colorStops.forEach((stop, index) => {
+      const child = getOrCreateSvgElement(element, 'stop', index);
+      child.setAttribute('offset', String(stop.offset)); child.setAttribute('stop-color', stop.color);
+    });
+    removeExtraSvgElements(element, value.colorStops.length);
+  }
   return descriptor;
 }
 
@@ -156,26 +83,17 @@ function updateSvgPaint(chart, value) {
  * @returns {string}
  */
 export function resolveSvgPaint(chart, value) {
-  if (!isCanvasPaint(value)) {
-    return String(value);
+  if (isRendererNeutralPaint(value)) {
+    return `url(#${updateSvgPaint(chart, value).id})`;
   }
-  const descriptor = updateSvgPaint(chart, value);
-  return descriptor ? `url(#${descriptor.id})` : 'transparent';
-}
-
-/**
- * Returns a self-contained raster paint for the HTML SVG-tooltip counterpart.
- *
- * @param {any} chart
- * @param {any} value
- * @returns {string|undefined}
- */
-export function resolveSvgPaintDataUrl(chart, value) {
-  if (!isCanvasPaint(value)) {
-    return undefined;
+  if (isCanvasPaint(value)) {
+    if (!svgWarnings.has(value)) {
+      svgWarnings.add(value);
+      console.warn('Chart.js SVG renderer does not support native CanvasGradient or CanvasPattern; use a renderer-neutral paint descriptor.');
+    }
+    return 'transparent';
   }
-  const descriptor = updateSvgPaint(chart, value);
-  return descriptor && descriptor.url;
+  return String(value);
 }
 
 /**
@@ -589,8 +507,7 @@ export function getOrCreateSvgElementFor(group, owner, name) {
 }
 
 /**
- * Returns a snapshot source for image-like point styles. Canvas sources are
- * snapshot once per chart render because their native pixels are mutable.
+ * Returns an SVG-compatible image source.
  *
  * @param {any} chart
  * @param {any} source
@@ -600,7 +517,11 @@ export function getSvgImageHref(chart, source) {
   if (Object.prototype.toString.call(source) === '[object HTMLImageElement]') {
     return source.currentSrc || source.src || undefined;
   }
-  return isCanvasImage(source) ? getSvgCanvasImageHref(chart, source) : undefined;
+  if (source && Object.prototype.toString.call(source) === '[object HTMLCanvasElement]' && !svgWarnings.has(source)) {
+    svgWarnings.add(source);
+    console.warn('Chart.js SVG renderer does not support HTMLCanvasElement pointStyle; use HTMLImageElement instead.');
+  }
+  return undefined;
 }
 
 /**

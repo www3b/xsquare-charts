@@ -15,6 +15,7 @@ import type {
 } from '../types/geometric.js';
 import {isArray, isNullOrUndef} from './helpers.core.js';
 import {PI, TAU, HALF_PI, QUARTER_PI, TWO_THIRDS_PI, RAD_PER_DEG} from './helpers.math.js';
+import {resolveCanvasPaint} from './helpers.paint.js';
 
 /**
  * Converts the given font object into a CSS font string.
@@ -423,7 +424,7 @@ function setRenderOpts(ctx: CanvasRenderingContext2D, opts: RenderTextOpts) {
   }
 
   if (opts.color) {
-    ctx.fillStyle = opts.color;
+    ctx.fillStyle = resolveCanvasPaint(ctx, opts.color);
   }
 
   if (opts.textAlign) {
@@ -502,7 +503,7 @@ export function renderText(
 
     if (stroke) {
       if (opts.strokeColor) {
-        ctx.strokeStyle = opts.strokeColor;
+        ctx.strokeStyle = resolveCanvasPaint(ctx, opts.strokeColor);
       }
 
       if (!isNullOrUndef(opts.strokeWidth)) {

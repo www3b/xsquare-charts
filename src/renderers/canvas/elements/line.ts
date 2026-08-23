@@ -1,5 +1,6 @@
 import {valueOrDefault} from '../../../helpers/index.js';
 import type {RenderContext} from '../../core/renderer.js';
+import {resolveCanvasPaint} from '../../../helpers/helpers.paint.js';
 
 function setStyle(ctx: CanvasRenderingContext2D, options: any, style: any = options): void {
   ctx.lineCap = valueOrDefault(style.borderCapStyle, options.borderCapStyle);
@@ -7,7 +8,7 @@ function setStyle(ctx: CanvasRenderingContext2D, options: any, style: any = opti
   ctx.lineDashOffset = valueOrDefault(style.borderDashOffset, options.borderDashOffset);
   ctx.lineJoin = valueOrDefault(style.borderJoinStyle, options.borderJoinStyle);
   ctx.lineWidth = valueOrDefault(style.borderWidth, options.borderWidth);
-  ctx.strokeStyle = valueOrDefault(style.borderColor, options.borderColor);
+  ctx.strokeStyle = resolveCanvasPaint(ctx, valueOrDefault(style.borderColor, options.borderColor));
 }
 
 function strokePathWithCache(ctx: CanvasRenderingContext2D, line: any, start?: number, count?: number): void {

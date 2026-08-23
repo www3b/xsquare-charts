@@ -1,12 +1,8 @@
 import {Color} from '@kurkle/color';
+import {isCanvasPaint} from './helpers.paint.js';
 
 export function isPatternOrGradient(value: unknown): value is CanvasPattern | CanvasGradient {
-  if (value && typeof value === 'object') {
-    const type = value.toString();
-    return type === '[object CanvasPattern]' || type === '[object CanvasGradient]';
-  }
-
-  return false;
+  return isCanvasPaint(value);
 }
 
 export function color(value: CanvasGradient): CanvasGradient;

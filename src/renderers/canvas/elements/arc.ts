@@ -2,6 +2,7 @@ import {HALF_PI, TAU} from '../../../helpers/index.js';
 import {PI, _normalizeAngle} from '../../../helpers/helpers.math.js';
 import {pathArc} from '../../../elements/element.arc.js';
 import type {RenderContext} from '../../core/renderer.js';
+import {resolveCanvasPaint} from '../../../helpers/helpers.paint.js';
 
 function clipSelf(ctx: CanvasRenderingContext2D, element: any, endAngle: number): void {
   const {startAngle, x, y, outerRadius, innerRadius, options} = element;
@@ -98,8 +99,8 @@ export function drawCanvasArc(ctx: CanvasRenderingContext2D, element: any, _cont
   const halfAngle = (element.startAngle + element.endAngle) / 2;
   ctx.translate(Math.cos(halfAngle) * offset, Math.sin(halfAngle) * offset);
   const radiusOffset = offset * (1 - Math.sin(Math.min(PI, circumference || 0)));
-  ctx.fillStyle = options.backgroundColor;
-  ctx.strokeStyle = options.borderColor;
+  ctx.fillStyle = resolveCanvasPaint(ctx, options.backgroundColor);
+  ctx.strokeStyle = resolveCanvasPaint(ctx, options.borderColor);
   drawArc(ctx, element, radiusOffset, spacing, circular);
   drawBorder(ctx, element, radiusOffset, spacing, circular);
   ctx.restore();

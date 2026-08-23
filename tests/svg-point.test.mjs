@@ -224,46 +224,27 @@ test('SVG PointElement renders HTMLImageElement point styles without Canvas draw
   chart.destroy();
 });
 
-test('SVG PointElement snapshots a shared HTMLCanvasElement point style once per render', () => {
+test('SVG PointElement skips Canvas-only point styles without serializing them', () => {
   const {chart} = createChart();
   let snapshots = 0;
-  let version = 'one';
   const icon = {
     height: 12,
     width: 18,
     toDataURL() {
       snapshots++;
-      return `data:image/png;base64,${version}`;
+      return 'data:image/png;base64,one';
     },
     [Symbol.toStringTag]: 'HTMLCanvasElement'
   };
 
   chart.data.datasets[0].pointStyle = icon;
   chart.update('none');
-  const first = pointGroup(chart, 0).children[0];
-  assert.equal(snapshots, 1);
-  assert.equal(first.localName, 'image');
-  assert.equal(first.getAttribute('href'), 'data:image/png;base64,one');
-  assert.equal(first.getAttribute('width'), '18');
-  assert.equal(first.getAttribute('height'), '12');
-
-  version = 'two';
-  icon.width = 24;
-  icon.height = 8;
-  chart.update('none');
-  assert.equal(snapshots, 2);
-  assert.equal(pointGroup(chart, 0).children[0], first);
-  assert.equal(first.getAttribute('href'), 'data:image/png;base64,two');
-  assert.equal(first.getAttribute('width'), '24');
-  assert.equal(first.getAttribute('height'), '8');
-
-  icon.width = 0;
-  chart.update('none');
+  assert.equal(snapshots, 0);
   assert.equal(pointGroup(chart, 0).children.length, 0);
   chart.destroy();
 });
 
-test('SVG PointElement handles an unserializable HTMLCanvasElement point style once per source', () => {
+test('SVG PointElement warns once for Canvas-only point styles', () => {
   const {chart} = createChart();
   let snapshots = 0;
   let warnings = 0;
@@ -283,11 +264,11 @@ test('SVG PointElement handles an unserializable HTMLCanvasElement point style o
   try {
     chart.data.datasets[0].pointStyle = icon;
     chart.update('none');
-    assert.equal(snapshots, 1);
+    assert.equal(snapshots, 0);
     assert.equal(warnings, 1);
     assert.equal(pointGroup(chart, 0).children.length, 0);
     chart.update('none');
-    assert.equal(snapshots, 2);
+    assert.equal(snapshots, 0);
     assert.equal(warnings, 1);
   } finally {
     console.warn = warn;
