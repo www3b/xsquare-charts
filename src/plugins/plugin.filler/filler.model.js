@@ -12,7 +12,7 @@ export function getFillClipBounds(chartArea, clip, bounds) {
     top = start;
     bottom = end;
   }
-  if (clip) {
+  if (clip && (property === 'x' || property === 'y')) {
     left = Math.max(left, clip.left);
     right = Math.min(right, clip.right);
     top = Math.max(top, clip.top);

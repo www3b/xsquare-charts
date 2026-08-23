@@ -143,6 +143,13 @@ function fillPaths(chart, datasetIndex) {
   return group ? group.children.map((item) => item.children[0]) : [];
 }
 
+function fillClipRect(chart, path) {
+  const clip = path.parentNode.getAttribute('clip-path');
+  const id = clip.slice(5, -1);
+  const defs = findChild(chart.$chartjsSvgRoot, 'data-svg-defs', 'true');
+  return findChild(defs, 'id', id).children[0];
+}
+
 function areaDataset(fill = true, overrides = {}) {
   return {
     backgroundColor: '#66aaff',
@@ -325,4 +332,36 @@ test('Radar filler preserves loop geometry and fill rule in SVG and Canvas', () 
   chart.update('none');
   assert.equal(chart.$chartjsSvgRoot, undefined);
   chart.destroy();
+});
+
+test('Shape fill ignores dataset clip while bounded fills retain it in Canvas and SVG', () => {
+  const clip = {left: -40, right: -40, top: -30, bottom: -30};
+  const document = {
+    defaultView: {getComputedStyle: () => ({position: 'static'})},
+    createElementNS: () => new SvgNode(document)
+  };
+  const parent = new SvgNode(document);
+  const canvas = new SvgNode(document);
+  Object.assign(canvas, {width: 400, height: 300, offsetLeft: 0, offsetTop: 0, getContext: () => createContext(canvas)});
+  parent.appendChild(canvas);
+  const shape = new Chart(canvas, {
+    type: 'radar', data: {labels: ['A', 'B', 'C'], datasets: [{data: [2, 4, 3], fill: 'shape', backgroundColor: '#60a5fa', clip}]},
+    options: {animation: false, plugins: {filler: {}, legend: false}, renderer: 'svg', responsive: false}
+  });
+  const shapeRect = fillClipRect(shape, fillPaths(shape, 0)[0]);
+  assert.equal(shapeRect.getAttribute('x'), String(shape.chartArea.left));
+  assert.equal(shapeRect.getAttribute('y'), String(shape.chartArea.top));
+  assert.equal(shapeRect.getAttribute('width'), String(shape.chartArea.right - shape.chartArea.left));
+  shape.destroy();
+
+  const bounded = createChart([areaDataset('origin', {clip})]);
+  const boundedRect = fillClipRect(bounded.chart, fillPaths(bounded.chart, 0)[0]);
+  assert.notEqual(boundedRect.getAttribute('x'), String(bounded.chart.chartArea.left));
+  bounded.chart.destroy();
+
+  const canvasShape = createCanvasChart([areaDataset('shape', {clip})]);
+  const canvasBounded = createCanvasChart([areaDataset('origin', {clip})]);
+  assert.ok(canvasBounded.calls.filter(([name]) => name === 'clip').length > canvasShape.calls.filter(([name]) => name === 'clip').length);
+  canvasShape.chart.destroy();
+  canvasBounded.chart.destroy();
 });

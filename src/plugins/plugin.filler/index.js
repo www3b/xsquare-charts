@@ -95,10 +95,6 @@ export default {
       return;
     }
 
-    // SVG fill paths stay with their dataset so the default beforeDatasetDraw
-    // order is exact. Earlier draw times retain their Canvas geometry but
-    // cannot globally interleave every dataset fill before every dataset line
-    // without introducing a separate SVG scene graph.
     const metasets = chart.getSortedVisibleDatasetMetas();
     drawFillers(chart, metasets.slice().reverse().map((meta) => meta.$filler), 'beforeDatasetsDraw');
   },
