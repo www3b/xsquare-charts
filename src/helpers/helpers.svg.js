@@ -1,3 +1,5 @@
+import {isCanvasPaint, isRendererNeutralPaint} from './helpers.paint.js';
+
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const SVG_LAYERS = /** @type {('background'|'datasets'|'foreground')[]} */ (['background', 'datasets', 'foreground']);
 const svgElementContexts = new WeakMap();
@@ -5,7 +7,6 @@ const svgElements = new WeakMap();
 const svgPaints = new WeakMap();
 const svgCharts = new WeakMap();
 const svgWarnings = new WeakSet();
-import {isCanvasPaint, isRendererNeutralPaint} from './helpers.paint.js';
 
 function createSvgElement(chart, name) {
   const root = chart.$chartjsSvgRoot || (chart.renderer && chart.renderer.root);
@@ -53,7 +54,7 @@ function updateSvgPaint(chart, value) {
   } else if (value.type === 'radial-gradient') {
     element.setAttribute('gradientUnits', 'userSpaceOnUse');
     element.setAttribute('cx', value.x1); element.setAttribute('cy', value.y1); element.setAttribute('r', value.r1);
-    element.setAttribute('fx', value.x0); element.setAttribute('fy', value.y0);
+    element.setAttribute('fx', value.x0); element.setAttribute('fy', value.y0); element.setAttribute('fr', value.r0);
   } else {
     const image = value.image;
     const width = image.naturalWidth || image.width;
@@ -74,9 +75,7 @@ function updateSvgPaint(chart, value) {
 }
 
 /**
- * Resolves a Chart.js Color value to an SVG paint. Native Canvas paints are
- * rasterized because CanvasGradient and CanvasPattern deliberately expose no
- * public metadata for lossless vector conversion.
+ * Resolves a Chart.js Color value to an SVG paint.
  *
  * @param {any} chart
  * @param {any} value

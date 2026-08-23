@@ -9,6 +9,7 @@ import {drawCanvasLegend} from './legend.js';
 import {drawCanvasScale} from './scale.js';
 import {drawCanvasRadialScale} from './radialScale.js';
 import {drawCanvasFiller, removeCanvasFiller} from './filler.js';
+import {resetCanvasPaintCache} from '../../helpers/helpers.paint.js';
 
 const EXPANDO_KEY = '$chartjs';
 
@@ -91,6 +92,7 @@ export default class CanvasRenderer implements Renderer {
   }
 
   beginFrame(): void {
+    resetCanvasPaintCache();
     return;
   }
   endFrame(): void {

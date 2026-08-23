@@ -11,6 +11,7 @@ import type {
   ContextProxy
 } from './helpers.config.types.js';
 import {isArray, isFunction, isObject, resolveObjectKey, _capitalize} from './helpers.core.js';
+import {isRendererNeutralPaint} from './helpers.paint.js';
 
 export * from './helpers.config.types.js';
 
@@ -212,7 +213,7 @@ export function _descriptors(
 }
 
 const readKey = (prefix: string, name: string) => prefix ? prefix + _capitalize(name) : name;
-const needsSubResolver = (prop: string, value: unknown) => isObject(value) && prop !== 'adapters' &&
+const needsSubResolver = (prop: string, value: unknown) => isObject(value) && !isRendererNeutralPaint(value) && prop !== 'adapters' &&
   (Object.getPrototypeOf(value) === null || value.constructor === Object);
 
 function _cached(

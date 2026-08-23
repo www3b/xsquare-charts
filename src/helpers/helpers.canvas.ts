@@ -470,7 +470,7 @@ function decorateText(
 function drawBackdrop(ctx: CanvasRenderingContext2D, opts: BackdropOptions) {
   const oldColor = ctx.fillStyle;
 
-  ctx.fillStyle = opts.color as string;
+  ctx.fillStyle = resolveCanvasPaint(ctx, opts.color);
   ctx.fillRect(opts.left, opts.top, opts.width, opts.height);
   ctx.fillStyle = oldColor;
 }

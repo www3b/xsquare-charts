@@ -1,5 +1,6 @@
 import {addRoundedRectPath, renderText} from '../../helpers/helpers.canvas.js';
 import {TAU} from '../../helpers/helpers.math.js';
+import {resolveCanvasPaint} from '../../helpers/helpers.paint.js';
 import type {RadialScaleDrawPart} from '../core/renderer.js';
 
 function traceShape(ctx: CanvasRenderingContext2D, shape: any): void {
@@ -26,7 +27,7 @@ function drawPointLabels(ctx: CanvasRenderingContext2D, scale: any): void {
     }
     const backdrop = item.backdrop;
     if (backdrop) {
-      ctx.fillStyle = backdrop.color;
+      ctx.fillStyle = resolveCanvasPaint(ctx, backdrop.color);
       if (Object.values(backdrop.borderRadius).some((value: any) => value !== 0)) {
         ctx.beginPath();
         addRoundedRectPath(ctx, {
@@ -54,7 +55,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, scale: any): void {
   ctx.beginPath();
   traceShape(ctx, item.shape);
   ctx.closePath();
-  ctx.fillStyle = item.color;
+  ctx.fillStyle = resolveCanvasPaint(ctx, item.color);
   ctx.fill();
   ctx.restore();
 }
@@ -64,7 +65,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, scale: any): void {
 
   for (const item of scale.getRadialGridDrawItems()) {
     ctx.save();
-    ctx.strokeStyle = item.color;
+    ctx.strokeStyle = resolveCanvasPaint(ctx, item.color);
     ctx.lineWidth = item.lineWidth;
     ctx.setLineDash(item.borderDash);
     ctx.lineDashOffset = item.borderDashOffset;
@@ -82,7 +83,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, scale: any): void {
   ctx.save();
   for (const item of angleItems) {
     ctx.lineWidth = item.lineWidth;
-    ctx.strokeStyle = item.color;
+    ctx.strokeStyle = resolveCanvasPaint(ctx, item.color);
     ctx.setLineDash(item.borderDash);
     ctx.lineDashOffset = item.borderDashOffset;
     ctx.beginPath();
@@ -106,7 +107,7 @@ function drawLabels(ctx: CanvasRenderingContext2D, scale: any): void {
   ctx.textBaseline = 'middle';
   for (const item of items) {
     if (item.backdrop) {
-      ctx.fillStyle = item.backdrop.color;
+      ctx.fillStyle = resolveCanvasPaint(ctx, item.backdrop.color);
       ctx.fillRect(item.backdrop.x, item.backdrop.y, item.backdrop.width, item.backdrop.height);
     }
     renderText(ctx, item.text, item.x, item.y, item.font, {

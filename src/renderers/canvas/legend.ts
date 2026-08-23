@@ -1,5 +1,6 @@
 import defaults from '../../core/core.defaults.js';
 import {addRoundedRectPath, drawPointLegend, renderText} from '../../helpers/helpers.canvas.js';
+import {resolveCanvasPaint} from '../../helpers/helpers.paint.js';
 import {clipArea, getRtlAdapter, overrideTextDirection, restoreTextDirection, unclipArea, valueOrDefault} from '../../helpers/index.js';
 import {toTRBLCorners} from '../../helpers/helpers.options.js';
 
@@ -7,8 +8,8 @@ function drawLegendTitle(ctx: CanvasRenderingContext2D, title: any): void {
   if (!title) return;
   ctx.textAlign = title.textAlign;
   ctx.textBaseline = 'middle';
-  ctx.strokeStyle = title.color;
-  ctx.fillStyle = title.color;
+  ctx.strokeStyle = resolveCanvasPaint(ctx, title.color);
+  ctx.fillStyle = resolveCanvasPaint(ctx, title.color);
   renderText(ctx, title.text, title.x, title.y, title.font);
 }
 
@@ -19,12 +20,12 @@ function drawLegendBox(ctx: CanvasRenderingContext2D, drawItem: any, labelOpts: 
 
   ctx.save();
   const lineWidth = valueOrDefault(legendItem.lineWidth, 1);
-  ctx.fillStyle = valueOrDefault(legendItem.fillStyle, defaults.color);
+  ctx.fillStyle = resolveCanvasPaint(ctx, valueOrDefault(legendItem.fillStyle, defaults.color));
   ctx.lineCap = valueOrDefault(legendItem.lineCap, 'butt');
   ctx.lineDashOffset = valueOrDefault(legendItem.lineDashOffset, 0);
   ctx.lineJoin = valueOrDefault(legendItem.lineJoin, 'miter');
   ctx.lineWidth = lineWidth;
-  ctx.strokeStyle = valueOrDefault(legendItem.strokeStyle, defaults.color);
+  ctx.strokeStyle = resolveCanvasPaint(ctx, valueOrDefault(legendItem.strokeStyle, defaults.color));
   ctx.setLineDash(valueOrDefault(legendItem.lineDash, []));
 
   if (labelOpts.usePointStyle) {
@@ -65,8 +66,8 @@ export function drawCanvasLegend(ctx: CanvasRenderingContext2D, legend: any): vo
 
   model.items.forEach((drawItem: any) => {
     const {legendItem, text} = drawItem;
-    ctx.strokeStyle = legendItem.fontColor;
-    ctx.fillStyle = legendItem.fontColor;
+    ctx.strokeStyle = resolveCanvasPaint(ctx, legendItem.fontColor);
+    ctx.fillStyle = resolveCanvasPaint(ctx, legendItem.fontColor);
     drawLegendBox(ctx, drawItem, labelOpts, model);
     renderText(ctx, legendItem.text, text.x, text.y, model.labelFont, {
       strikethrough: legendItem.hidden,

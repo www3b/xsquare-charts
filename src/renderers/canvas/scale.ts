@@ -1,11 +1,12 @@
 import {clipArea, renderText, unclipArea} from '../../helpers/helpers.canvas.js';
 import type {ScaleDrawPart} from '../core/renderer.js';
+import {resolveCanvasPaint} from '../../helpers/helpers.paint.js';
 
 function drawLine(ctx: CanvasRenderingContext2D, p1: any, p2: any, style: any): void {
   if (!style.width || !style.color) return;
   ctx.save();
   ctx.lineWidth = style.width;
-  ctx.strokeStyle = style.color;
+  ctx.strokeStyle = resolveCanvasPaint(ctx, style.color);
   ctx.setLineDash(style.borderDash || []);
   ctx.lineDashOffset = style.borderDashOffset;
   ctx.beginPath();
@@ -19,7 +20,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, scale: any): void {
   const {backgroundColor} = scale.options;
   if (!backgroundColor) return;
   ctx.save();
-  ctx.fillStyle = backgroundColor;
+  ctx.fillStyle = resolveCanvasPaint(ctx, backgroundColor);
   ctx.fillRect(scale.left, scale.top, scale.width, scale.height);
   ctx.restore();
 }

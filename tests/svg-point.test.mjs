@@ -15,6 +15,7 @@ class SvgNode {
   constructor(document, localName) {
     this.ownerDocument = document;
     this.localName = localName;
+    this.nodeName = localName;
     this.children = [];
     this.attributes = new Map();
     this.style = {};
@@ -241,6 +242,68 @@ test('SVG PointElement skips Canvas-only point styles without serializing them',
   chart.update('none');
   assert.equal(snapshots, 0);
   assert.equal(pointGroup(chart, 0).children.length, 0);
+  chart.destroy();
+});
+
+test('SVG point paints preserve radial inner radius and reuse definitions on update', () => {
+  const {chart} = createChart();
+  const linear = {
+    type: 'linear-gradient', x0: 1, y0: 2, x1: 30, y1: 40,
+    colorStops: [{offset: 0, color: '#f00'}, {offset: 1, color: '#00f'}]
+  };
+  const radial = {
+    type: 'radial-gradient', x0: 4, y0: 5, r0: 3, x1: 20, y1: 25, r1: 30,
+    colorStops: [{offset: 0, color: '#fff'}, {offset: 1, color: '#000'}]
+  };
+  const pattern = {
+    type: 'pattern', image: {width: 8, height: 6, src: 'data:image/svg+xml,pattern'}, repetition: 'repeat'
+  };
+
+  chart.data.datasets[0].pointBackgroundColor = () => linear;
+  chart.data.datasets[0].pointBorderColor = () => radial;
+  chart.update('none');
+
+  const defs = findChild(chart.$chartjsSvgRoot, 'data-svg-defs', 'true');
+  const gradients = defs.children.filter((child) => child.localName === 'linearGradient' || child.localName === 'radialGradient');
+  const linearElement = gradients.find((child) => child.localName === 'linearGradient');
+  const radialElement = gradients.find((child) => child.localName === 'radialGradient');
+  assert.equal(gradients.filter((child) => child.localName === 'linearGradient').length, 1);
+  assert.equal(linearElement.getAttribute('gradientUnits'), 'userSpaceOnUse');
+  assert.equal(linearElement.getAttribute('x1'), '1');
+  assert.equal(linearElement.getAttribute('y1'), '2');
+  assert.equal(linearElement.getAttribute('x2'), '30');
+  assert.equal(linearElement.getAttribute('y2'), '40');
+  assert.equal(linearElement.children.length, 2);
+  assert.equal(radialElement.getAttribute('fx'), '4');
+  assert.equal(radialElement.getAttribute('fy'), '5');
+  assert.equal(radialElement.getAttribute('fr'), '3');
+  assert.equal(radialElement.getAttribute('cx'), '20');
+  assert.equal(radialElement.getAttribute('cy'), '25');
+  assert.equal(radialElement.getAttribute('r'), '30');
+
+  radial.r0 = 7;
+  chart.update('none');
+  assert.equal(defs.children.find((child) => child.localName === 'radialGradient'), radialElement);
+  assert.equal(radialElement.getAttribute('fr'), '7');
+
+  linear.x1 = 60;
+  chart.update('none');
+  assert.equal(defs.children.find((child) => child.localName === 'linearGradient'), linearElement);
+  assert.equal(linearElement.getAttribute('x2'), '60');
+
+  chart.data.datasets[0].pointBackgroundColor = pattern;
+  chart.update('none');
+  const patternElement = defs.children.find((child) => child.localName === 'pattern');
+  assert.equal(patternElement.children[0].getAttribute('href'), pattern.image.src);
+  assert.equal(patternElement.getAttribute('width'), '8');
+  assert.equal(patternElement.getAttribute('height'), '6');
+
+  chart.data.datasets[0].pointBorderColor = '#000';
+  chart.update('none');
+  assert.equal(defs.children.some((child) => child.localName === 'radialGradient'), false);
+  chart.data.datasets[0].pointBackgroundColor = '#fff';
+  chart.update('none');
+  assert.equal(defs.children.some((child) => child.localName === 'pattern'), false);
   chart.destroy();
 });
 

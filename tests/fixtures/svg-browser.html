@@ -91,23 +91,17 @@
     canvas.height = 250;
     card.appendChild(canvas);
     document.querySelector('#fixtures').appendChild(card);
-    const context = canvas.getContext('2d');
-    const linear = context.createLinearGradient(0, 0, canvas.width, 0);
-    linear.addColorStop(0, 'rgba(37, 99, 235, .15)');
-    linear.addColorStop(.5, '#8b5cf6');
-    linear.addColorStop(1, '#ec4899');
-    const radial = context.createRadialGradient(210, 125, 10, 210, 125, 180);
-    radial.addColorStop(0, 'rgba(16, 185, 129, .7)');
-    radial.addColorStop(1, 'rgba(16, 185, 129, .05)');
-    const tile = document.createElement('canvas');
-    tile.width = tile.height = 10;
-    const tileContext = tile.getContext('2d');
-    tileContext.fillStyle = '#f59e0b';
-    tileContext.fillRect(0, 0, 10, 10);
-    tileContext.fillStyle = '#7c2d12';
-    tileContext.fillRect(0, 0, 5, 5);
-    tileContext.fillRect(5, 5, 5, 5);
-    const pattern = context.createPattern(tile, 'repeat');
+    const linear = {
+      type: 'linear-gradient', x0: 0, y0: 0, x1: canvas.width, y1: 0,
+      colorStops: [{offset: 0, color: 'rgba(37, 99, 235, .15)'}, {offset: .5, color: '#8b5cf6'}, {offset: 1, color: '#ec4899'}]
+    };
+    const radial = {
+      type: 'radial-gradient', x0: 210, y0: 125, r0: 10, x1: 210, y1: 125, r1: 180,
+      colorStops: [{offset: 0, color: 'rgba(16, 185, 129, .7)'}, {offset: 1, color: 'rgba(16, 185, 129, .05)'}]
+    };
+    const patternImage = new Image(10, 10);
+    patternImage.src = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%2210%22%3E%3Crect%20width%3D%2210%22%20height%3D%2210%22%20fill%3D%22%23f59e0b%22%2F%3E%3Cpath%20d%3D%22M0%200h5v5H0zM5%205h5v5H5z%22%20fill%3D%22%237c2d12%22%2F%3E%3C%2Fsvg%3E';
+    const pattern = {type: 'pattern', image: patternImage, repetition: 'repeat'};
     const icon = document.createElement('canvas');
     icon.width = 18;
     icon.height = 12;
@@ -118,7 +112,7 @@
     iconContext.fillRect(3, 3, 12, 6);
     const commonPaint = {animation: false, plugins: {legend: {labels: {usePointStyle: true}}}, renderer, responsive: false};
     const config = type === 'line'
-      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Native paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7, pointStyle: icon}]}}
+      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Neutral paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7, pointStyle: icon}]}}
       : type === 'bar'
         ? {data: {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Pattern bars', backgroundColor: pattern, borderColor: linear, borderWidth: 3, data: [4, 7, 5]}]}}
         : {data: {labels: ['One', 'Two', 'Three'], datasets: [{backgroundColor: [linear, pattern, radial], borderColor: linear, borderWidth: 3, data: [4, 3, 5]}]}};
@@ -292,17 +286,17 @@
   });
   const paintChart = charts.get('paint-line-svg');
   const paintRoot = document.querySelector('[data-case="paint-line-svg"] svg[data-chart-svg]');
-  const paintDefinitions = paintRoot?.querySelectorAll('defs pattern[data-svg-paint]').length || 0;
+  const paintDefinitions = paintRoot?.querySelectorAll('defs [data-svg-paint]').length || 0;
   const canvasPointStyle = document.querySelectorAll('[data-case="paint-line-svg"] [data-svg-part="points"] image').length === 4
     && Boolean(document.querySelector('[data-case="paint-line-svg"] [data-legend-role="symbol-image"]'));
   const paintAttributes = [...document.querySelectorAll('[data-case^="paint-"] svg [fill], [data-case^="paint-"] svg [stroke]')]
     .map((element) => `${element.getAttribute('fill')} ${element.getAttribute('stroke')}`).join(' ');
   const paintExport = paintChart.toSVG();
-  const firstPaintPattern = paintRoot?.querySelector('defs pattern[data-svg-paint] image');
-  const firstPaintHref = firstPaintPattern?.getAttribute('href');
-  paintChart.$paint.linear.addColorStop(.75, '#ffffff');
+  const firstPaintGradient = paintRoot?.querySelector('defs linearGradient[data-svg-paint]');
+  paintChart.$paint.linear.x1 = 360;
   paintChart.update('none');
-  const paintUpdated = firstPaintPattern === paintRoot?.querySelector('defs pattern[data-svg-paint] image');
+  const paintUpdated = firstPaintGradient === paintRoot?.querySelector('defs linearGradient[data-svg-paint]')
+    && firstPaintGradient?.getAttribute('x2') === '360';
   const result = {
     fill: Boolean(fill?.getAttribute('clip-path')),
     exportsValid,
@@ -318,10 +312,10 @@
     svgCharts: svgCharts.length,
     svgNoCanvas,
     rendererSurfaceSwitch,
-    paintDefinitions: paintDefinitions >= 2,
+    paintDefinitions: paintDefinitions >= 3,
     canvasPointStyle,
     canvasPointExport: /data-svg-part="points"[\s\S]*?<image[^>]+href="data:image\/png;base64,/.test(paintExport),
-    paintExport: paintExport.includes('data:image/png;base64,') && !paintExport.includes('[object Canvas'),
+    paintExport: paintExport.includes('linearGradient') && paintExport.includes('radialGradient') && paintExport.includes('<pattern') && !paintExport.includes('[object Canvas'),
     paintSafe: !paintAttributes.includes('[object CanvasGradient]') && !paintAttributes.includes('[object CanvasPattern]'),
     paintUpdated,
     text: document.querySelectorAll('[data-case="line-svg"] text:not([data-svg-measurement])').length,
