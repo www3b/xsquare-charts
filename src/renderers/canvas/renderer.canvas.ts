@@ -134,6 +134,10 @@ export default class CanvasRenderer implements Renderer {
     removeCanvasFiller(source);
   }
 
+  removeDatasetPart(_index: number, _part: string): void {
+    return;
+  }
+
   beginDataset(_index: number, clip: any): void {
     if (clip && this.context) {
       clipArea(this.context, clip);

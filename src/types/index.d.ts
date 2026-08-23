@@ -565,6 +565,7 @@ export interface Renderer {
   drawRadialScale(scale: any, part: RadialScaleDrawPart): void;
   drawFiller(models: any[], drawTime: FillerDrawTime): void;
   removeFiller(source: any): void;
+  removeDatasetPart?(index: number, part: string): void;
   drawTitle(title: any): void;
   measureText(text: string | number, font: string): number;
   getEventTarget(): HTMLCanvasElement | SVGSVGElement;

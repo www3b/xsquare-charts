@@ -223,16 +223,42 @@
       };
     }
     try {
-      const chart = new Chart(host, {
-        type: 'line',
-        data: {labels: ['A', 'B'], datasets: [{data: [1, 2]}]},
-        options: {animation: false, plugins: {legend: false}, renderer: 'svg', responsive: false}
+      const paint = {
+        type: 'linear-gradient', x0: 0, y0: 0, x1: 320, y1: 0,
+        colorStops: [{offset: 0, color: '#2563eb'}, {offset: 1, color: '#ec4899'}]
+      };
+      const strictCases = [
+        ['line', {labels: ['A', 'B', 'C'], datasets: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {plugins: {title: {display: true, text: 'Strict'}, legend: {display: true}}}],
+        ['bar', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: paint}]}, {}],
+        ['histogram', {datasets: [{data: [{xMin: 0, xMax: 2, y: 1}, {xMin: 2, xMax: 5, y: 3}], backgroundColor: paint}]}, {}],
+        ['doughnut', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: paint}]}, {}],
+        ['pie', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: paint}]}, {}],
+        ['scatter', {datasets: [{data: [{x: 1, y: 2}, {x: 3, y: 4}], showLine: true, borderColor: paint, backgroundColor: paint, fill: true}]}, {}],
+        ['bubble', {datasets: [{data: [{x: 1, y: 2, r: 4}, {x: 3, y: 4, r: 8}], backgroundColor: paint}]}, {}],
+        ['radar', {labels: ['A', 'B', 'C'], datasets: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {}],
+        ['polarArea', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: paint}]}, {}],
+        ['line', {datasets: [{data: [{x: 1, y: 1}, {x: 10, y: 10}], borderColor: paint}]}, {scales: {x: {type: 'logarithmic'}, y: {type: 'logarithmic'}}}],
+        ['line', {datasets: [{data: [{x: '2026-01-01', y: 1}, {x: '2026-01-02', y: 2}], borderColor: paint}]}, {scales: {x: {type: 'time', time: {unit: 'day'}}}}],
+        ['line', {datasets: [{data: [{x: '2026-01-01', y: 1}, {x: '2026-01-02', y: 2}], borderColor: paint}]}, {scales: {x: {type: 'timeseries', time: {unit: 'day'}}}}],
+      ];
+      const charts = strictCases.map(([type, data, options]) => {
+        const target = document.createElement('div');
+        target.style.width = '320px';
+        target.style.height = '180px';
+        host.appendChild(target);
+        return new Chart(target, {type, data, options: {animation: false, renderer: 'svg', responsive: false, ...options}});
       });
-      chart.resize(320, 180);
-      chart.update('none');
-      const valid = !forbidden && chart.canvas === null && chart.ctx === null
-        && host.querySelectorAll('svg').length === 1 && host.querySelectorAll('canvas').length === 0;
-      chart.destroy();
+      const line = charts[0];
+      line.resize(320, 180);
+      line.data.datasets[0].data[1] = 4;
+      line.update('none');
+      const point = line.getDatasetMeta(0).data[1];
+      const interaction = line.getElementsAtEventForMode({type: 'mousemove', x: point.x, y: point.y, native: null}, 'nearest', {intersect: true}, false);
+      line.tooltip.setActiveElements([{datasetIndex: 0, index: 1}], {x: point.x, y: point.y});
+      line.draw();
+      const valid = !forbidden && charts.every((chart) => chart.canvas === null && chart.ctx === null)
+        && interaction.length === 1 && host.querySelectorAll('svg').length === strictCases.length && host.querySelectorAll('canvas').length === 0;
+      charts.forEach((chart) => chart.destroy());
       return valid && host.querySelectorAll('svg, canvas').length === 0;
     } finally {
       document.createElement = createElement;
@@ -246,24 +272,40 @@
 
   function assertRendererSurfaceSwitch() {
     const host = document.createElement('div');
-    host.style.width = '320px';
-    host.style.height = '180px';
     document.body.appendChild(host);
-    const chart = new Chart(host, {
-      type: 'line',
-      data: {labels: ['A', 'B'], datasets: [{data: [1, 2]}]},
-      options: {animation: false, plugins: {legend: false}, renderer: 'canvas', responsive: false}
+    const paint = {
+      type: 'linear-gradient', x0: 0, y0: 0, x1: 320, y1: 0,
+      colorStops: [{offset: 0, color: '#2563eb'}, {offset: 1, color: '#ec4899'}]
+    };
+    const cases = [
+      ['line', {labels: ['A', 'B', 'C'], datasets: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {plugins: {title: {display: true, text: 'Switch'}, legend: {display: true}}}],
+      ['bar', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: '#2563eb'}]}, {}],
+      ['histogram', {datasets: [{data: [{xMin: 0, xMax: 2, y: 1}, {xMin: 2, xMax: 5, y: 3}], backgroundColor: '#2563eb'}]}, {}],
+      ['doughnut', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
+      ['pie', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
+      ['radar', {labels: ['A', 'B', 'C'], datasets: [{data: [1, 3, 2], backgroundColor: '#2563eb'}]}, {}],
+      ['polarArea', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
+      ['scatter', {datasets: [{data: [{x: 1, y: 2}, {x: 3, y: 4}], showLine: true, backgroundColor: '#2563eb'}]}, {}],
+      ['bubble', {datasets: [{data: [{x: 1, y: 2, r: 4}, {x: 3, y: 4, r: 8}], backgroundColor: '#2563eb'}]}, {}],
+    ];
+    const valid = cases.every(([type, data, options]) => {
+      const target = document.createElement('div');
+      target.style.width = '320px';
+      target.style.height = '180px';
+      host.appendChild(target);
+      const chart = new Chart(target, {type, data, options: {animation: false, renderer: 'canvas', responsive: false, ...options}});
+      const canvasOnly = target.querySelectorAll('canvas').length === 1 && target.querySelectorAll('svg').length === 0;
+      chart.options.renderer = 'svg';
+      chart.update('none');
+      const svgOnly = target.querySelectorAll('canvas').length === 0 && target.querySelectorAll('svg').length === 1;
+      chart.options.renderer = 'canvas';
+      chart.update('none');
+      const canvasAgain = target.querySelectorAll('canvas').length === 1 && target.querySelectorAll('svg').length === 0;
+      chart.destroy();
+      return canvasOnly && svgOnly && canvasAgain;
     });
-    const canvasOnly = host.querySelectorAll('canvas').length === 1 && host.querySelectorAll('svg').length === 0;
-    chart.options.renderer = 'svg';
-    chart.update('none');
-    const svgOnly = host.querySelectorAll('canvas').length === 0 && host.querySelectorAll('svg').length === 1;
-    chart.options.renderer = 'canvas';
-    chart.update('none');
-    const canvasAgain = host.querySelectorAll('canvas').length === 1 && host.querySelectorAll('svg').length === 0;
-    chart.destroy();
     host.remove();
-    return canvasOnly && svgOnly && canvasAgain;
+    return valid;
   }
 
   const svgNoCanvas = assertSvgNoCanvas();
@@ -285,6 +327,7 @@
       && document.querySelector(`${root} [data-svg-part="labels"] text`);
   });
   const paintChart = charts.get('paint-line-svg');
+  const canvasExport = charts.get('paint-line-canvas').toBase64Image();
   const paintRoot = document.querySelector('[data-case="paint-line-svg"] svg[data-chart-svg]');
   const paintDefinitions = paintRoot?.querySelectorAll('defs [data-svg-paint]').length || 0;
   const canvasPointStyle = document.querySelectorAll('[data-case="paint-line-svg"] [data-svg-part="points"] image').length === 4
@@ -316,6 +359,7 @@
     canvasPointStyle,
     canvasPointExport: /data-svg-part="points"[\s\S]*?<image[^>]+href="data:image\/png;base64,/.test(paintExport),
     paintExport: paintExport.includes('linearGradient') && paintExport.includes('radialGradient') && paintExport.includes('<pattern') && !paintExport.includes('[object Canvas'),
+    canvasExport: canvasExport.startsWith('data:image/png;base64,'),
     paintSafe: !paintAttributes.includes('[object CanvasGradient]') && !paintAttributes.includes('[object CanvasPattern]'),
     paintUpdated,
     text: document.querySelectorAll('[data-case="line-svg"] text:not([data-svg-measurement])').length,

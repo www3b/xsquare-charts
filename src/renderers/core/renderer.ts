@@ -22,6 +22,7 @@ export interface Renderer {
   drawRadialScale(scale: any, part: RadialScaleDrawPart): void;
   drawFiller(models: any[], drawTime: FillerDrawTime): void;
   removeFiller(source: any): void;
+  removeDatasetPart?(index: number, part: string): void;
   drawTitle(title: any): void;
   beginDataset(index: number, clip: any): void;
   endDataset(clip: any): void;

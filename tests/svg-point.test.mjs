@@ -196,6 +196,24 @@ test('SVG PointElement reuses standard point geometry, styles and DOM nodes', ()
   assert.deepEqual(parent.children, [canvas]);
 });
 
+test('SVG surface uses the shared interaction geometry for point, nearest, index and dataset modes', () => {
+  const {chart} = createChart();
+  const point = chart.getDatasetMeta(0).data[2];
+  const event = {type: 'mousemove', x: point.x, y: point.y, native: null};
+
+  const pointItems = chart.getElementsAtEventForMode(event, 'point', {intersect: true}, false);
+  const nearestItems = chart.getElementsAtEventForMode(event, 'nearest', {axis: 'xy', intersect: true}, false);
+  const indexItems = chart.getElementsAtEventForMode(event, 'index', {axis: 'x', intersect: false}, false);
+  const datasetItems = chart.getElementsAtEventForMode(event, 'dataset', {intersect: true}, false);
+
+  assert.deepEqual(pointItems.map(({datasetIndex, index}) => [datasetIndex, index]), [[0, 2]]);
+  assert.deepEqual(nearestItems.map(({datasetIndex, index}) => [datasetIndex, index]), [[0, 2]]);
+  assert.deepEqual(indexItems.map(({index}) => index), [2, 2]);
+  assert.equal(datasetItems.length, chart.getDatasetMeta(0).data.length);
+  assert.throws(() => chart.toBase64Image(), /available only when renderer is 'canvas'/);
+  chart.destroy();
+});
+
 test('SVG PointElement renders HTMLImageElement point styles without Canvas drawing', () => {
   const {chart} = createChart();
   const image = {

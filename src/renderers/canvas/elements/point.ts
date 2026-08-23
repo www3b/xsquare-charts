@@ -1,4 +1,5 @@
-import {drawPoint, _isPointInArea} from '../../../helpers/helpers.canvas.js';
+import {drawPoint} from '../../../helpers/helpers.canvas.js';
+import {_isPointInArea} from '../../../helpers/helpers.core.js';
 import type {RenderContext} from '../../core/renderer.js';
 import {resolveCanvasPaint} from '../../../helpers/helpers.paint.js';
 

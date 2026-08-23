@@ -254,7 +254,6 @@ export default class DatasetController {
 	 */
   constructor(chart, datasetIndex) {
     this.chart = chart;
-    this._ctx = chart.ctx;
     this.index = datasetIndex;
     this._cachedDataOpts = {};
     this._cachedMeta = this.getMeta();

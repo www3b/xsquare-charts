@@ -2,7 +2,6 @@ import DatasetController from '../core/core.datasetController.js';
 import {isNullOrUndef} from '../helpers/index.js';
 import {isNumber} from '../helpers/helpers.math.js';
 import {_getStartAndCountOfVisiblePoints, _scaleRangesChanged} from '../helpers/helpers.extras.js';
-import {removeSvgDatasetPart} from '../helpers/helpers.svg.js';
 
 export default class ScatterController extends DatasetController {
 
@@ -91,10 +90,8 @@ export default class ScatterController extends DatasetController {
       }, mode);
     } else if (this.datasetElementType) {
       // https://github.com/chartjs/Chart.js/issues/11333
-      if (this.chart.options.renderer === 'svg') {
-        removeSvgDatasetPart(this.chart, this.index, 'line');
-        removeSvgDatasetPart(this.chart, this.index, 'fill');
-      }
+      this.chart.renderer.removeDatasetPart?.(this.index, 'line');
+      this.chart.renderer.removeDatasetPart?.(this.index, 'fill');
       delete meta.dataset;
       this.datasetElementType = false;
     }

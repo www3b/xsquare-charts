@@ -110,6 +110,17 @@ test('Elements stay renderer-neutral', () => {
   }
 });
 
+test('Controllers stay renderer-neutral', () => {
+  const directory = new URL('../src/controllers/', import.meta.url);
+  for (const name of readdirSync(directory).filter((name) => /\.js$/.test(name))) {
+    const source = readFileSync(new URL(name, directory), 'utf8');
+    assert.doesNotMatch(source, /helpers\.svg|renderers\/(?:canvas|svg)|createElementNS|setAttribute\(/);
+    assert.doesNotMatch(source, /renderer\s*(?:===|!==)|options\.renderer|chart\.ctx|this\._ctx/);
+  }
+  const datasetController = readFileSync(new URL('../src/core/core.datasetController.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(datasetController, /chart\.ctx|this\._ctx/);
+});
+
 test('Legend stays renderer-neutral', () => {
   const source = readFileSync(new URL('../src/plugins/plugin.legend.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /helpers\.svg|renderers\/(?:canvas|svg)|helpers\.canvas|helpers\.path|helpers\.svg\.text/);

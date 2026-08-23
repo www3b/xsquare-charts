@@ -1,5 +1,5 @@
 import defaults from '../core/core.defaults.js';
-import {_isPointInArea} from '../helpers/helpers.canvas.js';
+import {_isPointInArea} from '../helpers/helpers.core.js';
 import {HALF_PI, TAU, toDegrees, toRadians, _normalizeAngle, PI} from '../helpers/helpers.math.js';
 import LinearScaleBase from './scale.linearbase.js';
 import Ticks from '../core/core.ticks.js';

@@ -274,11 +274,6 @@ class Chart {
     this.canvas = null;
     this.ctx = null;
     this._createRenderer(type);
-    each(this._metasets, (meta) => {
-      if (meta && meta.controller) {
-        meta.controller._ctx = this.ctx;
-      }
-    });
     this._resize(width, height);
   }
 

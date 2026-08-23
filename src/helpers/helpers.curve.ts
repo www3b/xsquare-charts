@@ -1,5 +1,5 @@
 import {almostEquals, distanceBetweenPoints, sign} from './helpers.math.js';
-import {_isPointInArea} from './helpers.canvas.js';
+import {_isPointInArea} from './helpers.core.js';
 import type {ChartArea} from '../types/index.js';
 import type {SplinePoint} from '../types/geometric.js';
 

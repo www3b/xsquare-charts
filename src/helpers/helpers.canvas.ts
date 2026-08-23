@@ -339,24 +339,6 @@ export function drawPointLegend(
   }
 }
 
-/**
- * Returns true if the point is inside the rectangle
- * @param point - The point to test
- * @param area - The rectangle
- * @param margin - allowed margin
- * @private
- */
-export function _isPointInArea(
-  point: Point,
-  area: TRBL,
-  margin?: number
-) {
-  margin = margin || 0.5; // margin - default is to match rounded decimals
-
-  return !area || (point && point.x > area.left - margin && point.x < area.right + margin &&
-		point.y > area.top - margin && point.y < area.bottom + margin);
-}
-
 export function clipArea(ctx: CanvasRenderingContext2D, area: TRBL) {
   ctx.save();
   ctx.beginPath();

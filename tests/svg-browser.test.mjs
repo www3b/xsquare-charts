@@ -74,6 +74,7 @@ test('SVG fixtures render in actual Chromium', {skip: !existsSync(chrome), timeo
     assert.equal(result.canvasPointStyle, false);
     assert.equal(result.canvasPointExport, false);
     assert.equal(result.paintExport, true);
+    assert.equal(result.canvasExport, true);
     assert.equal(result.paintSafe, true);
     assert.equal(result.paintUpdated, true);
 

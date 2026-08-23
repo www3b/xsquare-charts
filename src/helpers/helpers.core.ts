@@ -3,7 +3,8 @@
  */
 
 import type {AnyObject} from '../types/basic.js';
-import type {ActiveDataPoint, ChartEvent} from '../types/index.js';
+import type {ActiveDataPoint, ChartEvent, Point} from '../types/index.js';
+import type {TRBL} from '../types/geometric.js';
 
 /**
  * An empty function that can be used, for example, for optional callback.
@@ -27,6 +28,16 @@ export const uid = (() => {
  */
 export function isNullOrUndef(value: unknown): value is null | undefined {
   return value === null || value === undefined;
+}
+
+/**
+ * Returns true if the point is inside the rectangle.
+ * @private
+ */
+export function _isPointInArea(point: Point, area: TRBL, margin?: number) {
+  margin = margin || 0.5;
+  return !area || (point && point.x > area.left - margin && point.x < area.right + margin
+    && point.y > area.top - margin && point.y < area.bottom + margin);
 }
 
 /**

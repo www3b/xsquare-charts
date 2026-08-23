@@ -1,5 +1,5 @@
 import type {FillerDrawTime, RadialScaleDrawPart, Renderer, RendererCreateOptions, RenderContext, ScaleDrawPart} from '../core/renderer.js';
-import {beginSvgRender, endSvgRender, getOrCreateSvgClipRect, getOrCreateSvgDatasetGroup} from '../../helpers/helpers.svg.js';
+import {beginSvgRender, endSvgRender, getOrCreateSvgClipRect, getOrCreateSvgDatasetGroup, removeSvgDatasetPart} from '../../helpers/helpers.svg.js';
 import {drawSvgLine} from './elements/line.js';
 import {drawSvgPoint} from './elements/point.js';
 import {drawSvgBar} from './elements/bar.js';
@@ -101,6 +101,10 @@ export default class SvgRenderer implements Renderer {
 
   removeFiller(source: any): void {
     removeSvgFiller(this.chart, source);
+  }
+
+  removeDatasetPart(index: number, part: string): void {
+    removeSvgDatasetPart(this.chart, index, part);
   }
 
   beginDataset(index: number, clip: any): void {
