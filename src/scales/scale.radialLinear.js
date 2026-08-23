@@ -33,8 +33,12 @@ function getTickBackdropHeight(opts) {
 
 function measureLabelSize(scale, font, label) {
   label = isArray(label) ? label : [label];
+  let width = 0;
+  for (const line of label) {
+    if (!isNullOrUndef(line)) width = Math.max(width, scale.chart.renderer.measureText(line, font.string));
+  }
   return {
-    w: Math.max(...label.map(line => scale.chart.renderer.measureText(line, font.string))),
+    w: width,
     h: label.length * font.lineHeight
   };
 }
@@ -243,62 +247,32 @@ function yForAngle(y, h, angle) {
   return y;
 }
 
-function drawPointLabelBox(ctx, opts, item) {
-  const {left, top, right, bottom} = item;
-  const {backdropColor} = opts;
-
-  if (!isNullOrUndef(backdropColor)) {
-    const borderRadius = toTRBLCorners(opts.borderRadius);
-    const padding = toPadding(opts.backdropPadding);
-    ctx.fillStyle = backdropColor;
-
-    const backdropLeft = left - padding.left;
-    const backdropTop = top - padding.top;
-    const backdropWidth = right - left + padding.width;
-    const backdropHeight = bottom - top + padding.height;
-
-    if (Object.values(borderRadius).some(v => v !== 0)) {
+function drawPointLabelBox(ctx, backdrop) {
+  if (backdrop) {
+    ctx.fillStyle = backdrop.color;
+    if (Object.values(backdrop.borderRadius).some(v => v !== 0)) {
       ctx.beginPath();
       addRoundedRectPath(ctx, {
-        x: backdropLeft,
-        y: backdropTop,
-        w: backdropWidth,
-        h: backdropHeight,
-        radius: borderRadius,
+        x: backdrop.x, y: backdrop.y, w: backdrop.width, h: backdrop.height, radius: backdrop.borderRadius,
       });
       ctx.fill();
     } else {
-      ctx.fillRect(backdropLeft, backdropTop, backdropWidth, backdropHeight);
+      ctx.fillRect(backdrop.x, backdrop.y, backdrop.width, backdrop.height);
     }
   }
 }
 
-function drawPointLabels(scale, labelCount) {
-  const {ctx, options: {pointLabels}} = scale;
-
-  for (let i = labelCount - 1; i >= 0; i--) {
-    const item = scale._pointLabelItems[i];
+function drawPointLabels(scale) {
+  const {ctx} = scale;
+  const items = scale.getPointLabelDrawItems();
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
     if (!item.visible) {
       // overlapping
       continue;
     }
-    const optsAtIndex = pointLabels.setContext(scale.getPointLabelContext(i));
-    drawPointLabelBox(ctx, optsAtIndex, item);
-    const plFont = toFont(optsAtIndex.font);
-    const {x, y, textAlign} = item;
-
-    renderText(
-      ctx,
-      scale._pointLabels[i],
-      x,
-      y + (plFont.lineHeight / 2),
-      plFont,
-      {
-        color: optsAtIndex.color,
-        textAlign: textAlign,
-        textBaseline: 'middle'
-      }
-    );
+    drawPointLabelBox(ctx, item.backdrop);
+    renderText(ctx, item.text, item.x, item.y, item.font, {color: item.color, textAlign: item.textAlign, textBaseline: 'middle'});
   }
 }
 
@@ -589,6 +563,7 @@ export default class RadialLinearScale extends LinearScaleBase {
 
   getRadialGridDrawItems() {
     const {grid, border} = this.options;
+    if (!grid.display) return [];
     const items = [];
     this.ticks.forEach((tick, index) => {
       if (index === 0 && this.min >= 0) return;
@@ -617,6 +592,7 @@ export default class RadialLinearScale extends LinearScaleBase {
 
   getPointLabelDrawItems() {
     const {pointLabels} = this.options;
+    if (!pointLabels.display) return [];
     return this._pointLabelItems.map((layout, index) => {
       const opts = pointLabels.setContext(this.getPointLabelContext(index));
       const font = toFont(opts.font);
@@ -632,6 +608,7 @@ export default class RadialLinearScale extends LinearScaleBase {
 
   getRadialTickDrawItems() {
     const {ticks: tickOpts, reverse} = this.options;
+    if (!tickOpts.display) return [];
     const rotation = this.getIndexAngle(0);
     const items = [];
     this.ticks.forEach((tick, index) => {
@@ -746,7 +723,7 @@ export default class RadialLinearScale extends LinearScaleBase {
     let i, offset, position;
 
     if (opts.pointLabels.display) {
-      drawPointLabels(this, labelCount);
+      drawPointLabels(this);
     }
 
     if (grid.display) {
