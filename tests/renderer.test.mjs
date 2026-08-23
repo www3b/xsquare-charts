@@ -123,3 +123,11 @@ test('Cartesian Scale stays renderer-neutral', () => {
   assert.doesNotMatch(source, /renderer\s*(?:===|!==)|options\.renderer/);
   assert.doesNotMatch(source, /\.fillRect\(|\.beginPath\(|\.stroke\(|\.setAttribute\(/);
 });
+
+test('RadialLinearScale stays renderer-neutral and Scale no longer stores a context', () => {
+  const radial = readFileSync(new URL('../src/scales/scale.radialLinear.js', import.meta.url), 'utf8');
+  const scale = readFileSync(new URL('../src/core/core.scale.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(radial, /helpers\.svg|renderSvgText|renderText|helpers\.path|renderer\s*(?:===|!==)|options\.renderer/);
+  assert.doesNotMatch(radial, /\.fill\(|\.stroke\(|\.beginPath\(|\.setAttribute\(|this\.ctx/);
+  assert.doesNotMatch(scale, /this\.ctx\s*=\s*cfg\.ctx/);
+});

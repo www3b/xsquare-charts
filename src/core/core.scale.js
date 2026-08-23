@@ -186,9 +186,6 @@ export default class Scale extends Element {
     this.type = cfg.type;
     /** @type {any} */
     this.options = undefined;
-    // RadialLinearScale still uses this legacy context until its separate presentation move.
-    /** @type {CanvasRenderingContext2D} */
-    this.ctx = cfg.ctx;
     /** @type {Chart} */
     this.chart = cfg.chart;
 

@@ -1,4 +1,4 @@
-import type {Renderer, RendererCreateOptions, RenderContext, ScaleDrawPart} from '../core/renderer.js';
+import type {RadialScaleDrawPart, Renderer, RendererCreateOptions, RenderContext, ScaleDrawPart} from '../core/renderer.js';
 import {beginSvgRender, endSvgRender, getOrCreateSvgClipRect, getOrCreateSvgDatasetGroup} from '../../helpers/helpers.svg.js';
 import {drawSvgLine} from './elements/line.js';
 import {drawSvgPoint} from './elements/point.js';
@@ -7,6 +7,7 @@ import {drawSvgArc} from './elements/arc.js';
 import {drawSvgTitle} from './title.js';
 import {drawSvgLegend} from './legend.js';
 import {drawSvgScale} from './scale.js';
+import {drawSvgRadialScale} from './radialScale.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -87,6 +88,10 @@ export default class SvgRenderer implements Renderer {
 
   drawScale(scale: any, part: ScaleDrawPart, chartArea?: any): void {
     drawSvgScale(this.chart, scale, part, chartArea);
+  }
+
+  drawRadialScale(scale: any, part: RadialScaleDrawPart): void {
+    drawSvgRadialScale(this.chart, scale, part);
   }
 
   beginDataset(index: number, clip: any): void {

@@ -274,9 +274,6 @@ class Chart {
     this.canvas = null;
     this.ctx = null;
     this._createRenderer(type);
-    each(this.scales, (scale) => {
-      scale.ctx = this.ctx;
-    });
     each(this._metasets, (meta) => {
       if (meta && meta.controller) {
         meta.controller._ctx = this.ctx;
@@ -414,7 +411,6 @@ class Chart {
         scale = new scaleClass({
           id,
           type: scaleType,
-          ctx: this.ctx,
           chart: this
         });
         scales[scale.id] = scale;

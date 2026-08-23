@@ -1,25 +1,10 @@
 import defaults from '../core/core.defaults.js';
-import {addRoundedRectPath, renderText, _isPointInArea} from '../helpers/helpers.canvas.js';
+import {_isPointInArea} from '../helpers/helpers.canvas.js';
 import {HALF_PI, TAU, toDegrees, toRadians, _normalizeAngle, PI} from '../helpers/helpers.math.js';
 import LinearScaleBase from './scale.linearbase.js';
 import Ticks from '../core/core.ticks.js';
 import {valueOrDefault, isArray, isFinite, callback as callCallback, isNullOrUndef} from '../helpers/helpers.core.js';
 import {createContext, toFont, toPadding, toTRBLCorners} from '../helpers/helpers.options.js';
-import {Path} from '../helpers/helpers.path.js';
-import {getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart, resolveSvgPaint} from '../helpers/helpers.svg.js';
-import {renderSvgText} from '../helpers/helpers.svg.text.js';
-
-function svgLayerForZ(z) {
-  return z > 0 ? 'foreground' : 'background';
-}
-
-function setSvgStroke(chart, element, color, lineWidth, dash = [], dashOffset = 0) {
-  element.setAttribute('fill', 'none');
-  element.setAttribute('stroke', resolveSvgPaint(chart, color));
-  element.setAttribute('stroke-width', String(lineWidth));
-  element.setAttribute('stroke-dasharray', String(dash || []));
-  element.setAttribute('stroke-dashoffset', String(dashOffset || 0));
-}
 
 function getTickBackdropHeight(opts) {
   const tickOpts = opts.ticks;
@@ -245,85 +230,6 @@ function yForAngle(y, h, angle) {
     y -= h;
   }
   return y;
-}
-
-function drawPointLabelBox(ctx, backdrop) {
-  if (backdrop) {
-    ctx.fillStyle = backdrop.color;
-    if (Object.values(backdrop.borderRadius).some(v => v !== 0)) {
-      ctx.beginPath();
-      addRoundedRectPath(ctx, {
-        x: backdrop.x, y: backdrop.y, w: backdrop.width, h: backdrop.height, radius: backdrop.borderRadius,
-      });
-      ctx.fill();
-    } else {
-      ctx.fillRect(backdrop.x, backdrop.y, backdrop.width, backdrop.height);
-    }
-  }
-}
-
-function drawPointLabels(scale) {
-  const {ctx} = scale;
-  const items = scale.getPointLabelDrawItems();
-  for (let i = items.length - 1; i >= 0; i--) {
-    const item = items[i];
-    if (!item.visible) {
-      // overlapping
-      continue;
-    }
-    drawPointLabelBox(ctx, item.backdrop);
-    renderText(ctx, item.text, item.x, item.y, item.font, {color: item.color, textAlign: item.textAlign, textBaseline: 'middle'});
-  }
-}
-
-function pathRadiusLine(path, scale, radius, circular, labelCount) {
-  if (circular) {
-    // Draw circular arcs between the points
-    path.arc(scale.xCenter, scale.yCenter, radius, 0, TAU);
-  } else {
-    // Draw straight lines connecting each index
-    let pointPosition = scale.getPointPosition(0, radius);
-    path.moveTo(pointPosition.x, pointPosition.y);
-
-    for (let i = 1; i < labelCount; i++) {
-      pointPosition = scale.getPointPosition(i, radius);
-      path.lineTo(pointPosition.x, pointPosition.y);
-    }
-  }
-}
-
-function pathRadialShape(path, shape) {
-  if (shape.circular) {
-    path.arc(shape.x, shape.y, shape.radius, 0, TAU);
-    return;
-  }
-  const [first, ...rest] = shape.points;
-  if (!first) return;
-  path.moveTo(first.x, first.y);
-  for (const point of rest) path.lineTo(point.x, point.y);
-}
-
-function drawRadiusLine(scale, gridLineOpts, radius, labelCount, borderOpts) {
-  const ctx = scale.ctx;
-  const circular = gridLineOpts.circular;
-
-  const {color, lineWidth} = gridLineOpts;
-
-  if ((!circular && !labelCount) || !color || !lineWidth || radius < 0) {
-    return;
-  }
-
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = lineWidth;
-  ctx.setLineDash(borderOpts.dash || []);
-  ctx.lineDashOffset = borderOpts.dashOffset;
-
-  ctx.beginPath();
-  pathRadiusLine(ctx, scale, radius, circular, labelCount);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.restore();
 }
 
 function createPointLabelContext(parent, index, label) {
@@ -627,109 +533,14 @@ export default class RadialLinearScale extends LinearScaleBase {
 	 * @protected
 	 */
   drawBackground() {
-    const item = this.getBackgroundDrawItem();
-    const backgroundColor = item && item.color;
-    if (this.chart.options.renderer === 'svg') {
-      if (!backgroundColor) {
-        removeSvgScalePart(this.chart, this.id, 'radial-background');
-        return;
-      }
-      const group = getOrCreateSvgScalePart(this.chart, this.id, 'radial-background', svgLayerForZ(valueOrDefault(this.options.grid.z, -1)));
-      const path = new Path();
-      pathRadialShape(path, item.shape);
-      path.closePath();
-      const element = getOrCreateSvgElement(group, 'path');
-      element.setAttribute('d', path.toString());
-      element.setAttribute('fill', resolveSvgPaint(this.chart, backgroundColor));
-      element.setAttribute('stroke', 'none');
-      removeExtraSvgElements(group, 1);
-      return;
-    }
-    if (backgroundColor) {
-      const ctx = this.ctx;
-      ctx.save();
-      ctx.beginPath();
-      pathRadialShape(ctx, item.shape);
-      ctx.closePath();
-      ctx.fillStyle = backgroundColor;
-      ctx.fill();
-      ctx.restore();
-    }
+    this.chart.renderer.drawRadialScale(this, 'background');
   }
 
   /**
 	 * @protected
 	 */
   drawGrid() {
-    const ctx = this.ctx;
-    const opts = this.options;
-    const {angleLines, grid} = opts;
-    const labelCount = this._pointLabels.length;
-    const gridItems = this.getRadialGridDrawItems();
-    const angleItems = this.getAngleLineDrawItems();
-
-    if (this.chart.options.renderer === 'svg') {
-      this._drawSvgPointLabels(labelCount);
-      const layer = svgLayerForZ(valueOrDefault(grid.z, -1));
-
-      if (!grid.display) {
-        removeSvgScalePart(this.chart, this.id, 'radial-grid');
-      } else {
-        const group = getOrCreateSvgScalePart(this.chart, this.id, 'radial-grid', layer);
-        let count = 0;
-        gridItems.forEach((item) => {
-          const path = new Path();
-          pathRadialShape(path, item.shape);
-          path.closePath();
-          const element = getOrCreateSvgElement(group, 'path', count++);
-          element.setAttribute('d', path.toString());
-          setSvgStroke(this.chart, element, item.color, item.lineWidth, item.borderDash, item.borderDashOffset);
-        });
-        removeExtraSvgElements(group, count);
-      }
-
-      if (!angleLines.display) {
-        removeSvgScalePart(this.chart, this.id, 'angle-lines');
-        return;
-      }
-      const group = getOrCreateSvgScalePart(this.chart, this.id, 'angle-lines', layer);
-      let count = 0;
-      for (const item of angleItems) {
-        const line = getOrCreateSvgElement(group, 'line', count++);
-        line.setAttribute('x1', String(item.x1));
-        line.setAttribute('y1', String(item.y1));
-        line.setAttribute('x2', String(item.x2));
-        line.setAttribute('y2', String(item.y2));
-        setSvgStroke(this.chart, line, item.color, item.lineWidth, item.borderDash, item.borderDashOffset);
-      }
-      removeExtraSvgElements(group, count);
-      return;
-    }
-
-    let i, offset, position;
-
-    if (opts.pointLabels.display) {
-      drawPointLabels(this);
-    }
-
-    for (const item of gridItems) {
-      ctx.save(); ctx.strokeStyle = item.color; ctx.lineWidth = item.lineWidth; ctx.setLineDash(item.borderDash); ctx.lineDashOffset = item.borderDashOffset;
-      ctx.beginPath(); pathRadialShape(ctx, item.shape); ctx.closePath(); ctx.stroke(); ctx.restore();
-    }
-
-    if (angleItems.length) {
-      ctx.save();
-
-      for (const item of angleItems) {
-        ctx.lineWidth = item.lineWidth; ctx.strokeStyle = item.color; ctx.setLineDash(item.borderDash); ctx.lineDashOffset = item.borderDashOffset;
-        ctx.beginPath();
-        ctx.moveTo(item.x1, item.y1);
-        ctx.lineTo(item.x2, item.y2);
-        ctx.stroke();
-      }
-
-      ctx.restore();
-    }
+    this.chart.renderer.drawRadialScale(this, 'grid');
   }
 
   /**
@@ -741,40 +552,7 @@ export default class RadialLinearScale extends LinearScaleBase {
 	 * @protected
 	 */
   drawLabels() {
-    const ctx = this.ctx;
-    const opts = this.options;
-    const tickOpts = opts.ticks;
-
-    if (!tickOpts.display) {
-      if (this.chart.options.renderer === 'svg') {
-        removeSvgScalePart(this.chart, this.id, 'radial-ticks');
-      }
-      return;
-    }
-
-    const startAngle = this.getIndexAngle(0);
-    let offset, width;
-
-    if (this.chart.options.renderer === 'svg') {
-      this._drawSvgTickLabels(startAngle, tickOpts);
-      return;
-    }
-
-    ctx.save();
-    ctx.translate(this.xCenter, this.yCenter);
-    ctx.rotate(startAngle);
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    this.getRadialTickDrawItems().forEach((item) => {
-      if (item.backdrop) {
-        ctx.fillStyle = item.backdrop.color;
-        ctx.fillRect(item.backdrop.x, item.backdrop.y, item.backdrop.width, item.backdrop.height);
-      }
-      renderText(ctx, item.text, item.x, item.y, item.font, {color: item.color, strokeColor: item.strokeColor, strokeWidth: item.strokeWidth});
-    });
-
-    ctx.restore();
+    this.chart.renderer.drawRadialScale(this, 'labels');
   }
 
   /**
@@ -782,72 +560,4 @@ export default class RadialLinearScale extends LinearScaleBase {
 	 */
   drawTitle() {}
 
-  _drawSvgPointLabels(labelCount) {
-    const items = this.getPointLabelDrawItems();
-    if (!items.length) {
-      removeSvgScalePart(this.chart, this.id, 'point-labels');
-      return;
-    }
-    const group = getOrCreateSvgScalePart(this.chart, this.id, 'point-labels', svgLayerForZ(valueOrDefault(this.options.grid.z, -1)));
-    for (const item of items) {
-      const label = /** @type {SVGGElement} */ (getOrCreateSvgElement(group, 'g', item.index));
-      const backdrop = getOrCreateSvgElement(label, 'path', 0);
-      if (!item.visible || !item.backdrop) {
-        backdrop.setAttribute('display', 'none');
-      } else {
-        const path = new Path();
-        addRoundedRectPath(path, {
-          x: item.backdrop.x, y: item.backdrop.y, w: item.backdrop.width, h: item.backdrop.height, radius: item.backdrop.borderRadius,
-        });
-        backdrop.setAttribute('d', path.toString());
-        backdrop.setAttribute('fill', resolveSvgPaint(this.chart, item.backdrop.color));
-        backdrop.setAttribute('stroke', 'none');
-        backdrop.setAttribute('display', '');
-      }
-      label.setAttribute('display', item.visible ? '' : 'none');
-      renderSvgText(label, 1, item.text, item.font, {
-        color: item.color,
-        textAlign: item.textAlign,
-        textBaseline: 'middle',
-      }, undefined, item.x, item.y);
-    }
-    removeExtraSvgElements(group, labelCount);
-  }
-
-  _drawSvgTickLabels(startAngle, tickOpts) {
-    const group = getOrCreateSvgScalePart(this.chart, this.id, 'radial-ticks', svgLayerForZ(valueOrDefault(tickOpts.z, 0)));
-    let count = 0;
-    for (let index = 0; index < this.ticks.length; ++index) {
-      if (index === 0 && this.min >= 0 && !this.options.reverse) {
-        continue;
-      }
-      const tick = this.ticks[index];
-      const opts = tickOpts.setContext(this.getContext(index));
-      const font = toFont(opts.font);
-      const offset = this.getDistanceFromCenterForValue(tick.value);
-      const label = /** @type {SVGGElement} */ (getOrCreateSvgElement(group, 'g', count++));
-      label.setAttribute('transform', `translate(${this.xCenter} ${this.yCenter}) rotate(${toDegrees(startAngle)})`);
-      const backdrop = getOrCreateSvgElement(label, 'rect', 0);
-      if (opts.showLabelBackdrop) {
-        const width = this.chart.renderer.measureText(tick.label, font.string);
-        const padding = toPadding(opts.backdropPadding);
-        backdrop.setAttribute('x', String(-width / 2 - padding.left));
-        backdrop.setAttribute('y', String(-offset - font.size / 2 - padding.top));
-        backdrop.setAttribute('width', String(width + padding.width));
-        backdrop.setAttribute('height', String(font.size + padding.height));
-        backdrop.setAttribute('fill', resolveSvgPaint(this.chart, opts.backdropColor));
-        backdrop.setAttribute('display', '');
-      } else {
-        backdrop.setAttribute('display', 'none');
-      }
-      renderSvgText(label, 1, tick.label, font, {
-        color: opts.color,
-        strokeColor: opts.textStrokeColor,
-        strokeWidth: opts.textStrokeWidth,
-        textAlign: 'center',
-        textBaseline: 'middle',
-      }, undefined, 0, -offset);
-    }
-    removeExtraSvgElements(group, count);
-  }
 }

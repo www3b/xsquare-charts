@@ -1,4 +1,5 @@
 export type ScaleDrawPart = 'background' | 'grid' | 'border' | 'labels' | 'title';
+export type RadialScaleDrawPart = 'background' | 'grid' | 'labels';
 
 /**
  * Visual-backend contract owned by Chart. Elements provide resolved geometry and
@@ -17,6 +18,7 @@ export interface Renderer {
   drawElement(element: any, context?: RenderContext): void;
   drawLegend(legend: any): void;
   drawScale(scale: any, part: ScaleDrawPart, chartArea?: any): void;
+  drawRadialScale(scale: any, part: RadialScaleDrawPart): void;
   drawTitle(title: any): void;
   beginDataset(index: number, clip: any): void;
   endDataset(clip: any): void;
