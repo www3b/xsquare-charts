@@ -318,6 +318,17 @@ function pathRadiusLine(path, scale, radius, circular, labelCount) {
   }
 }
 
+function pathRadialShape(path, shape) {
+  if (shape.circular) {
+    path.arc(shape.x, shape.y, shape.radius, 0, TAU);
+    return;
+  }
+  const [first, ...rest] = shape.points;
+  if (!first) return;
+  path.moveTo(first.x, first.y);
+  for (const point of rest) path.lineTo(point.x, point.y);
+}
+
 function drawRadiusLine(scale, gridLineOpts, radius, labelCount, borderOpts) {
   const ctx = scale.ctx;
   const circular = gridLineOpts.circular;
@@ -558,11 +569,89 @@ export default class RadialLinearScale extends LinearScaleBase {
     };
   }
 
+  getRadialShape(radius, circular) {
+    if (circular) {
+      return {circular: true, x: this.xCenter, y: this.yCenter, radius};
+    }
+    const points = [];
+    for (let index = 0; index < this._pointLabels.length; index++) {
+      const point = this.getPointPosition(index, radius);
+      points.push({x: point.x, y: point.y});
+    }
+    return {circular: false, points};
+  }
+
+  getBackgroundDrawItem() {
+    const {backgroundColor, grid: {circular}} = this.options;
+    if (!backgroundColor) return null;
+    return {color: backgroundColor, shape: this.getRadialShape(this.getDistanceFromCenterForValue(this._endValue), circular)};
+  }
+
+  getRadialGridDrawItems() {
+    const {grid, border} = this.options;
+    const items = [];
+    this.ticks.forEach((tick, index) => {
+      if (index === 0 && this.min >= 0) return;
+      const gridOpts = grid.setContext(this.getContext(index));
+      const borderOpts = border.setContext(this.getContext(index));
+      const radius = this.getDistanceFromCenterForValue(tick.value);
+      if ((!gridOpts.circular && !this._pointLabels.length) || !gridOpts.color || !gridOpts.lineWidth || radius < 0) return;
+      items.push({shape: this.getRadialShape(radius, gridOpts.circular), color: gridOpts.color, lineWidth: gridOpts.lineWidth, borderDash: borderOpts.dash || [], borderDashOffset: borderOpts.dashOffset});
+    });
+    return items;
+  }
+
+  getAngleLineDrawItems() {
+    const {angleLines, reverse} = this.options;
+    if (!angleLines.display) return [];
+    const distance = this.getDistanceFromCenterForValue(reverse ? this.min : this.max);
+    const items = [];
+    for (let index = this._pointLabels.length - 1; index >= 0; index--) {
+      const opts = angleLines.setContext(this.getPointLabelContext(index));
+      if (!opts.lineWidth || !opts.color) continue;
+      const point = this.getPointPosition(index, distance);
+      items.push({x1: this.xCenter, y1: this.yCenter, x2: point.x, y2: point.y, color: opts.color, lineWidth: opts.lineWidth, borderDash: opts.borderDash, borderDashOffset: opts.borderDashOffset});
+    }
+    return items;
+  }
+
+  getPointLabelDrawItems() {
+    const {pointLabels} = this.options;
+    return this._pointLabelItems.map((layout, index) => {
+      const opts = pointLabels.setContext(this.getPointLabelContext(index));
+      const font = toFont(opts.font);
+      const padding = toPadding(opts.backdropPadding);
+      const backdrop = isNullOrUndef(opts.backdropColor) ? null : {
+        x: layout.left - padding.left, y: layout.top - padding.top,
+        width: layout.right - layout.left + padding.width, height: layout.bottom - layout.top + padding.height,
+        color: opts.backdropColor, borderRadius: toTRBLCorners(opts.borderRadius)
+      };
+      return {index, text: this._pointLabels[index], visible: layout.visible, x: layout.x, y: layout.y + font.lineHeight / 2, textAlign: layout.textAlign, font, color: opts.color, backdrop};
+    });
+  }
+
+  getRadialTickDrawItems() {
+    const {ticks: tickOpts, reverse} = this.options;
+    const rotation = this.getIndexAngle(0);
+    const items = [];
+    this.ticks.forEach((tick, index) => {
+      if (index === 0 && this.min >= 0 && !reverse) return;
+      const opts = tickOpts.setContext(this.getContext(index));
+      const font = toFont(opts.font);
+      const offset = this.getDistanceFromCenterForValue(tick.value);
+      const padding = toPadding(opts.backdropPadding);
+      const width = opts.showLabelBackdrop ? this.chart.renderer.measureText(tick.label, font.string) : 0;
+      items.push({index, text: tick.label, font, color: opts.color, strokeColor: opts.textStrokeColor, strokeWidth: opts.textStrokeWidth, centerX: this.xCenter, centerY: this.yCenter, rotation, x: 0, y: -offset, backdrop: opts.showLabelBackdrop ? {x: -width / 2 - padding.left, y: -offset - font.size / 2 - padding.top, width: width + padding.width, height: font.size + padding.height, color: opts.backdropColor} : null});
+    });
+    return items;
+  }
+
   /**
 	 * @protected
 	 */
   drawBackground() {
-    const {backgroundColor, grid: {circular}} = this.options;
+    const item = this.getBackgroundDrawItem();
+    const backgroundColor = item && item.color;
     if (this.chart.options.renderer === 'svg') {
       if (!backgroundColor) {
         removeSvgScalePart(this.chart, this.id, 'radial-background');
@@ -570,7 +659,7 @@ export default class RadialLinearScale extends LinearScaleBase {
       }
       const group = getOrCreateSvgScalePart(this.chart, this.id, 'radial-background', svgLayerForZ(valueOrDefault(this.options.grid.z, -1)));
       const path = new Path();
-      pathRadiusLine(path, this, this.getDistanceFromCenterForValue(this._endValue), circular, this._pointLabels.length);
+      pathRadialShape(path, item.shape);
       path.closePath();
       const element = getOrCreateSvgElement(group, 'path');
       element.setAttribute('d', path.toString());
@@ -583,7 +672,7 @@ export default class RadialLinearScale extends LinearScaleBase {
       const ctx = this.ctx;
       ctx.save();
       ctx.beginPath();
-      pathRadiusLine(ctx, this, this.getDistanceFromCenterForValue(this._endValue), circular, this._pointLabels.length);
+      pathRadialShape(ctx, item.shape);
       ctx.closePath();
       ctx.fillStyle = backgroundColor;
       ctx.fill();
@@ -736,34 +825,12 @@ export default class RadialLinearScale extends LinearScaleBase {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    this.ticks.forEach((tick, index) => {
-      if ((index === 0 && this.min >= 0) && !opts.reverse) {
-        return;
+    this.getRadialTickDrawItems().forEach((item) => {
+      if (item.backdrop) {
+        ctx.fillStyle = item.backdrop.color;
+        ctx.fillRect(item.backdrop.x, item.backdrop.y, item.backdrop.width, item.backdrop.height);
       }
-
-      const optsAtIndex = tickOpts.setContext(this.getContext(index));
-      const tickFont = toFont(optsAtIndex.font);
-      offset = this.getDistanceFromCenterForValue(this.ticks[index].value);
-
-      if (optsAtIndex.showLabelBackdrop) {
-        ctx.font = tickFont.string;
-        width = ctx.measureText(tick.label).width;
-        ctx.fillStyle = optsAtIndex.backdropColor;
-
-        const padding = toPadding(optsAtIndex.backdropPadding);
-        ctx.fillRect(
-          -width / 2 - padding.left,
-          -offset - tickFont.size / 2 - padding.top,
-          width + padding.width,
-          tickFont.size + padding.height
-        );
-      }
-
-      renderText(ctx, tick.label, 0, -offset, tickFont, {
-        color: optsAtIndex.color,
-        strokeColor: optsAtIndex.textStrokeColor,
-        strokeWidth: optsAtIndex.textStrokeWidth,
-      });
+      renderText(ctx, item.text, item.x, item.y, item.font, {color: item.color, strokeColor: item.strokeColor, strokeWidth: item.strokeWidth});
     });
 
     ctx.restore();
