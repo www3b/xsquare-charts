@@ -76,7 +76,7 @@ function createContext(canvas) {
   });
 }
 
-function createChart(datasets, filler = {}) {
+function createChart(datasets, filler = {}, options = {}) {
   const document = {
     defaultView: {getComputedStyle: () => ({position: 'static'})},
     createElementNS: () => new SvgNode(document)
@@ -97,6 +97,7 @@ function createChart(datasets, filler = {}) {
       plugins: {filler, legend: false},
       renderer: 'svg',
       responsive: false,
+      ...options,
     },
   });
   return {canvas, chart, parent};
@@ -162,6 +163,47 @@ function areaDataset(fill = true, overrides = {}) {
   };
 }
 
+function pathLinePoints(path) {
+  return [...path.matchAll(/([ML])(-?[\d.]+),(-?[\d.]+)/g)]
+    .map(([, command, x, y]) => ({command, x: +x, y: +y}));
+}
+
+function assertClose(actual, expected, message) {
+  assert.ok(Math.abs(actual - expected) < 1e-6, `${message}: expected ${expected}, got ${actual}`);
+}
+
+function assertPoint(actual, expected, message) {
+  assertClose(actual.x, expected.x, `${message} x`);
+  assertClose(actual.y, expected.y, `${message} y`);
+}
+
+function geometryDataset(fill, data = [2, 5, 3, 6]) {
+  return areaDataset(fill, {
+    data,
+    pointRadius: 0,
+    stepped: false,
+    tension: 0,
+  });
+}
+
+function createGeometryChart(datasets, y = {max: 10, min: 0}) {
+  return createChart(datasets, {}, {
+    scales: {
+      y,
+    },
+  });
+}
+
+function assertHorizontalBoundary(path, sourcePoints, y, name) {
+  const points = pathLinePoints(path).filter((point) => Math.abs(point.y - y) < 1e-6);
+  // Linear boundary targets are a two-point line spanning the source segment,
+  // rather than a copy of every source point.
+  assert.equal(points.length >= 2, true, `${name} has both boundary endpoints`);
+  for (const source of [sourcePoints[0], sourcePoints.at(-1)]) {
+    assert.equal(points.some((point) => Math.abs(point.x - source.x) < 1e-6), true, `${name} boundary reaches x=${source.x}`);
+  }
+}
+
 // eslint-disable-next-line max-statements
 test('SVG filler reuses the existing line/target geometry and cleans up nodes', () => {
   const {canvas, chart, parent} = createChart([
@@ -222,13 +264,67 @@ test('SVG filler reuses the existing line/target geometry and cleans up nodes', 
   assert.deepEqual(parent.children, [canvas]);
 });
 
-test('SVG filler supports boundary targets and above/below clipping', () => {
-  const targets = ['origin', 'start', 'end', {value: 4}, 'stack', 'shape'];
-  for (const target of targets) {
-    const {chart} = createChart([areaDataset(target)]);
-    assert.equal(fillPaths(chart, 0).length, 1, `fill ${JSON.stringify(target)}`);
+test('SVG filler uses the independently resolved origin, start, end and value boundaries', () => {
+  const cases = [
+    {name: 'origin', fill: 'origin', boundary: ({scale}) => scale.getBasePixel()},
+    {name: 'start', fill: 'start', boundary: ({chart}) => chart.chartArea.bottom},
+    {name: 'end', fill: 'end', boundary: ({chart}) => chart.chartArea.top},
+    // With min=0 and max=10, value 4 is exactly 40% of the chart area above its bottom.
+    {name: 'value', fill: {value: 4}, boundary: ({chart}) => chart.chartArea.bottom - (chart.chartArea.bottom - chart.chartArea.top) * 0.4},
+  ];
+  for (const {name, fill, boundary} of cases) {
+    const {chart} = createGeometryChart([geometryDataset(fill)]);
+    const sourcePoints = chart.getDatasetMeta(0).data;
+    const scale = chart.scales.y;
+    const expected = boundary({chart, scale});
+    const path = fillPaths(chart, 0)[0];
+    assert.ok(path, name);
+    assertHorizontalBoundary(path.getAttribute('d'), sourcePoints, expected, name);
     chart.destroy();
   }
+});
+
+test('SVG filler keeps start distinct from origin below zero', () => {
+  const {chart} = createGeometryChart([geometryDataset('start')], {max: 10, min: -5});
+  const sourcePoints = chart.getDatasetMeta(0).data;
+  const path = fillPaths(chart, 0)[0];
+  assert.notEqual(chart.scales.y.getBasePixel(), chart.chartArea.bottom, 'zero-origin and start are distinct in this scale');
+  assertHorizontalBoundary(path.getAttribute('d'), sourcePoints, chart.chartArea.bottom, 'start below zero');
+  chart.destroy();
+});
+
+test('SVG filler stack target follows the lower dataset coordinates', () => {
+  const {chart} = createGeometryChart([
+    geometryDataset(false, [1, 2, 3, 4]),
+    geometryDataset('stack', [4, 6, 5, 7]),
+  ]);
+  const lower = chart.getDatasetMeta(0).data;
+  const path = fillPaths(chart, 1)[0];
+  const actual = pathLinePoints(path.getAttribute('d'));
+  for (const point of lower) {
+    assert.equal(actual.some((candidate) => Math.abs(candidate.x - point.x) < 1e-6 && Math.abs(candidate.y - point.y) < 1e-6), true,
+      `stack boundary includes lower dataset point (${point.x}, ${point.y})`);
+  }
+  chart.destroy();
+});
+
+test('SVG filler shape target closes only the source line topology', () => {
+  const {chart} = createGeometryChart([geometryDataset('shape')]);
+  const source = chart.getDatasetMeta(0).data;
+  const path = fillPaths(chart, 0)[0].getAttribute('d');
+  const commands = pathLinePoints(path);
+  assert.equal(path.endsWith('Z'), true);
+  // LineElement writes its first source point once for moveTo and once for
+  // the first lineTo. Shape fill adds no target boundary beyond that source path.
+  assert.equal(commands.length, source.length + 1);
+  for (let index = 0; index < source.length + 1; index++) {
+    assert.equal(commands[index].command, index ? 'L' : 'M');
+    assertPoint(commands[index], source[Math.max(0, index - 1)], `shape source point ${index}`);
+  }
+  chart.destroy();
+});
+
+test('SVG filler supports above/below clipping', () => {
 
   const {chart} = createChart([areaDataset({target: 'origin', above: '#00aa00', below: '#aa0000'}, {
     data: [-2, 3, -1, 4],

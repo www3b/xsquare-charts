@@ -131,6 +131,67 @@ function pointGroup(chart, datasetIndex) {
   return findChild(dataset, 'data-svg-part', 'points');
 }
 
+function pathCommands(path) {
+  return [...path.matchAll(/([ML])(-?[\d.]+),(-?[\d.]+)/g)]
+    .map(([, command, x, y]) => ({command, x: +x, y: +y}));
+}
+
+function assertClose(actual, expected, message) {
+  assert.ok(Math.abs(actual - expected) < 1e-6, `${message}: expected ${expected}, got ${actual}`);
+}
+
+function assertPoint(actual, expected, message) {
+  assertClose(actual.x, expected.x, `${message} x`);
+  assertClose(actual.y, expected.y, `${message} y`);
+}
+
+function assertPathCommands(path, expected, name) {
+  const actual = pathCommands(path);
+  assert.equal(actual.length, expected.length, `${name} command count`);
+  for (let index = 0; index < expected.length; index++) {
+    assert.equal(actual[index].command, expected[index].command, `${name} command ${index}`);
+    assertPoint(actual[index], expected[index], `${name} point ${index}`);
+  }
+}
+
+function rotatePoint(center, radius, angle) {
+  return {
+    x: center.x + Math.cos(angle) * radius,
+    y: center.y + Math.sin(angle) * radius,
+  };
+}
+
+function createPrimitiveChart(pointStyle, pointRotation = 0) {
+  const {canvas, parent} = createCanvas();
+  const chart = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: ['only point'],
+      datasets: [{
+        backgroundColor: '#abcdef',
+        borderColor: '#123456',
+        data: [5],
+        pointRadius: 5,
+        pointRotation,
+        pointStyle,
+      }],
+    },
+    options: {
+      animation: false,
+      plugins: {legend: false},
+      renderer: 'svg',
+      responsive: false,
+    },
+  });
+  return {chart, parent};
+}
+
+function primitive(pointStyle, pointRotation = 0) {
+  const {chart} = createPrimitiveChart(pointStyle, pointRotation);
+  const point = chart.getDatasetMeta(0).data[0];
+  return {chart, d: pointGroup(chart, 0).children[0].getAttribute('d'), point};
+}
+
 // eslint-disable-next-line max-statements
 test('SVG PointElement reuses standard point geometry, styles and DOM nodes', () => {
   const {canvas, chart, parent} = createChart();
@@ -194,6 +255,124 @@ test('SVG PointElement reuses standard point geometry, styles and DOM nodes', ()
   assert.ok(chart.$chartjsSvgRoot);
   chart.destroy();
   assert.deepEqual(parent.children, [canvas]);
+});
+
+test('SVG PointElement writes independently computed primitive geometry', () => {
+  const radius = 5;
+
+  for (const rotation of [0, 25]) {
+    const {chart, d, point} = primitive('triangle', rotation);
+    const angle = rotation * Math.PI / 180;
+    const expected = [0, 1, 2].map((index) => {
+      const vertex = angle + index * 2 * Math.PI / 3;
+      return {
+        command: index ? 'L' : 'M',
+        x: point.x + Math.sin(vertex) * radius,
+        y: point.y - Math.cos(vertex) * radius,
+      };
+    });
+    assertPathCommands(d, expected, `triangle rotation ${rotation}`);
+    assert.equal(d.endsWith('Z'), true);
+    chart.destroy();
+  }
+
+  {
+    const {chart, d, point} = primitive('circle');
+    const commands = pathCommands(d);
+    assertPathCommands(d, [{command: 'M', x: point.x + radius, y: point.y}], 'circle start');
+    const arcs = [...d.matchAll(/A(-?[\d.]+),(-?[\d.]+),0,1,1,(-?[\d.]+),(-?[\d.]+)/g)];
+    assert.equal(arcs.length, 2);
+    for (const [, rx, ry] of arcs) {
+      assertClose(+rx, radius, 'circle arc x radius');
+      assertClose(+ry, radius, 'circle arc y radius');
+    }
+    assertPoint({x: +arcs[0][3], y: +arcs[0][4]}, {x: point.x - radius, y: point.y}, 'circle left extrema');
+    assertPoint({x: +arcs[1][3], y: +arcs[1][4]}, {x: point.x + radius, y: point.y}, 'circle right extrema');
+    assert.equal(d.endsWith('Z'), true);
+    assert.equal(commands.length, 1);
+    chart.destroy();
+  }
+
+  {
+    const {chart, d, point} = primitive('rect');
+    const side = Math.SQRT1_2 * radius;
+    const match = /^M(-?[\d.]+),(-?[\d.]+)h(-?[\d.]+)v(-?[\d.]+)h(-?[\d.]+)Z$/.exec(d);
+    assert.ok(match, 'rect uses an unrotated SVG rectangle path');
+    assertPoint({x: +match[1], y: +match[2]}, {x: point.x - side, y: point.y - side}, 'rect top-left');
+    assertClose(+match[3], side * 2, 'rect width');
+    assertClose(+match[4], side * 2, 'rect height');
+    assertClose(+match[5], -side * 2, 'rect closing width');
+    chart.destroy();
+  }
+
+  {
+    const {chart, d, point} = primitive('rectRot', 30);
+    const angle = Math.PI / 6;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    assertPathCommands(d, [
+      {command: 'M', x: point.x - x, y: point.y - y},
+      {command: 'L', x: point.x + y, y: point.y - x},
+      {command: 'L', x: point.x + x, y: point.y + y},
+      {command: 'L', x: point.x - y, y: point.y + x},
+    ], 'rectRot 30 degrees');
+    assert.equal(d.endsWith('Z'), true);
+    chart.destroy();
+  }
+
+  for (const [style, rotation] of [['cross', 0], ['crossRot', 0]]) {
+    const {chart, d, point} = primitive(style, rotation);
+    const angle = (rotation + (style === 'crossRot' ? 45 : 0)) * Math.PI / 180;
+    const x = Math.cos(angle) * radius;
+    const y = Math.sin(angle) * radius;
+    assertPathCommands(d, [
+      {command: 'M', x: point.x - x, y: point.y - y},
+      {command: 'L', x: point.x + x, y: point.y + y},
+      {command: 'M', x: point.x + y, y: point.y - x},
+      {command: 'L', x: point.x - y, y: point.y + x},
+    ], style);
+    chart.destroy();
+  }
+
+  {
+    const {chart, d, point} = primitive('star');
+    const expected = [];
+    // Chart.js's public star pointStyle is an eight-spoke asterisk: a cross
+    // plus the same cross rotated by 45 degrees, not a filled star polygon.
+    for (const angle of [0, Math.PI / 4]) {
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      expected.push(
+        {command: 'M', x: point.x - x, y: point.y - y},
+        {command: 'L', x: point.x + x, y: point.y + y},
+        {command: 'M', x: point.x + y, y: point.y - x},
+        {command: 'L', x: point.x - y, y: point.y + x},
+      );
+    }
+    assertPathCommands(d, expected, 'star');
+    chart.destroy();
+  }
+
+  for (const [style, expected] of [
+    ['line', (point) => [{command: 'M', ...rotatePoint(point, radius, Math.PI)}, {command: 'L', ...rotatePoint(point, radius, 0)}]],
+    ['dash', (point) => [{command: 'M', x: point.x, y: point.y}, {command: 'L', ...rotatePoint(point, radius, 0)}]],
+  ]) {
+    const {chart, d, point} = primitive(style);
+    assertPathCommands(d, expected(point), style);
+    chart.destroy();
+  }
+
+  {
+    const {chart, d} = primitive('rectRounded', 0);
+    const arcs = [...d.matchAll(/A(-?[\d.]+),(-?[\d.]+),/g)];
+    assert.equal(arcs.length, 4, 'rectRounded has four rounded corners');
+    for (const [, rx, ry] of arcs) {
+      assertClose(+rx, radius * 0.516, 'rectRounded corner x radius');
+      assertClose(+ry, radius * 0.516, 'rectRounded corner y radius');
+    }
+    assert.equal(d.endsWith('Z'), true);
+    chart.destroy();
+  }
 });
 
 test('SVG surface uses the shared interaction geometry for point, nearest, index and dataset modes', () => {
