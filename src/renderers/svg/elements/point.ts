@@ -1,4 +1,5 @@
 import {tracePoint} from '../../../helpers/helpers.canvas.js';
+import {_isPointInArea} from '../../../helpers/helpers.core.js';
 import {Path} from '../../../helpers/helpers.path.js';
 import {getOrCreateSvgDatasetPart, getOrCreateSvgElementFor, removeSvgElementFor, resolveSvgPaint, setSvgImageAttributes} from '../../../helpers/helpers.svg.js';
 import type {RenderContext, RendererCreateOptions} from '../../core/renderer.js';
@@ -9,7 +10,7 @@ function isObjectPointStyle(pointStyle: any): boolean {
 
 export function drawSvgPoint(chart: RendererCreateOptions['chart'], point: any, {area, datasetIndex}: RenderContext): void {
   const options = point.options;
-  if (point.skip || options.radius < 0.1 || !isPointInArea(point, area, point.size(options) / 2)) {
+  if (point.skip || options.radius < 0.1 || !_isPointInArea(point, area, point.size(options) / 2)) {
     removeSvgElementFor(point);
     return;
   }
@@ -33,8 +34,4 @@ export function drawSvgPoint(chart: RendererCreateOptions['chart'], point: any, 
     }
   }
   removeSvgElementFor(point);
-}
-
-function isPointInArea(point: any, area: any, margin: number): boolean {
-  return point.x >= area.left - margin && point.x <= area.right + margin && point.y >= area.top - margin && point.y <= area.bottom + margin;
 }

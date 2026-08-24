@@ -55,7 +55,7 @@ export default class CanvasRenderer implements Renderer {
     this.created = !supplied;
     this.canvas = supplied || host.ownerDocument.createElement('canvas');
     this.root = this.canvas;
-    if (!this.canvas.parentNode) {
+    if (!this.canvas.parentNode && host !== this.canvas) {
       host.appendChild(this.canvas);
     }
   }
@@ -94,7 +94,7 @@ export default class CanvasRenderer implements Renderer {
 
   beginFrame(): void {
     resetCanvasPaintCache();
-    return;
+    this.clear();
   }
   endFrame(): void {
     return;

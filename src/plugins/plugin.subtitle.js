@@ -10,7 +10,7 @@ export default {
     const title = new Title({
       options,
       chart,
-      svgPart: 'subtitle'
+      role: 'subtitle'
     });
 
     layouts.configure(chart, title, options);

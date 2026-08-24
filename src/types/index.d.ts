@@ -1375,7 +1375,6 @@ export interface CoreScaleOptions {
 export interface Scale<O extends CoreScaleOptions = CoreScaleOptions> extends Element<unknown, O>, LayoutItem {
   readonly id: string;
   readonly type: string;
-  readonly ctx: CanvasRenderingContext2D;
   readonly chart: Chart;
 
   maxWidth: number;
@@ -1485,7 +1484,7 @@ export interface Scale<O extends CoreScaleOptions = CoreScaleOptions> extends El
   isFullSize(): boolean;
 }
 export declare class Scale {
-  constructor(cfg: {id: string, type: string, ctx: CanvasRenderingContext2D, chart: Chart});
+  constructor(cfg: {id: string, type: string, chart: Chart});
 }
 
 export interface ScriptableScaleContext {
@@ -1701,7 +1700,7 @@ export interface CoreInteractionOptions {
 export interface CoreChartOptions<TType extends ChartType> extends ParsingOptions, AnimationOptions<TType> {
 
   /**
-   * Renderer used for dataset lines. Other chart parts continue to use Canvas.
+   * Physical presentation backend used by the entire chart.
    * @default 'canvas'
    */
   renderer?: 'canvas' | 'svg';
@@ -2475,7 +2474,6 @@ export interface LegendItem {
 
 export interface LegendElement<TType extends ChartType> extends Element<AnyObject, LegendOptions<TType>>, LayoutItem {
   chart: Chart<TType>;
-  ctx: CanvasRenderingContext2D;
   legendItems?: LegendItem[];
   options: LegendOptions<TType>;
   fit(): void;

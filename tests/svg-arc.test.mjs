@@ -104,6 +104,12 @@ function arcs(chart, datasetIndex) {
   return group ? group.children.map((arc) => arc.children[0].children[0]) : [];
 }
 
+function arcPaths(chart, datasetIndex, index = 0) {
+  const datasetGroup = findChild(findChild(chart.$chartjsSvgRoot, 'data-svg-layer', 'datasets'), 'data-dataset-index', String(datasetIndex));
+  const group = datasetGroup && findChild(datasetGroup, 'data-svg-part', 'arcs');
+  return group ? group.children[index].children[0].children : [];
+}
+
 function dataset(data, overrides = {}) {
   return {
     backgroundColor: ['#60a5fa', '#34d399', '#fbbf24', '#f472b6'],
@@ -212,4 +218,25 @@ test('SVG ArcElement handles doughnut borders, transforms and arc variants', () 
   rings.chart.hide(1);
   assert.equal(arcs(rings.chart, 1).length, 0);
   rings.chart.destroy();
+});
+
+test('SVG ArcElement preserves Canvas multi-turn fill and border passes', () => {
+  const partial = createChart('doughnut', [dataset([10])], {circumference: 270});
+  assert.equal(arcPaths(partial.chart, 0).length, 1);
+  assert.notEqual(arcPaths(partial.chart, 0)[0].getAttribute('stroke'), 'none');
+  partial.chart.destroy();
+
+  const turnAndQuarter = createChart('doughnut', [dataset([10])], {circumference: 450});
+  const quarterPaths = arcPaths(turnAndQuarter.chart, 0);
+  assert.equal(quarterPaths.length, 2);
+  assert.notEqual(quarterPaths[0].getAttribute('stroke'), 'none');
+  assert.equal(quarterPaths[1].getAttribute('stroke'), 'none');
+  assert.notEqual(quarterPaths[0].getAttribute('d'), quarterPaths[1].getAttribute('d'));
+  turnAndQuarter.chart.destroy();
+
+  const twoTurns = createChart('doughnut', [dataset([10])], {circumference: 720});
+  const twoTurnPaths = arcPaths(twoTurns.chart, 0);
+  assert.equal(twoTurnPaths.length, 3);
+  assert.equal(twoTurnPaths.filter((path) => path.getAttribute('stroke') !== 'none').length, 2);
+  twoTurns.chart.destroy();
 });

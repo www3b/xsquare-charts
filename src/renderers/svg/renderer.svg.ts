@@ -55,14 +55,33 @@ export default class SvgRenderer implements Renderer {
   }
 
   resize(width: number, height: number): boolean {
-    this.root.setAttribute('width', String(width));
-    this.root.setAttribute('height', String(height));
-    this.root.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    return true;
+    const viewBox = `0 0 ${width} ${height}`;
+    const changed = this.root.getAttribute('width') !== String(width)
+      || this.root.getAttribute('height') !== String(height)
+      || this.root.getAttribute('viewBox') !== viewBox;
+    if (changed) {
+      this.root.setAttribute('width', String(width));
+      this.root.setAttribute('height', String(height));
+      this.root.setAttribute('viewBox', viewBox);
+    }
+    return changed;
   }
 
   clear(): void {
-    return;
+    removeSvgTooltip(this.chart);
+    for (const child of Array.from(this.root.children)) {
+      if (child.getAttribute('data-svg-layer')) {
+        child.remove();
+      }
+    }
+    const defs = this.root.children[0];
+    if (defs && defs.getAttribute('data-svg-defs') === 'true') {
+      for (const child of Array.from(defs.children)) {
+        if (child.getAttribute('data-svg-clip') === 'true' || child.getAttribute('data-svg-paint') === 'true') {
+          child.remove();
+        }
+      }
+    }
   }
 
   beginFrame(): void {

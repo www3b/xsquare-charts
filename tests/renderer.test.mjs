@@ -56,6 +56,48 @@ class Node {
   }
 }
 
+function createCanvasDocument() {
+  const document = {
+    defaultView: {getComputedStyle: () => ({position: 'static'})},
+    createElement(name) {
+      const node = new Node(document);
+      if (name === 'canvas') {
+        node.width = 400;
+        node.height = 300;
+        node.getContext = () => createCanvasContext(node);
+      }
+      return node;
+    },
+    createElementNS() {
+      return new Node(document);
+    },
+  };
+  return document;
+}
+
+function createCanvasContext(canvas) {
+  const context = {canvas, measureText: (text) => ({width: String(text).length * 8})};
+  return new Proxy(context, {get: (target, property) => property in target ? target[property] : () => {}});
+}
+
+function createCanvas(document, context = createCanvasContext) {
+  const canvas = new Node(document);
+  canvas.width = 400;
+  canvas.height = 300;
+  canvas.offsetLeft = 0;
+  canvas.offsetTop = 0;
+  canvas.getContext = () => context(canvas);
+  return canvas;
+}
+
+function chartConfig(renderer, overrides = {}) {
+  return {
+    type: 'line',
+    data: {labels: ['A', 'B'], datasets: [{data: [1, 2]}]},
+    options: {animation: false, plugins: {legend: false, tooltip: false}, renderer, responsive: false, ...overrides},
+  };
+}
+
 test('Chart core can run with a renderer supplied by an isolated registry', () => {
   const document = {
     createElementNS: () => new Node(document),
@@ -99,6 +141,147 @@ test('Chart core can run with a renderer supplied by an isolated registry', () =
   chart.destroy();
   assert.equal(destroyed, true);
   assert.equal(host.children.length, 0);
+});
+
+test('Chart surface identity distinguishes sibling canvases from a shared container', () => {
+  const document = createCanvasDocument();
+  const host = new Node(document);
+  const firstCanvas = createCanvas(document);
+  const secondCanvas = createCanvas(document);
+  host.appendChild(firstCanvas);
+  host.appendChild(secondCanvas);
+  const first = new Chart(firstCanvas, chartConfig('canvas'));
+  const second = new Chart(secondCanvas, chartConfig('canvas'));
+  assert.throws(() => new Chart(firstCanvas, chartConfig('canvas')), /already in use/);
+  first.destroy();
+  second.destroy();
+
+  const svgCanvas = createCanvas(document);
+  host.appendChild(svgCanvas);
+  const svgChart = new Chart(svgCanvas, chartConfig('svg'));
+  assert.throws(() => new Chart(svgCanvas, chartConfig('canvas')), /already in use/);
+  svgChart.destroy();
+
+  const container = new Node(document);
+  const containerChart = new Chart(container, chartConfig('canvas'));
+  assert.throws(() => new Chart(container, chartConfig('canvas')), /already in use/);
+  containerChart.destroy();
+});
+
+test('renderer switches preserve user canvas ownership and remove library-created canvases', () => {
+  const document = createCanvasDocument();
+  const container = new Node(document);
+  const chart = new Chart(container, chartConfig('canvas'));
+  assert.equal(container.children.length, 1);
+  chart.options.renderer = 'svg';
+  chart.update('none');
+  assert.equal(container.children.length, 1);
+  chart.destroy();
+  assert.equal(container.children.length, 0);
+
+  const second = new Chart(container, chartConfig('canvas'));
+  second.options.renderer = 'svg';
+  second.update('none');
+  second.options.renderer = 'canvas';
+  second.update('none');
+  second.destroy();
+  assert.equal(container.children.length, 0);
+
+  const userCanvas = createCanvas(document);
+  container.appendChild(userCanvas);
+  const userChart = new Chart(userCanvas, chartConfig('svg'));
+  userChart.options.renderer = 'canvas';
+  userChart.update('none');
+  userChart.destroy();
+  assert.deepEqual(container.children, [userCanvas]);
+});
+
+test('detached SVG canvas input and renderer initialization failures remain safe', () => {
+  const document = createCanvasDocument();
+  const detached = createCanvas(document);
+  assert.throws(() => new Chart(detached, chartConfig('svg')), /requires a supplied canvas with a parent container/);
+  assert.equal(detached.children.length, 0);
+
+  const host = new Node(document);
+  const failedCanvas = createCanvas(document, () => null);
+  host.appendChild(failedCanvas);
+  const failed = new Chart(failedCanvas, chartConfig('canvas'));
+  assert.equal(failed.renderer, null);
+  assert.doesNotThrow(() => failed.destroy());
+  assert.deepEqual(host.children, [failedCanvas]);
+
+  const svgCanvas = createCanvas(document, () => null);
+  host.appendChild(svgCanvas);
+  const switched = new Chart(svgCanvas, chartConfig('svg'));
+  switched.options.renderer = 'canvas';
+  assert.doesNotThrow(() => switched.update('none'));
+  assert.equal(switched.renderer, null);
+  assert.doesNotThrow(() => switched.destroy());
+  assert.ok(host.children.includes(svgCanvas));
+});
+
+test('public clear removes SVG presentation without changing internal frame reuse', () => {
+  const document = createCanvasDocument();
+  const host = new Node(document);
+  const canvas = createCanvas(document);
+  host.appendChild(canvas);
+  const chart = new Chart(canvas, chartConfig('svg'));
+  chart.draw();
+  assert.ok(chart.$chartjsSvgRoot.children.some((child) => child.getAttribute('data-svg-layer')));
+  chart.clear();
+  assert.equal(chart.$chartjsSvgRoot.children.some((child) => child.getAttribute('data-svg-layer')), false);
+  chart.draw();
+  assert.ok(chart.$chartjsSvgRoot.children.some((child) => child.getAttribute('data-svg-layer')));
+  chart.destroy();
+
+  const canvasHost = new Node(document);
+  let canvasClears = 0;
+  const canvasSeed = createCanvas(document, (seed) => {
+    const context = createCanvasContext(seed);
+    context.clearRect = () => { canvasClears++; };
+    return context;
+  });
+  canvasHost.appendChild(canvasSeed);
+  const canvasChart = new Chart(canvasSeed, chartConfig('canvas'));
+  canvasClears = 0;
+  canvasChart.clear();
+  assert.equal(canvasClears, 1);
+  canvasChart.draw();
+  assert.equal(canvasClears, 2);
+  canvasChart.destroy();
+});
+
+test('Canvas and SVG report same-size resize only once', () => {
+  for (const renderer of ['canvas', 'svg']) {
+    const document = createCanvasDocument();
+    const host = new Node(document);
+    const canvas = createCanvas(document);
+    host.appendChild(canvas);
+    let resizeCalls = 0;
+    const chart = new Chart(canvas, chartConfig(renderer, {onResize: () => { resizeCalls++; }}));
+    resizeCalls = 0;
+    chart.resize(500, 300);
+    chart.resize(500, 300);
+    assert.equal(resizeCalls, 1);
+    chart.destroy();
+  }
+});
+
+test('SVG points use the shared chart-area boundary semantics', () => {
+  const svg = readFileSync(new URL('../src/renderers/svg/elements/point.ts', import.meta.url), 'utf8');
+  const canvas = readFileSync(new URL('../src/renderers/canvas/elements/point.ts', import.meta.url), 'utf8');
+  assert.match(svg, /_isPointInArea/);
+  assert.match(canvas, /_isPointInArea/);
+  assert.doesNotMatch(svg, /function isPointInArea/);
+});
+
+test('Title and subtitle retain neutral roles outside renderer presentation', () => {
+  const title = readFileSync(new URL('../src/plugins/plugin.title.js', import.meta.url), 'utf8');
+  const subtitle = readFileSync(new URL('../src/plugins/plugin.subtitle.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(title, /svgPart|_svgPart/);
+  assert.doesNotMatch(subtitle, /svgPart|_svgPart/);
+  assert.match(title, /role: 'title'/);
+  assert.match(subtitle, /role: 'subtitle'/);
 });
 
 test('Elements stay renderer-neutral', () => {

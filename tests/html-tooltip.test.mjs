@@ -331,6 +331,17 @@ test('SVG tooltip respects displayColors and regular color box styles', () => {
   chart.destroy();
 });
 
+test('SVG clear removes the HTML tooltip overlay and the next draw recreates it', () => {
+  const {chart, parent} = createChart();
+  show(chart);
+  assert.ok(find(parent, 'data-chart-tooltip', ''));
+  chart.clear();
+  assert.equal(find(parent, 'data-chart-tooltip', ''), undefined);
+  chart.draw();
+  assert.ok(find(parent, 'data-chart-tooltip', ''));
+  chart.destroy();
+});
+
 test('Canvas tooltip presentation draws content and resolves renderer-neutral paints', () => {
   const paint = {
     type: 'linear-gradient',

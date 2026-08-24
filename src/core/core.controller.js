@@ -67,7 +67,7 @@ function getItem(item) {
 const instances = {};
 const getChart = (key) => {
   const item = getItem(key);
-  return Object.values(instances).filter((c) => c.host === item || c.canvas === item || c.renderer && c.renderer.root === item).pop();
+  return Object.values(instances).filter((c) => c.host === item || c._canvasSeed === item || c.canvas === item || c.renderer && c.renderer.root === item).pop();
 };
 
 function isCanvasLike(item) {
@@ -137,7 +137,7 @@ class Chart {
     const config = this.config = new Config(userConfig);
     const initialItem = getItem(item);
     const host = getHost(initialItem);
-    const existingChart = getChart(initialItem) || getChart(host);
+    const existingChart = getChart(initialItem);
     if (existingChart) {
       throw new Error(
         'Chart host is already in use. Chart with ID \'' + existingChart.id + '\'' +
@@ -158,6 +158,9 @@ class Chart {
     this.width = this._canvasSeed && this._canvasSeed.width || 0;
     this.height = this._canvasSeed && this._canvasSeed.height || 0;
     this._options = config.createResolver(config.chartOptionScopes(), this.getContext());
+    if (this._canvasSeed && !this._canvasSeed.parentNode && this._options.renderer === 'svg') {
+      throw new Error("SVG renderer requires a supplied canvas with a parent container");
+    }
     this._createRenderer(this._options.renderer);
     // Store the previously used aspect ratio to determine if a resize
     // is needed during updates. Do this after _options is set since
@@ -245,23 +248,23 @@ class Chart {
       canvas: this._canvasSeed
     });
     if (!renderer.initialize(this.options.aspectRatio)) {
-      renderer.destroy(true);
-      return;
+      renderer.destroy();
+      return false;
     }
     this.renderer = renderer;
     this.root = renderer.root;
     this.canvas = renderer.canvas;
     this.ctx = renderer.context;
     if (renderer.canvas) {
-      this._canvasSeed = renderer.canvas;
       this.width = this.width || renderer.canvas.width;
       this.height = this.height || renderer.canvas.height;
     }
+    return true;
   }
 
   _ensureRenderer(type) {
     if (this.renderer && this.renderer.type === type) {
-      return;
+      return true;
     }
     const width = this.width;
     const height = this.height;
@@ -273,8 +276,11 @@ class Chart {
     this.root = null;
     this.canvas = null;
     this.ctx = null;
-    this._createRenderer(type);
+    if (!this._createRenderer(type)) {
+      return false;
+    }
     this._resize(width, height);
+    return true;
   }
 
   /**
@@ -299,7 +305,9 @@ class Chart {
   }
 
   clear() {
-    this.renderer.clear();
+    if (this.renderer) {
+      this.renderer.clear();
+    }
     return this;
   }
 
@@ -322,6 +330,9 @@ class Chart {
   }
 
   _resize(width, height) {
+    if (!this.renderer) {
+      return false;
+    }
     const options = this.options;
     const aspectRatio = options.maintainAspectRatio && this.aspectRatio;
     const newSize = this.platform.getMaximumSize(this.host, width, height, aspectRatio);
@@ -334,7 +345,7 @@ class Chart {
     const changed = this.renderer.resize(newSize.width, newSize.height, newRatio);
     this.currentDevicePixelRatio = this.renderer.type === 'canvas' ? newRatio : 1;
     if (!changed) {
-      return;
+      return false;
     }
 
     this.notifyPlugins('resize', {size: newSize});
@@ -347,6 +358,7 @@ class Chart {
         this.render();
       }
     }
+    return true;
   }
 
   ensureScalesHaveIDs() {
@@ -524,7 +536,9 @@ class Chart {
 
     config.update();
     const options = this._options = config.createResolver(config.chartOptionScopes(), this.getContext());
-    this._ensureRenderer(options.renderer);
+    if (!this._ensureRenderer(options.renderer)) {
+      return;
+    }
     const animsDisabled = this._animationsDisabled = !options.animation;
 
     this._updateScales();
@@ -751,7 +765,9 @@ class Chart {
       this._resizeBeforeDraw = null;
       this._resize(width, height);
     }
-    this.clear();
+    if (!this.renderer) {
+      return;
+    }
     this.renderer.beginFrame();
 
     if (this.width <= 0 || this.height <= 0) {
@@ -987,8 +1003,10 @@ class Chart {
     this._stop();
     this.config.clearCache();
     this.unbindEvents();
-    const wasSvg = this.renderer.type === 'svg';
-    this.renderer.destroy();
+    const wasSvg = this.renderer && this.renderer.type === 'svg';
+    if (this.renderer) {
+      this.renderer.destroy();
+    }
     // Legacy `new Chart(canvas, {renderer: 'svg'})` callers keep ownership of
     // their supplied canvas after destroy; a host-based SVG chart has no seed.
     if (wasSvg && this._canvasSeed && !this._canvasSeed.parentNode) {

@@ -5,14 +5,14 @@ import {_alignStartEnd} from '../helpers/helpers.extras.js';
 
 export class Title extends Element {
   /**
-   * @param {{ options: any; chart: any; svgPart?: string; }} config
+   * @param {{ options: any; chart: any; role?: 'title'|'subtitle'; }} config
 	 */
   constructor(config) {
     super();
 
     this.chart = config.chart;
     this.options = config.options;
-    this._svgPart = config.svgPart || 'title';
+    this.role = config.role || 'title';
     this._padding = undefined;
     this.top = undefined;
     this.bottom = undefined;
@@ -89,7 +89,7 @@ function createTitle(chart, titleOpts) {
   const title = new Title({
     options: titleOpts,
     chart,
-    svgPart: 'title'
+    role: 'title'
   });
 
   layouts.configure(chart, title, titleOpts);
