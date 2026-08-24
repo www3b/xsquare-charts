@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
-<style>html,body,#host{width:420px;height:250px;margin:0;background:#fff}body{font-family:Arial,sans-serif}canvas,svg{display:block}</style>
-<div id="host"></div><output id="result"></output>
+<style>html,body{margin:0;background:#fff;font-family:Arial,sans-serif}#atlas{display:grid;grid-template-columns:450px 450px;gap:20px}.surface{width:450px;height:250px;box-sizing:border-box;padding:0;border:0;background:#fff;overflow:hidden}canvas,svg{display:block}</style>
+<div id="atlas"></div><output id="result"></output>
 <script type="module">
 window.addEventListener('error',event=>{document.querySelector('#result').textContent=JSON.stringify({error:event.message});document.body.dataset.visualReady='true'});
 import {ArcElement,BarController,BarElement,BubbleController,CategoryScale,Chart,DoughnutController,Filler,Legend,LineController,LineElement,LinearScale,PieController,PointElement,RadialLinearScale,RadarController,ScatterController,Title,Tooltip} from '/dist/chart.js';
@@ -23,12 +23,10 @@ const fixtures={
  'legend-title':{...line(),options:{plugins:{title:{display:true,text:'Parity title'},subtitle:{display:true,text:'Subtitle'},legend:{display:true}}}},
  'paint-gradient':{type:'bar',data:{labels:['A','B','C'],datasets:[{data:[3,6,4],backgroundColor:{type:'linear-gradient',x0:0,y0:0,x1:420,y1:0,colorStops:[{offset:0,color:'#2563eb'},{offset:1,color:'#ec4899'}]},borderColor:'#1d4ed8',borderWidth:2}]}}
 };
-const params=new URLSearchParams(location.search), name=params.get('fixture'), renderer=params.get('renderer');
-const input=fixtures[name];
-if(!input) throw new Error(`Unknown fixture ${name}`);
-const config={...input,options:{animation:false,responsive:false,devicePixelRatio:1,font:{family:'Arial',size:13},plugins:{legend:false},...(input.options||{}),renderer}};
-const chart=new Chart(document.querySelector('#host'),config);
-if(name==='legend-title') chart.options.plugins.legend.display=true;
-const ready=()=>{const box=chart.chartArea,scales=Object.fromEntries(Object.entries(chart.scales).map(([id,s])=>[id,[s.left,s.top,s.right,s.bottom]]));document.querySelector('#result').textContent=JSON.stringify({chartArea:[box.left,box.top,box.right,box.bottom],scales});document.body.dataset.visualReady='true';};
-ready();
+const WIDTH=450,HEIGHT=250,atlas=document.querySelector('#atlas'),charts={},rects={};
+function createConfig(input,renderer){const config=structuredClone(input);config.options={animation:false,responsive:false,maintainAspectRatio:false,devicePixelRatio:1,font:{family:'Arial',size:13},plugins:{legend:false},...(config.options||{}),renderer};return config}
+for(const [name,input] of Object.entries(fixtures)){for(const renderer of ['canvas','svg']){const host=document.createElement('div');host.className='surface';host.dataset.fixture=name;host.dataset.renderer=renderer;atlas.appendChild(host);const chart=new Chart(host,createConfig(input,renderer));chart.resize(WIDTH,HEIGHT);chart.update('none');charts[`${name}-${renderer}`]=chart}}
+function layout(chart){const a=chart.chartArea;return {size:[chart.width,chart.height],chartArea:[a.left,a.top,a.right,a.bottom],scales:Object.fromEntries(Object.entries(chart.scales).map(([id,s])=>[id,[s.left,s.top,s.right,s.bottom]])),elements:chart.getSortedVisibleDatasetMetas().map(meta=>meta.data.length)}}
+function ready(){for(const [key,chart] of Object.entries(charts)){const host=chart.canvas||chart.$chartjsSvgRoot;const rect=host.getBoundingClientRect();rects[key]=[rect.x,rect.y,rect.width,rect.height]}document.querySelector('#result').textContent=JSON.stringify({ready:true,rects,layouts:Object.fromEntries(Object.entries(charts).map(([key,chart])=>[key,layout(chart)]))});document.body.dataset.visualReady='true'}
+document.fonts.ready.then(()=>requestAnimationFrame(ready),ready);
 </script>
