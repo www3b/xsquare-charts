@@ -17,6 +17,12 @@ Chart.register({
     return chart.$cancelHtmlTooltip ? false : undefined;
   },
 });
+Chart.register({
+  id: 'canvas-tooltip-hooks',
+  afterTooltipDraw(chart) {
+    chart.$afterTooltipDraw = (chart.$afterTooltipDraw || 0) + 1;
+  },
+});
 
 class Node {
   constructor(document, name = 'div') {
@@ -87,9 +93,28 @@ function allText(node) {
   return [node.textContent, ...(node.children || []).map(allText)].filter(Boolean).join('|');
 }
 
-function createContext(canvas) {
-  const context = {canvas, measureText: (value) => ({width: String(value).length * 8})};
-  return new Proxy(context, {get: (target, property) => property in target ? target[property] : () => {}});
+function createContext(canvas, calls = []) {
+  const createGradient = (...args) => {
+    const gradient = {args, addColorStop: (...stop) => calls.push(['addColorStop', ...stop])};
+    calls.push(['createLinearGradient', ...args, gradient]);
+    return gradient;
+  };
+  const context = {
+    canvas,
+    measureText: (value) => ({width: String(value).length * 8}),
+    createLinearGradient: createGradient,
+    fill: () => calls.push(['fill']),
+    fillText: (...args) => calls.push(['fillText', ...args]),
+    stroke: () => calls.push(['stroke']),
+  };
+  return new Proxy(context, {
+    get: (target, property) => property in target ? target[property] : () => {},
+    set: (target, property, value) => {
+      calls.push(['set', property, value]);
+      target[property] = value;
+      return true;
+    },
+  });
 }
 
 function createChart(overrides = {}) {
@@ -104,7 +129,8 @@ function createChart(overrides = {}) {
   canvas.height = 300;
   canvas.offsetLeft = 0;
   canvas.offsetTop = 0;
-  canvas.getContext = () => createContext(canvas);
+  const calls = [];
+  canvas.getContext = () => createContext(canvas, calls);
   parent.appendChild(canvas);
   const chart = new Chart(canvas, {
     type: 'line',
@@ -148,7 +174,7 @@ function createChart(overrides = {}) {
       ...overrides,
     },
   });
-  return {canvas, chart, parent};
+  return {calls, canvas, chart, parent};
 }
 
 function show(chart, active = [{datasetIndex: 0, index: 1}]) {
@@ -285,5 +311,48 @@ test('SVG tooltip respects displayColors and regular color box styles', () => {
   assert.equal(marker.style.backgroundColor, '#fff');
   assert.match(marker.style.border, /^4px dashed #14532d$/);
   assert.equal(marker.style.borderTopLeftRadius, '4px');
+  chart.destroy();
+});
+
+test('Canvas tooltip presentation draws content and resolves renderer-neutral paints', () => {
+  const paint = {
+    type: 'linear-gradient',
+    x0: 0,
+    x1: 100,
+    y0: 0,
+    y1: 0,
+    colorStops: [{offset: 0, color: '#0ea5e9'}, {offset: 1, color: '#8b5cf6'}],
+  };
+  const {calls, chart, parent} = createChart({renderer: 'canvas'});
+  const tooltip = chart.options.plugins.tooltip;
+  tooltip.backgroundColor = paint;
+  tooltip.borderColor = paint;
+  tooltip.titleColor = paint;
+  tooltip.bodyColor = paint;
+  tooltip.footerColor = paint;
+  tooltip.multiKeyBackground = paint;
+  tooltip.callbacks.labelColor = () => ({backgroundColor: paint, borderColor: paint, borderWidth: 2});
+  tooltip.callbacks.labelTextColor = () => paint;
+
+  show(chart, [{datasetIndex: 0, index: 1}, {datasetIndex: 1, index: 1}]);
+
+  assert.equal(find(parent, 'data-chart-tooltip', ''), undefined);
+  assert.ok(calls.some(([name]) => name === 'fill'));
+  assert.ok(calls.some(([name]) => name === 'stroke'));
+  assert.ok(calls.some(([name, value]) => name === 'fillText' && value === 'Title'));
+  assert.ok(calls.some(([name, value]) => name === 'fillText' && value === 'Footer'));
+  assert.ok(calls.some(([name]) => name === 'createLinearGradient'));
+  assert.equal(calls.some(([name, property, value]) => name === 'set' && (property === 'fillStyle' || property === 'strokeStyle') && value === paint), false);
+  assert.equal(chart.$afterTooltipDraw, 1);
+
+  const titleDrawsBeforeHide = calls.filter(([name, value]) => name === 'fillText' && value === 'Title').length;
+  chart.$cancelHtmlTooltip = true;
+  chart.draw();
+  assert.equal(chart.$afterTooltipDraw, 1);
+  assert.equal(calls.filter(([name, value]) => name === 'fillText' && value === 'Title').length, titleDrawsBeforeHide);
+  chart.$cancelHtmlTooltip = false;
+  chart.tooltip.setActiveElements([], {x: 0, y: 0});
+  chart.draw();
+  assert.equal(calls.filter(([name, value]) => name === 'fillText' && value === 'Title').length, titleDrawsBeforeHide);
   chart.destroy();
 });

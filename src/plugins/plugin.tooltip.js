@@ -1,12 +1,9 @@
 import Animations from '../core/core.animations.js';
 import Element from '../core/core.element.js';
-import {addRoundedRectPath} from '../helpers/helpers.canvas.js';
-import {each, noop, isNullOrUndef, isArray, _elementsEqual, isObject} from '../helpers/helpers.core.js';
+import {each, noop, isNullOrUndef, isArray, _elementsEqual} from '../helpers/helpers.core.js';
 import {toFont, toPadding, toTRBLCorners} from '../helpers/helpers.options.js';
-import {getRtlAdapter, overrideTextDirection, restoreTextDirection} from '../helpers/helpers.rtl.js';
 import {distanceBetweenPoints, _limitValue} from '../helpers/helpers.math.js';
-import {createContext, drawPoint} from '../helpers/index.js';
-import {hideHtmlTooltip, removeHtmlTooltip, renderHtmlTooltip} from './plugin.tooltip.html.js';
+import {createContext} from '../helpers/index.js';
 
 /**
  * @typedef { import('../platform/platform.base.js').Chart } Chart
@@ -322,16 +319,6 @@ function getBackgroundPoint(options, size, alignment, chart) {
     x: _limitValue(x, 0, chart.width - size.width),
     y: _limitValue(y, 0, chart.height - size.height)
   };
-}
-
-function getAlignedX(tooltip, align, options) {
-  const padding = toPadding(options.padding);
-
-  return align === 'center'
-    ? tooltip.x + tooltip.width / 2
-    : align === 'right'
-      ? tooltip.x + tooltip.width - padding.right
-      : tooltip.x + padding.left;
 }
 
 /**
@@ -684,14 +671,6 @@ export class Tooltip extends Element {
     }
   }
 
-  drawCaret(tooltipPoint, ctx, size, options) {
-    const caretPosition = this.getCaretPosition(tooltipPoint, size, options);
-
-    ctx.lineTo(caretPosition.x1, caretPosition.y1);
-    ctx.lineTo(caretPosition.x2, caretPosition.y2);
-    ctx.lineTo(caretPosition.x3, caretPosition.y3);
-  }
-
   getCaretPosition(tooltipPoint, size, options) {
     const {xAlign, yAlign} = this;
     const {caretSize, cornerRadius} = options;
@@ -749,252 +728,6 @@ export class Tooltip extends Element {
     return {x1, x2, x3, y1, y2, y3};
   }
 
-  drawTitle(pt, ctx, options) {
-    const title = this.title;
-    const length = title.length;
-    let titleFont, titleSpacing, i;
-
-    if (length) {
-      const rtlHelper = getRtlAdapter(options.rtl, this.x, this.width);
-
-      pt.x = getAlignedX(this, options.titleAlign, options);
-
-      ctx.textAlign = rtlHelper.textAlign(options.titleAlign);
-      ctx.textBaseline = 'middle';
-
-      titleFont = toFont(options.titleFont);
-      titleSpacing = options.titleSpacing;
-
-      ctx.fillStyle = options.titleColor;
-      ctx.font = titleFont.string;
-
-      for (i = 0; i < length; ++i) {
-        ctx.fillText(title[i], rtlHelper.x(pt.x), pt.y + titleFont.lineHeight / 2);
-        pt.y += titleFont.lineHeight + titleSpacing; // Line Height and spacing
-
-        if (i + 1 === length) {
-          pt.y += options.titleMarginBottom - titleSpacing; // If Last, add margin, remove spacing
-        }
-      }
-    }
-  }
-
-  /**
-	 * @private
-	 */
-  _drawColorBox(ctx, pt, i, rtlHelper, options) {
-    const labelColor = this.labelColors[i];
-    const labelPointStyle = this.labelPointStyles[i];
-    const {boxHeight, boxWidth} = options;
-    const bodyFont = toFont(options.bodyFont);
-    const colorX = getAlignedX(this, 'left', options);
-    const rtlColorX = rtlHelper.x(colorX);
-    const yOffSet = boxHeight < bodyFont.lineHeight ? (bodyFont.lineHeight - boxHeight) / 2 : 0;
-    const colorY = pt.y + yOffSet;
-
-    if (options.usePointStyle) {
-      const drawOptions = {
-        radius: Math.min(boxWidth, boxHeight) / 2, // fit the circle in the box
-        pointStyle: labelPointStyle.pointStyle,
-        rotation: labelPointStyle.rotation,
-        borderWidth: 1
-      };
-      // Recalculate x and y for drawPoint() because its expecting
-      // x and y to be center of figure (instead of top left)
-      const centerX = rtlHelper.leftForLtr(rtlColorX, boxWidth) + boxWidth / 2;
-      const centerY = colorY + boxHeight / 2;
-
-      // Fill the point with white so that colours merge nicely if the opacity is < 1
-      ctx.strokeStyle = options.multiKeyBackground;
-      ctx.fillStyle = options.multiKeyBackground;
-      drawPoint(ctx, drawOptions, centerX, centerY);
-
-      // Draw the point
-      ctx.strokeStyle = labelColor.borderColor;
-      ctx.fillStyle = labelColor.backgroundColor;
-      drawPoint(ctx, drawOptions, centerX, centerY);
-    } else {
-      // Border
-      ctx.lineWidth = isObject(labelColor.borderWidth) ? Math.max(...Object.values(labelColor.borderWidth)) : (labelColor.borderWidth || 1); // TODO, v4 remove fallback
-      ctx.strokeStyle = labelColor.borderColor;
-      ctx.setLineDash(labelColor.borderDash || []);
-      ctx.lineDashOffset = labelColor.borderDashOffset || 0;
-
-      // Fill a white rect so that colours merge nicely if the opacity is < 1
-      const outerX = rtlHelper.leftForLtr(rtlColorX, boxWidth);
-      const innerX = rtlHelper.leftForLtr(rtlHelper.xPlus(rtlColorX, 1), boxWidth - 2);
-      const borderRadius = toTRBLCorners(labelColor.borderRadius);
-
-      if (Object.values(borderRadius).some(v => v !== 0)) {
-        ctx.beginPath();
-        ctx.fillStyle = options.multiKeyBackground;
-        addRoundedRectPath(ctx, {
-          x: outerX,
-          y: colorY,
-          w: boxWidth,
-          h: boxHeight,
-          radius: borderRadius,
-        });
-        ctx.fill();
-        ctx.stroke();
-
-        // Inner square
-        ctx.fillStyle = labelColor.backgroundColor;
-        ctx.beginPath();
-        addRoundedRectPath(ctx, {
-          x: innerX,
-          y: colorY + 1,
-          w: boxWidth - 2,
-          h: boxHeight - 2,
-          radius: borderRadius,
-        });
-        ctx.fill();
-      } else {
-        // Normal rect
-        ctx.fillStyle = options.multiKeyBackground;
-        ctx.fillRect(outerX, colorY, boxWidth, boxHeight);
-        ctx.strokeRect(outerX, colorY, boxWidth, boxHeight);
-        // Inner square
-        ctx.fillStyle = labelColor.backgroundColor;
-        ctx.fillRect(innerX, colorY + 1, boxWidth - 2, boxHeight - 2);
-      }
-    }
-
-    // restore fillStyle
-    ctx.fillStyle = this.labelTextColors[i];
-  }
-
-  drawBody(pt, ctx, options) {
-    const {body} = this;
-    const {bodySpacing, bodyAlign, displayColors, boxHeight, boxWidth, boxPadding} = options;
-    const bodyFont = toFont(options.bodyFont);
-    let bodyLineHeight = bodyFont.lineHeight;
-    let xLinePadding = 0;
-
-    const rtlHelper = getRtlAdapter(options.rtl, this.x, this.width);
-
-    const fillLineOfText = function(line) {
-      ctx.fillText(line, rtlHelper.x(pt.x + xLinePadding), pt.y + bodyLineHeight / 2);
-      pt.y += bodyLineHeight + bodySpacing;
-    };
-
-    const bodyAlignForCalculation = rtlHelper.textAlign(bodyAlign);
-    let bodyItem, textColor, lines, i, j, ilen, jlen;
-
-    ctx.textAlign = bodyAlign;
-    ctx.textBaseline = 'middle';
-    ctx.font = bodyFont.string;
-
-    pt.x = getAlignedX(this, bodyAlignForCalculation, options);
-
-    // Before body lines
-    ctx.fillStyle = options.bodyColor;
-    each(this.beforeBody, fillLineOfText);
-
-    xLinePadding = displayColors && bodyAlignForCalculation !== 'right'
-      ? bodyAlign === 'center' ? (boxWidth / 2 + boxPadding) : (boxWidth + 2 + boxPadding)
-      : 0;
-
-    // Draw body lines now
-    for (i = 0, ilen = body.length; i < ilen; ++i) {
-      bodyItem = body[i];
-      textColor = this.labelTextColors[i];
-
-      ctx.fillStyle = textColor;
-      each(bodyItem.before, fillLineOfText);
-
-      lines = bodyItem.lines;
-      // Draw Legend-like boxes if needed
-      if (displayColors && lines.length) {
-        this._drawColorBox(ctx, pt, i, rtlHelper, options);
-        bodyLineHeight = Math.max(bodyFont.lineHeight, boxHeight);
-      }
-
-      for (j = 0, jlen = lines.length; j < jlen; ++j) {
-        fillLineOfText(lines[j]);
-        // Reset for any lines that don't include colorbox
-        bodyLineHeight = bodyFont.lineHeight;
-      }
-
-      each(bodyItem.after, fillLineOfText);
-    }
-
-    // Reset back to 0 for after body
-    xLinePadding = 0;
-    bodyLineHeight = bodyFont.lineHeight;
-
-    // After body lines
-    each(this.afterBody, fillLineOfText);
-    pt.y -= bodySpacing; // Remove last body spacing
-  }
-
-  drawFooter(pt, ctx, options) {
-    const footer = this.footer;
-    const length = footer.length;
-    let footerFont, i;
-
-    if (length) {
-      const rtlHelper = getRtlAdapter(options.rtl, this.x, this.width);
-
-      pt.x = getAlignedX(this, options.footerAlign, options);
-      pt.y += options.footerMarginTop;
-
-      ctx.textAlign = rtlHelper.textAlign(options.footerAlign);
-      ctx.textBaseline = 'middle';
-
-      footerFont = toFont(options.footerFont);
-
-      ctx.fillStyle = options.footerColor;
-      ctx.font = footerFont.string;
-
-      for (i = 0; i < length; ++i) {
-        ctx.fillText(footer[i], rtlHelper.x(pt.x), pt.y + footerFont.lineHeight / 2);
-        pt.y += footerFont.lineHeight + options.footerSpacing;
-      }
-    }
-  }
-
-  drawBackground(pt, ctx, tooltipSize, options) {
-    const {xAlign, yAlign} = this;
-    const {x, y} = pt;
-    const {width, height} = tooltipSize;
-    const {topLeft, topRight, bottomLeft, bottomRight} = toTRBLCorners(options.cornerRadius);
-
-    ctx.fillStyle = options.backgroundColor;
-    ctx.strokeStyle = options.borderColor;
-    ctx.lineWidth = options.borderWidth;
-
-    ctx.beginPath();
-    ctx.moveTo(x + topLeft, y);
-    if (yAlign === 'top') {
-      this.drawCaret(pt, ctx, tooltipSize, options);
-    }
-    ctx.lineTo(x + width - topRight, y);
-    ctx.quadraticCurveTo(x + width, y, x + width, y + topRight);
-    if (yAlign === 'center' && xAlign === 'right') {
-      this.drawCaret(pt, ctx, tooltipSize, options);
-    }
-    ctx.lineTo(x + width, y + height - bottomRight);
-    ctx.quadraticCurveTo(x + width, y + height, x + width - bottomRight, y + height);
-    if (yAlign === 'bottom') {
-      this.drawCaret(pt, ctx, tooltipSize, options);
-    }
-    ctx.lineTo(x + bottomLeft, y + height);
-    ctx.quadraticCurveTo(x, y + height, x, y + height - bottomLeft);
-    if (yAlign === 'center' && xAlign === 'left') {
-      this.drawCaret(pt, ctx, tooltipSize, options);
-    }
-    ctx.lineTo(x, y + topLeft);
-    ctx.quadraticCurveTo(x, y, x + topLeft, y);
-    ctx.closePath();
-
-    ctx.fill();
-
-    if (options.borderWidth > 0) {
-      ctx.stroke();
-    }
-  }
-
   /**
 	 * Update x/y animation targets when _active elements are animating too
 	 * @private
@@ -1031,59 +764,6 @@ export class Tooltip extends Element {
    */
   _willRender() {
     return !!this.opacity;
-  }
-
-  draw(ctx) {
-    const options = this.options.setContext(this.getContext());
-    let opacity = this.opacity;
-
-    if (!opacity) {
-      return;
-    }
-
-    this._updateAnimationTarget(options);
-
-    const tooltipSize = {
-      width: this.width,
-      height: this.height
-    };
-    const pt = {
-      x: this.x,
-      y: this.y
-    };
-
-    // IE11/Edge does not like very small opacities, so snap to 0
-    opacity = Math.abs(opacity) < 1e-3 ? 0 : opacity;
-
-    const padding = toPadding(options.padding);
-
-    // Truthy/falsey value for empty tooltip
-    const hasTooltipContent = this.title.length || this.beforeBody.length || this.body.length || this.afterBody.length || this.footer.length;
-
-    if (options.enabled && hasTooltipContent) {
-      ctx.save();
-      ctx.globalAlpha = opacity;
-
-      // Draw Background
-      this.drawBackground(pt, ctx, tooltipSize, options);
-
-      overrideTextDirection(ctx, options.textDirection);
-
-      pt.y += padding.top;
-
-      // Titles
-      this.drawTitle(pt, ctx, options);
-
-      // Body
-      this.drawBody(pt, ctx, options);
-
-      // Footer
-      this.drawFooter(pt, ctx, options);
-
-      restoreTextDirection(ctx, options.textDirection);
-
-      ctx.restore();
-    }
   }
 
   /**
@@ -1242,41 +922,20 @@ export default {
   afterDraw(chart) {
     const tooltip = chart.tooltip;
 
-    if (chart.renderer.type === 'svg') {
-      if (!tooltip || !tooltip._willRender()) {
-        hideHtmlTooltip(chart);
-        return;
-      }
-      const args = {tooltip};
-      if (chart.notifyPlugins('beforeTooltipDraw', {...args, cancelable: true}) === false) {
-        hideHtmlTooltip(chart);
-        return;
-      }
-      if (renderHtmlTooltip(tooltip)) {
-        chart.notifyPlugins('afterTooltipDraw', args);
-      }
+    if (!tooltip || !tooltip._willRender()) {
+      chart.renderer.hideTooltip();
       return;
     }
 
-    removeHtmlTooltip(chart);
+    const args = {tooltip};
+    if (chart.notifyPlugins('beforeTooltipDraw', {...args, cancelable: true}) === false) {
+      chart.renderer.hideTooltip();
+      return;
+    }
 
-    if (tooltip && tooltip._willRender()) {
-      const args = {
-        tooltip
-      };
-
-      if (chart.notifyPlugins('beforeTooltipDraw', {...args, cancelable: true}) === false) {
-        return;
-      }
-
-      tooltip.draw(chart.ctx);
-
+    if (chart.renderer.drawTooltip(tooltip)) {
       chart.notifyPlugins('afterTooltipDraw', args);
     }
-  },
-
-  afterDestroy(chart) {
-    removeHtmlTooltip(chart);
   },
 
   afterEvent(chart, args) {

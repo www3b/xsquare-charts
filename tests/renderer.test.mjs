@@ -128,6 +128,13 @@ test('Legend stays renderer-neutral', () => {
   assert.doesNotMatch(source, /renderer\s*(?:===|!==)|options\.renderer/);
 });
 
+test('Tooltip stays renderer-neutral', () => {
+  const source = readFileSync(new URL('../src/plugins/plugin.tooltip.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /helpers\.canvas|plugin\.tooltip\.html|renderHtmlTooltip|hideHtmlTooltip|removeHtmlTooltip/);
+  assert.doesNotMatch(source, /chart\.ctx|renderer\.type|options\.renderer/);
+  assert.doesNotMatch(source, /\.fillText\(|\.fillRect\(|\.strokeRect\(|\.beginPath\(|createElement(?:NS)?\(/);
+});
+
 test('Cartesian Scale stays renderer-neutral', () => {
   const source = readFileSync(new URL('../src/core/core.scale.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /helpers\.svg|renderers\/(?:canvas|svg)|renderSvgText|renderText|clipArea|unclipArea/);

@@ -9,6 +9,7 @@ import {drawSvgLegend} from './legend.js';
 import {drawSvgScale} from './scale.js';
 import {drawSvgRadialScale} from './radialScale.js';
 import {drawSvgFiller, removeSvgFiller} from './filler.js';
+import {drawSvgTooltip, hideSvgTooltip, removeSvgTooltip} from './tooltip.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -83,6 +84,14 @@ export default class SvgRenderer implements Renderer {
     drawSvgTitle(this.chart, title);
   }
 
+  drawTooltip(tooltip: any): boolean {
+    return drawSvgTooltip(tooltip);
+  }
+
+  hideTooltip(): void {
+    hideSvgTooltip(this.chart);
+  }
+
   drawLegend(legend: any): void {
     drawSvgLegend(this.chart, legend);
   }
@@ -139,6 +148,7 @@ export default class SvgRenderer implements Renderer {
   }
 
   destroy(): void {
+    removeSvgTooltip(this.chart);
     this.root.remove();
     const chart = this.chart as typeof this.chart & {$chartjsSvgRoot?: SVGSVGElement};
     if (chart.$chartjsSvgRoot === this.root) {

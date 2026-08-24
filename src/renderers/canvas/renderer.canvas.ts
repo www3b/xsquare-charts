@@ -9,6 +9,7 @@ import {drawCanvasLegend} from './legend.js';
 import {drawCanvasScale} from './scale.js';
 import {drawCanvasRadialScale} from './radialScale.js';
 import {drawCanvasFiller, removeCanvasFiller} from './filler.js';
+import {drawCanvasTooltip} from './tooltip.js';
 import {resetCanvasPaintCache} from '../../helpers/helpers.paint.js';
 
 const EXPANDO_KEY = '$chartjs';
@@ -112,6 +113,14 @@ export default class CanvasRenderer implements Renderer {
 
   drawTitle(title: any): void {
     if (this.context) drawCanvasTitle(this.context, title);
+  }
+
+  drawTooltip(tooltip: any): boolean {
+    return this.context ? drawCanvasTooltip(this.context, tooltip) : false;
+  }
+
+  hideTooltip(): void {
+    return;
   }
 
   drawLegend(legend: any): void {

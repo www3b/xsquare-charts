@@ -24,6 +24,8 @@ export interface Renderer {
   removeFiller(source: any): void;
   removeDatasetPart?(index: number, part: string): void;
   drawTitle(title: any): void;
+  drawTooltip(tooltip: any): boolean;
+  hideTooltip(): void;
   beginDataset(index: number, clip: any): void;
   endDataset(clip: any): void;
   measureText(text: string | number, font: string): number;
