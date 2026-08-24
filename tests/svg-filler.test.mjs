@@ -177,6 +177,14 @@ function assertPoint(actual, expected, message) {
   assertClose(actual.y, expected.y, `${message} y`);
 }
 
+function samePoint(first, second) {
+  return Math.abs(first.x - second.x) < 1e-6 && Math.abs(first.y - second.y) < 1e-6;
+}
+
+function withoutConsecutiveDuplicates(points) {
+  return points.filter((point, index) => !index || !samePoint(point, points[index - 1]));
+}
+
 function geometryDataset(fill, data = [2, 5, 3, 6]) {
   return areaDataset(fill, {
     data,
@@ -266,7 +274,6 @@ test('SVG filler reuses the existing line/target geometry and cleans up nodes', 
 
 test('SVG filler uses the independently resolved origin, start, end and value boundaries', () => {
   const cases = [
-    {name: 'origin', fill: 'origin', boundary: ({scale}) => scale.getBasePixel()},
     {name: 'start', fill: 'start', boundary: ({chart}) => chart.chartArea.bottom},
     {name: 'end', fill: 'end', boundary: ({chart}) => chart.chartArea.top},
     // With min=0 and max=10, value 4 is exactly 40% of the chart area above its bottom.
@@ -275,13 +282,25 @@ test('SVG filler uses the independently resolved origin, start, end and value bo
   for (const {name, fill, boundary} of cases) {
     const {chart} = createGeometryChart([geometryDataset(fill)]);
     const sourcePoints = chart.getDatasetMeta(0).data;
-    const scale = chart.scales.y;
-    const expected = boundary({chart, scale});
+    const expected = boundary({chart});
     const path = fillPaths(chart, 0)[0];
     assert.ok(path, name);
     assertHorizontalBoundary(path.getAttribute('d'), sourcePoints, expected, name);
     chart.destroy();
   }
+});
+
+test('SVG filler resolves origin to the mathematical zero baseline', () => {
+  const min = -5;
+  const max = 10;
+  const {chart} = createGeometryChart([geometryDataset('origin')], {max, min});
+  const {bottom, top} = chart.chartArea;
+  // A normal vertical linear scale maps zero by its ratio within [-5, 10].
+  const expectedY = bottom - (0 - min) / (max - min) * (bottom - top);
+  assert.notEqual(expectedY, bottom, 'origin is not start in this fixture');
+  assert.notEqual(expectedY, top, 'origin is not end in this fixture');
+  assertHorizontalBoundary(fillPaths(chart, 0)[0].getAttribute('d'), chart.getDatasetMeta(0).data, expectedY, 'origin below zero');
+  chart.destroy();
 });
 
 test('SVG filler keeps start distinct from origin below zero', () => {
@@ -313,13 +332,17 @@ test('SVG filler shape target closes only the source line topology', () => {
   const source = chart.getDatasetMeta(0).data;
   const path = fillPaths(chart, 0)[0].getAttribute('d');
   const commands = pathLinePoints(path);
+  const normalized = withoutConsecutiveDuplicates(commands);
   assert.equal(path.endsWith('Z'), true);
-  // LineElement writes its first source point once for moveTo and once for
-  // the first lineTo. Shape fill adds no target boundary beyond that source path.
-  assert.equal(commands.length, source.length + 1);
-  for (let index = 0; index < source.length + 1; index++) {
-    assert.equal(commands[index].command, index ? 'L' : 'M');
-    assertPoint(commands[index], source[Math.max(0, index - 1)], `shape source point ${index}`);
+  assert.equal(commands[0].command, 'M');
+  assertPoint(commands[0], source[0], 'shape starts at the source line start');
+  for (const point of commands) {
+    assert.equal(source.some((sourcePoint) => samePoint(point, sourcePoint)), true, 'shape contains no artificial target boundary point');
+  }
+  assert.equal(normalized.length, source.length);
+  for (let index = 0; index < source.length; index++) {
+    assert.equal(normalized[index].command, index ? 'L' : 'M');
+    assertPoint(normalized[index], source[index], `shape source point ${index}`);
   }
   chart.destroy();
 });
