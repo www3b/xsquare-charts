@@ -240,7 +240,7 @@ class Chart {
   }
 
   _validateRenderer(type) {
-    if (type === 'svg' && this._canvasSeed && !this._canvasSeed.parentNode) {
+    if (type === 'svg' && this._canvasSeed && (!this._canvasSeed.parentNode || this.host === this._canvasSeed)) {
       throw new Error('SVG renderer requires a supplied canvas with a parent container');
     }
   }

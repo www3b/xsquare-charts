@@ -521,7 +521,7 @@ export function getSvgImageHref(chart, source) {
     const root = chart.$chartjsSvgRoot || chart.renderer && chart.renderer.root;
     const renderId = root && root.getAttribute('data-render-id');
     const snapshot = svgCanvasSnapshots.get(source);
-    if (snapshot && snapshot.renderId === renderId) {
+    if (snapshot && snapshot.root === root && snapshot.renderId === renderId) {
       return snapshot.href;
     }
     let href;
@@ -533,7 +533,7 @@ export function getSvgImageHref(chart, source) {
         console.warn('Chart.js SVG renderer could not serialize HTMLCanvasElement pointStyle.', error);
       }
     }
-    svgCanvasSnapshots.set(source, {renderId, href});
+    svgCanvasSnapshots.set(source, {root, renderId, href});
     return href;
   }
   return undefined;

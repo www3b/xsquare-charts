@@ -275,6 +275,38 @@ test('SVG PointElement serializes a supplied Canvas pointStyle once per render',
   chart.destroy();
 });
 
+test('SVG Canvas pointStyle snapshots are scoped to each SVG root and frame', () => {
+  const {chart: firstChart} = createChart();
+  const {chart: secondChart} = createChart();
+  let snapshots = 0;
+  let href = 'data:image/png;base64,first';
+  const icon = {
+    height: 12,
+    width: 18,
+    toDataURL() {
+      snapshots++;
+      return href;
+    },
+    [Symbol.toStringTag]: 'HTMLCanvasElement'
+  };
+
+  firstChart.$chartjsSvgRoot.setAttribute('data-render-id', '0');
+  secondChart.$chartjsSvgRoot.setAttribute('data-render-id', '0');
+  firstChart.data.datasets[0].pointStyle = icon;
+  secondChart.data.datasets[0].pointStyle = icon;
+  firstChart.update('none');
+  assert.equal(snapshots, 1);
+  assert.equal(pointGroup(firstChart, 0).children[0].getAttribute('href'), href);
+
+  href = 'data:image/png;base64,second';
+  secondChart.update('none');
+  assert.equal(snapshots, 2);
+  assert.equal(pointGroup(secondChart, 0).children[0].getAttribute('href'), href);
+  assert.equal(pointGroup(secondChart, 0).children.length, 11);
+  firstChart.destroy();
+  secondChart.destroy();
+});
+
 test('SVG point paints preserve radial inner radius and reuse definitions on update', () => {
   const {chart} = createChart();
   const linear = {

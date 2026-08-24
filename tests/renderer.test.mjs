@@ -208,7 +208,11 @@ test('renderer switches preserve user canvas ownership and remove library-create
 
   const userCanvas = createCanvas(document);
   container.appendChild(userCanvas);
-  const userChart = new Chart(userCanvas, chartConfig('svg'));
+  const userChart = new Chart(userCanvas, chartConfig('canvas'));
+  userChart.options.renderer = 'svg';
+  userChart.update('none');
+  assert.equal(userChart.renderer.type, 'svg');
+  assert.equal(userChart.root.parentNode, container);
   userChart.options.renderer = 'canvas';
   userChart.update('none');
   userChart.destroy();
@@ -229,6 +233,20 @@ test('detached SVG canvas input and renderer initialization failures remain safe
   assert.equal(detachedCanvasChart.renderer.type, 'canvas');
   assert.equal(detached.children.length, 0);
   assert.doesNotThrow(() => detachedCanvasChart.destroy());
+
+  const attachedLater = createCanvas(document);
+  const attachedLaterChart = new Chart(attachedLater, chartConfig('canvas'));
+  const container = new Node(document);
+  container.appendChild(attachedLater);
+  assert.throws(() => {
+    attachedLaterChart.options.renderer = 'svg';
+    attachedLaterChart.update('none');
+  }, /requires a supplied canvas with a parent container/);
+  assert.equal(attachedLaterChart.renderer.type, 'canvas');
+  assert.deepEqual(container.children, [attachedLater]);
+  assert.equal(attachedLater.children.length, 0);
+  assert.doesNotThrow(() => attachedLaterChart.destroy());
+  assert.deepEqual(container.children, [attachedLater]);
 
   const host = new Node(document);
   const failedCanvas = createCanvas(document, () => null);
