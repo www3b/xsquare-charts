@@ -39,6 +39,7 @@
     "scripts": {
         "dev": "node scripts/dev-server.mjs",
         "test:svg": "pnpm build && node --test tests/*.test.mjs",
+        "test:visual": "pnpm build && node --test tests/visual-parity.test.mjs",
         "autobuild": "rollup -c -w",
         "copyDeclarations": "node -e \"fs.cpSync('./src/types/', './dist/types/', {recursive:true})\"",
         "emitDeclarations": "tsc --emitDeclarationOnly && pnpm copyDeclarations",
@@ -64,6 +65,8 @@
         "eslint-config-chartjs": "^0.3.0",
         "eslint-plugin-es": "^4.1.0",
         "eslint-plugin-markdown": "^3.0.0",
+        "pixelmatch": "5.3.0",
+        "pngjs": "7.0.0",
         "rollup": "^3.3.0",
         "rollup-plugin-cleanup": "^3.2.1",
         "rollup-plugin-swc3": "^0.7.0",
