@@ -594,8 +594,8 @@ export declare class Chart<
   readonly platform: BasePlatform;
   readonly id: string;
   readonly host: HTMLElement;
-  readonly renderer: Renderer;
-  readonly root: HTMLCanvasElement | SVGSVGElement;
+  readonly renderer: Renderer | null;
+  readonly root: HTMLCanvasElement | SVGSVGElement | null;
   readonly canvas: HTMLCanvasElement | null;
   readonly ctx: CanvasRenderingContext2D | null;
   readonly config: ChartConfiguration<TType, TData, TLabel> | ChartConfigurationCustomTypesPerDataset<TType, TData, TLabel>;

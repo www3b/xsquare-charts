@@ -67,7 +67,7 @@ function getItem(item) {
 const instances = {};
 const getChart = (key) => {
   const item = getItem(key);
-  return Object.values(instances).filter((c) => c.host === item || c._canvasSeed === item || c.canvas === item || c.renderer && c.renderer.root === item).pop();
+  return Object.values(instances).filter((c) => (c._canvasSeed ? c._canvasSeed === item : c.host === item) || c.canvas === item || c.renderer && c.renderer.root === item).pop();
 };
 
 function isCanvasLike(item) {
@@ -158,9 +158,7 @@ class Chart {
     this.width = this._canvasSeed && this._canvasSeed.width || 0;
     this.height = this._canvasSeed && this._canvasSeed.height || 0;
     this._options = config.createResolver(config.chartOptionScopes(), this.getContext());
-    if (this._canvasSeed && !this._canvasSeed.parentNode && this._options.renderer === 'svg') {
-      throw new Error("SVG renderer requires a supplied canvas with a parent container");
-    }
+    this._validateRenderer(this._options.renderer);
     this._createRenderer(this._options.renderer);
     // Store the previously used aspect ratio to determine if a resize
     // is needed during updates. Do this after _options is set since
@@ -241,6 +239,12 @@ class Chart {
     return registry;
   }
 
+  _validateRenderer(type) {
+    if (type === 'svg' && this._canvasSeed && !this._canvasSeed.parentNode) {
+      throw new Error('SVG renderer requires a supplied canvas with a parent container');
+    }
+  }
+
   _createRenderer(type) {
     const renderer = this._rendererRegistry.create(type, {
       chart: this,
@@ -266,6 +270,7 @@ class Chart {
     if (this.renderer && this.renderer.type === type) {
       return true;
     }
+    this._validateRenderer(type);
     const width = this.width;
     const height = this.height;
     this.unbindEvents();

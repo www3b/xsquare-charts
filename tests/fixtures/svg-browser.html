@@ -112,7 +112,10 @@
     iconContext.fillRect(3, 3, 12, 6);
     const commonPaint = {animation: false, plugins: {legend: {labels: {usePointStyle: true}}}, renderer, responsive: false};
     const config = type === 'line'
-      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Neutral paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7, pointStyle: icon}]}}
+      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], datasets: [
+        {label: 'Neutral paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7, pointStyle: icon},
+        {label: 'Pattern points', borderColor: linear, data: [4, 3, 5, 2], pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 5},
+      ]}}
       : type === 'bar'
         ? {data: {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Pattern bars', backgroundColor: pattern, borderColor: linear, borderWidth: 3, data: [4, 7, 5]}]}}
         : {data: {labels: ['One', 'Two', 'Three'], datasets: [{backgroundColor: [linear, pattern, radial], borderColor: linear, borderWidth: 3, data: [4, 3, 5]}]}};

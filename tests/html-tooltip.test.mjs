@@ -342,6 +342,37 @@ test('SVG clear removes the HTML tooltip overlay and the next draw recreates it'
   chart.destroy();
 });
 
+test('SVG HTML tooltip serializes a supplied Canvas pointStyle through its shared image helper', () => {
+  let snapshots = 0;
+  const pointStyle = {
+    height: 12,
+    width: 18,
+    toDataURL() {
+      snapshots++;
+      return 'data:image/png;base64,tooltip';
+    },
+    [Symbol.toStringTag]: 'HTMLCanvasElement',
+  };
+  const {chart, parent} = createChart({
+    plugins: {
+      legend: false,
+      tooltip: {
+        usePointStyle: true,
+        callbacks: {
+          labelPointStyle: () => ({pointStyle, rotation: 0}),
+        },
+      },
+    },
+  });
+  show(chart);
+  const marker = find(parent, 'data-chart-tooltip-marker', '');
+  const image = marker.children[0].children[0];
+  assert.equal(snapshots, 1);
+  assert.equal(image.nodeName, 'image');
+  assert.equal(image.getAttribute('href'), 'data:image/png;base64,tooltip');
+  chart.destroy();
+});
+
 test('Canvas tooltip presentation draws content and resolves renderer-neutral paints', () => {
   const paint = {
     type: 'linear-gradient',

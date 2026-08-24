@@ -243,23 +243,35 @@ test('SVG PointElement renders HTMLImageElement point styles without Canvas draw
   chart.destroy();
 });
 
-test('SVG PointElement skips Canvas-only point styles without serializing them', () => {
+test('SVG PointElement serializes a supplied Canvas pointStyle once per render', () => {
   const {chart} = createChart();
   let snapshots = 0;
+  let href = 'data:image/png;base64,one';
   const icon = {
     height: 12,
     width: 18,
     toDataURL() {
       snapshots++;
-      return 'data:image/png;base64,one';
+      return href;
     },
     [Symbol.toStringTag]: 'HTMLCanvasElement'
   };
 
   chart.data.datasets[0].pointStyle = icon;
   chart.update('none');
-  assert.equal(snapshots, 0);
-  assert.equal(pointGroup(chart, 0).children.length, 0);
+  const first = pointGroup(chart, 0).children[0];
+  assert.equal(snapshots, 1);
+  assert.equal(pointGroup(chart, 0).children.length, 11);
+  assert.equal(first.localName, 'image');
+  assert.equal(first.getAttribute('href'), href);
+  assert.equal(first.getAttribute('width'), '18');
+  assert.equal(first.getAttribute('height'), '12');
+
+  href = 'data:image/png;base64,two';
+  chart.update('none');
+  assert.equal(snapshots, 2);
+  assert.equal(pointGroup(chart, 0).children[0], first);
+  assert.equal(first.getAttribute('href'), href);
   chart.destroy();
 });
 
@@ -325,7 +337,7 @@ test('SVG point paints preserve radial inner radius and reuse definitions on upd
   chart.destroy();
 });
 
-test('SVG PointElement warns once for Canvas-only point styles', () => {
+test('SVG PointElement safely skips a tainted Canvas pointStyle', () => {
   const {chart} = createChart();
   let snapshots = 0;
   let warnings = 0;
@@ -345,11 +357,11 @@ test('SVG PointElement warns once for Canvas-only point styles', () => {
   try {
     chart.data.datasets[0].pointStyle = icon;
     chart.update('none');
-    assert.equal(snapshots, 0);
+    assert.equal(snapshots, 1);
     assert.equal(warnings, 1);
     assert.equal(pointGroup(chart, 0).children.length, 0);
     chart.update('none');
-    assert.equal(snapshots, 0);
+    assert.equal(snapshots, 2);
     assert.equal(warnings, 1);
   } finally {
     console.warn = warn;

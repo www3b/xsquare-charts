@@ -74,6 +74,14 @@ function findChild(node, attribute, value) {
   return node && node.children.find((child) => child.getAttribute(attribute) === value);
 }
 
+function findDescendant(node, attribute, value) {
+  if (node && node.getAttribute(attribute) === value) return node;
+  for (const child of node && node.children || []) {
+    const result = findDescendant(child, attribute, value);
+    if (result) return result;
+  }
+}
+
 function createContext(canvas) {
   const context = {canvas, measureText: (value) => ({width: String(value).length * 8})};
   return new Proxy(context, {
@@ -444,5 +452,27 @@ test('Legend survives canvas to SVG to canvas switching while enabled', () => {
   chart.update('none');
   assert.equal(chart.$chartjsSvgRoot, undefined);
   assert.ok(chart.legend.buildLegendDrawItems().items.length);
+  chart.destroy();
+});
+
+test('SVG legend serializes a supplied Canvas pointStyle through the shared image helper', () => {
+  let snapshots = 0;
+  const pointStyle = {
+    height: 12,
+    width: 18,
+    toDataURL() {
+      snapshots++;
+      return 'data:image/png;base64,legend';
+    },
+    [Symbol.toStringTag]: 'HTMLCanvasElement',
+  };
+  const {chart} = createChart('line', [{data: [1, 2], label: 'Canvas marker', pointStyle}], {
+    plugins: {legend: {labels: {usePointStyle: true}}},
+  });
+  const image = findDescendant(legend(chart), 'data-legend-role', 'symbol-image');
+  assert.equal(snapshots, 1);
+  assert.equal(image.getAttribute('href'), 'data:image/png;base64,legend');
+  assert.equal(image.getAttribute('width'), '18');
+  assert.equal(image.getAttribute('height'), '12');
   chart.destroy();
 });

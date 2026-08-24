@@ -7,6 +7,7 @@ const svgElements = new WeakMap();
 const svgPaints = new WeakMap();
 const svgCharts = new WeakMap();
 const svgWarnings = new WeakSet();
+const svgCanvasSnapshots = new WeakMap();
 
 function createSvgElement(chart, name) {
   const root = chart.$chartjsSvgRoot || (chart.renderer && chart.renderer.root);
@@ -516,9 +517,24 @@ export function getSvgImageHref(chart, source) {
   if (Object.prototype.toString.call(source) === '[object HTMLImageElement]') {
     return source.currentSrc || source.src || undefined;
   }
-  if (source && Object.prototype.toString.call(source) === '[object HTMLCanvasElement]' && !svgWarnings.has(source)) {
-    svgWarnings.add(source);
-    console.warn('Chart.js SVG renderer does not support HTMLCanvasElement pointStyle; use HTMLImageElement instead.');
+  if (source && Object.prototype.toString.call(source) === '[object HTMLCanvasElement]') {
+    const root = chart.$chartjsSvgRoot || chart.renderer && chart.renderer.root;
+    const renderId = root && root.getAttribute('data-render-id');
+    const snapshot = svgCanvasSnapshots.get(source);
+    if (snapshot && snapshot.renderId === renderId) {
+      return snapshot.href;
+    }
+    let href;
+    try {
+      href = source.toDataURL();
+    } catch (error) {
+      if (!svgWarnings.has(source)) {
+        svgWarnings.add(source);
+        console.warn('Chart.js SVG renderer could not serialize HTMLCanvasElement pointStyle.', error);
+      }
+    }
+    svgCanvasSnapshots.set(source, {renderId, href});
+    return href;
   }
   return undefined;
 }

@@ -166,6 +166,25 @@ test('Chart surface identity distinguishes sibling canvases from a shared contai
   const containerChart = new Chart(container, chartConfig('canvas'));
   assert.throws(() => new Chart(container, chartConfig('canvas')), /already in use/);
   containerChart.destroy();
+
+  const mixedHost = new Node(document);
+  const userCanvas = createCanvas(document);
+  mixedHost.appendChild(userCanvas);
+  const userChart = new Chart(userCanvas, chartConfig('canvas'));
+  const hostChart = new Chart(mixedHost, chartConfig('canvas'));
+  assert.equal(Chart.getChart(userCanvas), userChart);
+  assert.equal(Chart.getChart(hostChart.root), hostChart);
+  userChart.destroy();
+  hostChart.destroy();
+
+  const reverseHost = new Node(document);
+  const reverseCanvas = createCanvas(document);
+  reverseHost.appendChild(reverseCanvas);
+  const reverseHostChart = new Chart(reverseHost, chartConfig('canvas'));
+  const reverseUserChart = new Chart(reverseCanvas, chartConfig('canvas'));
+  assert.equal(Chart.getChart(reverseCanvas), reverseUserChart);
+  reverseUserChart.destroy();
+  reverseHostChart.destroy();
 });
 
 test('renderer switches preserve user canvas ownership and remove library-created canvases', () => {
@@ -201,6 +220,15 @@ test('detached SVG canvas input and renderer initialization failures remain safe
   const detached = createCanvas(document);
   assert.throws(() => new Chart(detached, chartConfig('svg')), /requires a supplied canvas with a parent container/);
   assert.equal(detached.children.length, 0);
+
+  const detachedCanvasChart = new Chart(detached, chartConfig('canvas'));
+  assert.throws(() => {
+    detachedCanvasChart.options.renderer = 'svg';
+    detachedCanvasChart.update('none');
+  }, /requires a supplied canvas with a parent container/);
+  assert.equal(detachedCanvasChart.renderer.type, 'canvas');
+  assert.equal(detached.children.length, 0);
+  assert.doesNotThrow(() => detachedCanvasChart.destroy());
 
   const host = new Node(document);
   const failedCanvas = createCanvas(document, () => null);
