@@ -225,6 +225,14 @@ test('detached SVG canvas input and renderer initialization failures remain safe
   assert.throws(() => new Chart(detached, chartConfig('svg')), /requires a supplied canvas with a parent container/);
   assert.equal(detached.children.length, 0);
 
+  const outerCanvas = createCanvas(document);
+  const innerCanvas = createCanvas(document);
+  outerCanvas.appendChild(innerCanvas);
+  assert.throws(() => new Chart(innerCanvas, chartConfig('svg')), /requires a supplied canvas with a parent container/);
+  assert.deepEqual(outerCanvas.children, [innerCanvas]);
+  assert.equal(outerCanvas.children.some((child) => child.getAttribute('data-chart-svg') === 'true'), false);
+  assert.equal(Chart.getChart(innerCanvas), undefined);
+
   const detachedCanvasChart = new Chart(detached, chartConfig('canvas'));
   assert.throws(() => {
     detachedCanvasChart.options.renderer = 'svg';
