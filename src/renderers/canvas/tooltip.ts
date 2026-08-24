@@ -242,12 +242,12 @@ function drawBackground(tooltip: any, pt: any, ctx: CanvasRenderingContext2D, to
   }
 }
 
-export function drawCanvasTooltip(ctx: CanvasRenderingContext2D, tooltip: any): boolean {
+export function drawCanvasTooltip(ctx: CanvasRenderingContext2D, tooltip: any): void {
   const options = tooltip.options.setContext(tooltip.getContext());
   let opacity = tooltip.opacity;
 
   if (!opacity) {
-    return false;
+    return;
   }
 
   tooltip._updateAnimationTarget(options);
@@ -258,7 +258,7 @@ export function drawCanvasTooltip(ctx: CanvasRenderingContext2D, tooltip: any): 
   const hasTooltipContent = tooltip.title.length || tooltip.beforeBody.length || tooltip.body.length || tooltip.afterBody.length || tooltip.footer.length;
 
   if (!options.enabled || !hasTooltipContent || !opacity) {
-    return false;
+    return;
   }
 
   ctx.save();
@@ -271,5 +271,4 @@ export function drawCanvasTooltip(ctx: CanvasRenderingContext2D, tooltip: any): 
   drawFooter(tooltip, pt, ctx, options);
   restoreTextDirection(ctx, options.textDirection);
   ctx.restore();
-  return true;
 }

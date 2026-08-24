@@ -567,7 +567,7 @@ export interface Renderer {
   removeFiller(source: any): void;
   removeDatasetPart?(index: number, part: string): void;
   drawTitle(title: any): void;
-  drawTooltip(tooltip: any): boolean;
+  drawTooltip(tooltip: any): void;
   hideTooltip(): void;
   measureText(text: string | number, font: string): number;
   getEventTarget(): HTMLCanvasElement | SVGSVGElement;

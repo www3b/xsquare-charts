@@ -115,8 +115,10 @@ export default class CanvasRenderer implements Renderer {
     if (this.context) drawCanvasTitle(this.context, title);
   }
 
-  drawTooltip(tooltip: any): boolean {
-    return this.context ? drawCanvasTooltip(this.context, tooltip) : false;
+  drawTooltip(tooltip: any): void {
+    if (this.context) {
+      drawCanvasTooltip(this.context, tooltip);
+    }
   }
 
   hideTooltip(): void {

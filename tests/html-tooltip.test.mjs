@@ -14,6 +14,7 @@ Chart.register(CategoryScale, LineController, LineElement, LinearScale, PointEle
 Chart.register({
   id: 'html-tooltip-cancel',
   beforeTooltipDraw(chart) {
+    chart.$beforeTooltipDraw = (chart.$beforeTooltipDraw || 0) + 1;
     return chart.$cancelHtmlTooltip ? false : undefined;
   },
 });
@@ -252,15 +253,30 @@ test('SVG tooltip keeps callbacks/external semantics and cleans up renderer swit
   assert.deepEqual(parent.children, [canvas]);
 });
 
-test('disabled SVG tooltip stays hidden while external callback remains active', () => {
-  let externalCalls = 0;
-  const {chart, parent} = createChart({
-    plugins: {legend: false, tooltip: {enabled: false, external: () => { externalCalls++; }}},
-  });
-  show(chart);
-  assert.equal(externalCalls, 1);
-  assert.equal(find(parent, 'data-chart-tooltip', ''), undefined);
-  chart.destroy();
+test('disabled Tooltip keeps hooks and external callback while Canvas and HTML presentation stay hidden', () => {
+  for (const renderer of ['canvas', 'svg']) {
+    let externalCalls = 0;
+    const {calls, chart, parent} = createChart({
+      plugins: {
+        legend: false,
+        tooltip: {
+          enabled: false,
+          external: () => { externalCalls++; },
+          callbacks: {title: () => 'Disabled title'},
+        },
+      },
+      renderer,
+    });
+    show(chart);
+    assert.equal(externalCalls, 1);
+    assert.equal(chart.$beforeTooltipDraw, 1);
+    assert.equal(chart.$afterTooltipDraw, 1);
+    assert.equal(find(parent, 'data-chart-tooltip', ''), undefined);
+    if (renderer === 'canvas') {
+      assert.equal(calls.some(([name, value]) => name === 'fillText' && value === 'Disabled title'), false);
+    }
+    chart.destroy();
+  }
 });
 
 test('SVG tooltip hides when beforeTooltipDraw cancels and keeps direction local', () => {
@@ -278,6 +294,7 @@ test('SVG tooltip hides when beforeTooltipDraw cancels and keeps direction local
   chart.$cancelHtmlTooltip = true;
   chart.draw();
   assert.equal(root.getAttribute('aria-hidden'), 'true');
+  assert.equal(chart.$afterTooltipDraw, 1);
   chart.destroy();
 });
 

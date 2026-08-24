@@ -84,8 +84,8 @@ export default class SvgRenderer implements Renderer {
     drawSvgTitle(this.chart, title);
   }
 
-  drawTooltip(tooltip: any): boolean {
-    return drawSvgTooltip(tooltip);
+  drawTooltip(tooltip: any): void {
+    drawSvgTooltip(tooltip);
   }
 
   hideTooltip(): void {

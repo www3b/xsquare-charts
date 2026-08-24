@@ -933,9 +933,8 @@ export default {
       return;
     }
 
-    if (chart.renderer.drawTooltip(tooltip)) {
-      chart.notifyPlugins('afterTooltipDraw', args);
-    }
+    chart.renderer.drawTooltip(tooltip);
+    chart.notifyPlugins('afterTooltipDraw', args);
   },
 
   afterEvent(chart, args) {

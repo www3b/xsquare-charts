@@ -1,7 +1,7 @@
 import {hideHtmlTooltip, removeHtmlTooltip, renderHtmlTooltip} from '../../plugins/plugin.tooltip.html.js';
 
-export function drawSvgTooltip(tooltip: any): boolean {
-  return renderHtmlTooltip(tooltip);
+export function drawSvgTooltip(tooltip: any): void {
+  renderHtmlTooltip(tooltip);
 }
 
 export function hideSvgTooltip(chart: any): void {
