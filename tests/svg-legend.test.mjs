@@ -222,7 +222,7 @@ test('SVG legend draws line and bar items from resolved Legend layout', () => {
   bar.chart.destroy();
 });
 
-test('Legend exposes one shared draw model for RTL, multiline labels and hitboxes', () => {
+test('Legend draw model is self-consistent with RTL, multiline labels and hitboxes', () => {
   const {chart} = createChart('line', [{label: ['A long', 'multiline label'], data: [1, 2, 3]}], {
     plugins: {legend: {rtl: true, labels: {padding: 12}, title: {display: true, text: 'Shared title'}}}
   });
@@ -236,7 +236,7 @@ test('Legend exposes one shared draw model for RTL, multiline labels and hitboxe
   chart.destroy();
 });
 
-test('Legend draw model owns final RTL symbol, text and multi-column hitbox coordinates', () => {
+test('Legend draw model is self-consistent with final RTL symbol, text and multi-column hitbox coordinates', () => {
   const {chart} = createChart('line', [
     {label: ['North', 'multiline'], data: [1, 2], pointStyle: 'triangle'},
     {label: 'East', data: [2, 3], pointStyle: 'circle'},
@@ -255,7 +255,7 @@ test('Legend draw model owns final RTL symbol, text and multi-column hitbox coor
   chart.destroy();
 });
 
-test('Legend uses fit row and column metadata as the canonical draw model', () => {
+test('Legend draw model reuses fit row and column metadata', () => {
   const data = Array.from({length: 12}, (_, index) => ({label: ['short', `very very long legend label ${index}`], data: [index + 1, index + 2]}));
   const {chart} = createChart('line', data, {
     plugins: {legend: {align: 'start', maxHeight: 82, position: 'left', rtl: true, labels: {padding: 6, usePointStyle: true}}}

@@ -167,17 +167,12 @@ test('Scale grid and border geometry remain renderer-neutral', () => {
   assert.deepEqual(border.borderDash, [4, 2]);
 });
 
-test('Scale grid geometry preserves z and display options for renderers', () => {
+test('Scale grid draw model exposes the configured z layers', () => {
   const chart = createChart();
   const x = createScale(chart, 'x', 'x');
   const y = createScale(chart, 'y1', 'y', {z: 1});
   assert.equal(x.options.grid.z, -1);
   assert.equal(y.options.grid.z, 1);
-  assert.equal(x.getGridLineItems(chart.chartArea), x.getGridLineItems(chart.chartArea));
-  x.options.grid.drawOnChartArea = false;
-  x.options.grid.drawTicks = false;
-  assert.equal(x.options.grid.drawOnChartArea, false);
-  assert.equal(x.options.grid.drawTicks, false);
 });
 
 test('SvgRenderer renders cartesian scale parts, reuses nodes and cleans up stale parts', () => {
@@ -212,7 +207,7 @@ test('SvgRenderer renders cartesian scale parts, reuses nodes and cleans up stal
   const x = chart.options.scales.x;
   x.grid.drawOnChartArea = false;
   x.grid.drawTicks = false;
-  x.ticks = {display: false};
+  x.ticks.display = false;
   x.border.display = false;
   x.title.display = false;
   x.backgroundColor = undefined;
@@ -223,6 +218,20 @@ test('SvgRenderer renders cartesian scale parts, reuses nodes and cleans up stal
   assert.equal(scalePart(chart, 'foreground', 'x', 'border'), undefined);
   assert.equal(scalePart(chart, 'background', 'x', 'title'), undefined);
   assert.equal(scalePart(chart, 'background', 'x', 'background'), undefined);
+
+  x.grid.drawOnChartArea = true;
+  x.grid.drawTicks = true;
+  x.ticks.display = true;
+  x.border.display = true;
+  x.title.display = true;
+  x.backgroundColor = '#eef';
+  chart.update('none');
+  assert.ok(scalePart(chart, 'background', 'x', 'grid').children.length > 0);
+  assert.ok(scalePart(chart, 'background', 'x', 'ticks').children.length > 0);
+  assert.ok(scalePart(chart, 'background', 'x', 'labels').children.length > 0);
+  assert.ok(scalePart(chart, 'foreground', 'x', 'border').children.length > 0);
+  assert.ok(scalePart(chart, 'background', 'x', 'title').children.length > 0);
+  assert.ok(scalePart(chart, 'background', 'x', 'background').children.length > 0);
   chart.destroy();
 });
 

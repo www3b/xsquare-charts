@@ -305,7 +305,7 @@ test('Canvas filler consumes shared models for sides, gaps, segment styles and r
   chart.destroy();
 });
 
-test('Radar filler preserves loop geometry and fill rule in SVG and Canvas', () => {
+test('SVG Radar filler preserves loop geometry and fill rule through a renderer switch', () => {
   const document = {
     defaultView: {getComputedStyle: () => ({position: 'static'})},
     createElementNS: () => new SvgNode(document)

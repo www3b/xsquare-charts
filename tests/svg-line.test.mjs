@@ -127,6 +127,10 @@ function lineDataset(overrides = {}) {
   };
 }
 
+function firstLineCommands(path) {
+  return [...path.matchAll(/([ML])(-?[\d.]+),(-?[\d.]+)/g)].map(([, command, x, y]) => [command, +x, +y]);
+}
+
 test('SVG LineElement serializes straight, bezier, stepped and gapped lines', () => {
   const cases = [
     {name: 'straight', dataset: lineDataset(), command: 'L', paths: 1},
@@ -150,6 +154,24 @@ test('SVG LineElement serializes straight, bezier, stepped and gapped lines', ()
     }
     chart.destroy();
   }
+});
+
+test('SVG LineElement uses Chart.js before, after and middle step geometry', () => {
+  for (const [stepped, expected] of [
+    ['before', (p0, p1) => [['M', p0.x, p0.y], ['L', p1.x, p0.y], ['L', p1.x, p1.y]]],
+    ['after', (p0, p1) => [['M', p0.x, p0.y], ['L', p0.x, p1.y], ['L', p1.x, p1.y]]],
+    ['middle', (p0, p1) => [['M', p0.x, p0.y], ['L', (p0.x + p1.x) / 2, p0.y], ['L', (p0.x + p1.x) / 2, p1.y], ['L', p1.x, p1.y]]],
+  ]) {
+    const {chart} = createChart([lineDataset({data: [2, 6], stepped})]);
+    const [p0, p1] = chart.getDatasetMeta(0).data;
+    assert.deepEqual(firstLineCommands(linePaths(chart, 0)[0].getAttribute('d')), expected(p0, p1), stepped);
+    chart.destroy();
+  }
+
+  const {chart} = createChart([lineDataset({data: [2, 6]})]);
+  const [p0, p1] = chart.getDatasetMeta(0).data;
+  assert.deepEqual(firstLineCommands(linePaths(chart, 0)[0].getAttribute('d')), [['M', p0.x, p0.y], ['L', p1.x, p1.y]]);
+  chart.destroy();
 });
 
 test('SVG LineElement preserves parts while borderWidth changes', () => {

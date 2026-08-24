@@ -87,7 +87,7 @@ function bars(chart) {
   return child(child(datasets, 'data-dataset-index', '0'), 'data-svg-part', 'bars').children;
 }
 
-test('Histogram maps explicit bin boundaries to linear-scale bar geometry', () => {
+test('Histogram integrates explicit bin boundaries with linear-scale SVG bar geometry', () => {
   const data = [
     {xMin: 0, xMax: 1, y: 2},
     {xMin: 1, xMax: 4, y: 5},

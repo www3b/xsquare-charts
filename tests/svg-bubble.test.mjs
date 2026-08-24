@@ -35,12 +35,15 @@ function points(chart) {
   return find(find(layer, 'data-dataset-index', '0'), 'data-svg-part', 'points');
 }
 
-test('Bubble maps controller-resolved radii to reusable SVG PointElements', () => {
+test('Bubble presents public radii as reusable SVG point geometry', () => {
   const data = [{x: 1, y: 2, r: 5}, {x: 3, y: 4, r: 15}, {x: 5, y: 1, r: 25}];
   const {canvas, chart, parent} = createChart(data); const group = points(chart); const first = group.children[0];
-  assert.equal(group.children.length, 3); assert.equal(chart.getDatasetMeta(0).data[0].options.radius, 5); assert.equal(chart.getDatasetMeta(0).data[2].options.radius, 25);
+  assert.equal(group.children.length, 3);
+  assert.match(group.children[0].getAttribute('d'), /A5,5,/);
+  assert.match(group.children[1].getAttribute('d'), /A15,15,/);
+  assert.match(group.children[2].getAttribute('d'), /A25,25,/);
   assert.equal(chart.getDatasetMeta(0).controller.getLabelAndValue(1).value, '(3, 4, 15)');
-  data[0].r = 12; chart.update('none'); assert.equal(points(chart).children[0], first); assert.equal(chart.getDatasetMeta(0).data[0].options.radius, 12);
+  data[0].r = 12; chart.update('none'); assert.equal(points(chart).children[0], first); assert.match(first.getAttribute('d'), /A12,12,/);
   data[1].r = 0; chart.update('none'); assert.equal(points(chart).children.length, 2);
   chart.options.renderer = 'canvas'; chart.update('none'); assert.equal(chart.$chartjsSvgRoot, undefined); assert.deepEqual(parent.children, [canvas]);
   chart.destroy();

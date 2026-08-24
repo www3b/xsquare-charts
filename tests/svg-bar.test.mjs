@@ -122,7 +122,7 @@ function dataset(data, overrides = {}) {
 }
 
 // eslint-disable-next-line max-statements
-test('SVG BarElement uses calculated inner/outer geometry and reuses nodes', () => {
+test('SVG BarElement presents resolved inner/outer geometry and reuses nodes', () => {
   const {canvas, chart, parent} = createChart([dataset([8, -5, 12], {
     hoverBackgroundColor: '#fbbf24',
     hoverBorderColor: '#b45309',
@@ -179,7 +179,7 @@ test('SVG BarElement uses calculated inner/outer geometry and reuses nodes', () 
   assert.deepEqual(parent.children, [canvas]);
 });
 
-test('SVG BarElement supports borders, radii, stacks, horizontal and floating bars', () => {
+test('SVG BarElement smoke-covers borders, radii, stacks, horizontal and floating inputs', () => {
   const rounded = createChart([dataset([8], {
     borderRadius: {bottomLeft: 2, bottomRight: 4, topLeft: 12, topRight: 8},
     borderSkipped: false,

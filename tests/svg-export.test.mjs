@@ -189,7 +189,7 @@ test('toSVG serializes a cloned standalone line/area chart', () => {
   assert.throws(() => chart.toSVG(), /existing SVG render/);
 });
 
-test('toSVG exports Bar, Arc and Histogram through the shared SVG root', () => {
+test('toSVG smoke-covers Bar, Arc and Histogram through the shared SVG root', () => {
   const bar = createChart('bar', {labels: ['A', 'B'], datasets: [{label: 'Bars', data: [2, 5], backgroundColor: '#60a5fa'}]});
   const pie = createChart('pie', {labels: ['A', 'B'], datasets: [{data: [2, 5], backgroundColor: ['#60a5fa', '#34d399']}]});
   const histogram = createChart('histogram', {datasets: [{label: 'Bins', data: [{xMin: 0, xMax: 1, y: 2}, {xMin: 1, xMax: 4, y: 5}], backgroundColor: '#fbbf24'}]});
