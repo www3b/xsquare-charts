@@ -74,7 +74,6 @@ export default [
 
   // ES6 builds
   // dist/chart.js
-  // helpers/*.js
   {
     input: {
       'dist/chart': 'src/index.ts',
@@ -94,7 +93,6 @@ export default [
 
   // CommonJS builds
   // dist/chart.js
-  // helpers/*.js
   {
     input: {
       'dist/chart': 'src/index.ts',

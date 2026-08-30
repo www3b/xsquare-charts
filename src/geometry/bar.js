@@ -1,12 +1,12 @@
 import Element from './geometry.js';
-import {getDatasetClipArea, isObject, _isBetween, _limitValue} from '../shared/index.js';
+import {isObject, _isBetween, _limitValue} from '../shared/index.js';
 import {toTRBL, toTRBLCorners} from '../shared/options.js';
 
 /** @typedef {{ x: number, y: number, base: number, horizontal: boolean, width: number, height: number }} BarProps */
 
 /**
  * Helper function to get the bounds of the bar regardless of the orientation
- * @param {BarElement} bar the bar
+ * @param {BarGeometry} bar the bar
  * @param {boolean} [useFinalPosition]
  * @return {object} bounds of the bar
  * @private
@@ -128,7 +128,7 @@ export function inflateRect(rect, amount, refRect = {}) {
   };
 }
 
-export default class BarElement extends Element {
+export default class BarGeometry extends Element {
 
   static id = 'bar';
 

@@ -1,5 +1,5 @@
 // @ts-nocheck
-import type {ChartMeta, PointElement} from './types/index.js';
+import type {ChartMeta, PointGeometry} from './types/index.js';
 
 import {_limitValue} from './math.js';
 import {_lookupByKey} from './collection.js';
@@ -86,7 +86,7 @@ export const _textX = (align: 'left' | 'right' | 'center', left: number, right: 
  * Return start and count of visible points.
  * @private
  */
-export function _getStartAndCountOfVisiblePoints(meta: ChartMeta<'line' | 'scatter'>, points: PointElement[], animationsDisabled: boolean) {
+export function _getStartAndCountOfVisiblePoints(meta: ChartMeta<'line' | 'scatter'>, points: PointGeometry[], animationsDisabled: boolean) {
   const pointCount = points.length;
 
   let start = 0;

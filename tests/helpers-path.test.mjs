@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {Path} from '../src/helpers/helpers.path.js';
+import {Path} from '../src/geometry/path.js';
 
 test('Path serializes full ellipses with independent horizontal and vertical radii', () => {
   const path = new Path();

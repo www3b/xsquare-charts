@@ -1,4 +1,5 @@
-import DatasetController from './series.js';
+import Series from './series.js';
+import BarGeometry from '../geometry/bar.js';
 import {
   _arrayUnique, isArray, isNullOrUndef,
   valueOrDefault, resolveObjectKey, sign, defined
@@ -255,9 +256,10 @@ function setInflateAmount(properties, {inflateAmount}, ratio) {
     : inflateAmount;
 }
 
-export default class BarController extends DatasetController {
+export default class BarSeries extends Series {
 
   static id = 'bar';
+  static dataElementType = BarGeometry;
 
   /**
    * @type {any}

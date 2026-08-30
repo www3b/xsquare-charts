@@ -74,7 +74,7 @@ export class Defaults {
     this.parsing = true;
     this.plugins = {};
     this.responsive = true;
-    this.renderer = 'canvas';
+    this.renderer = 'svg';
     this.scale = undefined;
     this.scales = {};
     this.showLine = true;

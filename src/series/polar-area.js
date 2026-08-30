@@ -1,9 +1,11 @@
-import DatasetController from './series.js';
+import Series from './series.js';
+import ArcGeometry from '../geometry/arc.js';
 import {toRadians, PI, formatNumber, _parseObjectDataRadialScale} from '../shared/index.js';
 
-export default class PolarAreaController extends DatasetController {
+export default class PolarAreaSeries extends Series {
 
   static id = 'polarArea';
+  static dataElementType = ArcGeometry;
 
   /**
    * @type {any}

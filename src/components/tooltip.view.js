@@ -222,24 +222,24 @@ function updateContent(state, tooltip, options) {
   setHtmlPaint(beforeBody.style, 'color', tooltip.chart, options.bodyColor);
   beforeBody.style.textAlign = options.bodyAlign;
   setFont(beforeBody.style, bodyFont);
-  const bodyLineElements = addLines(document, beforeBody, tooltip.beforeBody, 'data-chart-tooltip-before-body-line');
+  const bodyLineGeometrys = addLines(document, beforeBody, tooltip.beforeBody, 'data-chart-tooltip-before-body-line');
   setHtmlPaint(body.style, 'color', tooltip.chart, options.bodyColor);
   body.style.textAlign = options.bodyAlign;
   setFont(body.style, bodyFont);
   for (let i = 0; i < tooltip.body.length; ++i) {
     const item = createBodyItem(document, tooltip, options, tooltip.body[i], i);
     body.appendChild(item.element);
-    bodyLineElements.push(...item.lineElements);
+    bodyLineGeometrys.push(...item.lineElements);
   }
   setHtmlPaint(afterBody.style, 'color', tooltip.chart, options.bodyColor);
   afterBody.style.textAlign = options.bodyAlign;
   setFont(afterBody.style, bodyFont);
-  bodyLineElements.push(...addLines(document, afterBody, tooltip.afterBody, 'data-chart-tooltip-after-body-line'));
-  for (const line of bodyLineElements) {
+  bodyLineGeometrys.push(...addLines(document, afterBody, tooltip.afterBody, 'data-chart-tooltip-after-body-line'));
+  for (const line of bodyLineGeometrys) {
     line.style.marginBottom = `${options.bodySpacing}px`;
   }
-  if (bodyLineElements.length) {
-    bodyLineElements[bodyLineElements.length - 1].style.marginBottom = '0';
+  if (bodyLineGeometrys.length) {
+    bodyLineGeometrys[bodyLineGeometrys.length - 1].style.marginBottom = '0';
   }
   setHtmlPaint(footer.style, 'color', tooltip.chart, options.footerColor);
   footer.style.textAlign = options.footerAlign;

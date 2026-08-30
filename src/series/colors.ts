@@ -1,5 +1,5 @@
-import DoughnutController from './doughnut.js';
-import PolarAreaController from './polar-area.js';
+import DoughnutSeries from './doughnut.js';
+import PolarAreaSeries from './polar-area.js';
 import defaults from '../components/chart.defaults.js';
 import type {Chart, ChartDataset} from '../shared/types/index.js';
 
@@ -59,9 +59,9 @@ function getColorizer(chart: Chart) {
   return (dataset: ChartDataset, datasetIndex: number) => {
     const controller = chart.getDatasetMeta(datasetIndex).controller;
 
-    if (controller instanceof DoughnutController) {
+    if (controller instanceof DoughnutSeries) {
       i = colorizeDoughnutDataset(dataset, i);
-    } else if (controller instanceof PolarAreaController) {
+    } else if (controller instanceof PolarAreaSeries) {
       i = colorizePolarAreaDataset(dataset, i);
     } else if (controller) {
       i = colorizeDefaultDataset(dataset, i);

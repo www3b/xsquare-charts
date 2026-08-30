@@ -45,5 +45,4 @@ export interface RenderContext {
 export interface RendererCreateOptions {
   chart: import('../components/chart.js').default;
   host: HTMLElement;
-  canvas?: HTMLCanvasElement | OffscreenCanvas | null;
 }

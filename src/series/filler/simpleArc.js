@@ -1,6 +1,6 @@
 import {TAU} from '../../shared/index.js';
 
-// TODO: use elements.ArcElement instead
+// TODO: use elements.ArcGeometry instead
 export class simpleArc {
   constructor(opts) {
     this.x = opts.x;

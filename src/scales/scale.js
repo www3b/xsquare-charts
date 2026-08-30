@@ -1,5 +1,5 @@
 import Element from '../geometry/geometry.js';
-import {_alignPixel} from '../renderers/canvas/text.js';
+import {alignScalePixel} from './scale.pixel.js';
 import {callback as call, each, finiteOrDefault, isArray, isFinite, isNullOrUndef, isObject, valueOrDefault} from '../shared/core.js';
 import {toDegrees, toRadians, _int16Range, _limitValue, HALF_PI} from '../shared/math.js';
 import {_alignStartEnd, _toLeftRightCenter} from '../shared/extras.js';
@@ -930,7 +930,7 @@ export default class Scale extends Element {
     }
 
     const pixel = this._startPixel + decimal * this._length;
-    return _int16Range(this._alignToPixels ? _alignPixel(this.chart, pixel, 0) : pixel);
+    return _int16Range(this._alignToPixels ? alignScalePixel(this.chart, pixel, 0) : pixel);
   }
 
   /**
@@ -1033,7 +1033,7 @@ export default class Scale extends Element {
     const axisWidth = borderOpts.display ? borderOpts.width : 0;
     const axisHalfWidth = axisWidth / 2;
     const alignBorderValue = function(pixel) {
-      return _alignPixel(chart, pixel, axisWidth);
+      return alignScalePixel(chart, pixel, axisWidth);
     };
     let borderValue, i, lineValue, alignedLineValue;
     let tx1, ty1, tx2, ty2, x1, y1, x2, y2;
@@ -1114,7 +1114,7 @@ export default class Scale extends Element {
         continue;
       }
 
-      alignedLineValue = _alignPixel(chart, lineValue, lineWidth);
+      alignedLineValue = alignScalePixel(chart, lineValue, lineWidth);
 
       if (isHorizontal) {
         tx1 = tx2 = x1 = x2 = alignedLineValue;
@@ -1455,12 +1455,12 @@ export default class Scale extends Element {
     const borderValue = this._borderValue;
     let x1, x2, y1, y2;
     if (this.isHorizontal()) {
-      x1 = _alignPixel(chart, this.left, width) - width / 2;
-      x2 = _alignPixel(chart, this.right, lastLineWidth) + lastLineWidth / 2;
+      x1 = alignScalePixel(chart, this.left, width) - width / 2;
+      x2 = alignScalePixel(chart, this.right, lastLineWidth) + lastLineWidth / 2;
       y1 = y2 = borderValue;
     } else {
-      y1 = _alignPixel(chart, this.top, width) - width / 2;
-      y2 = _alignPixel(chart, this.bottom, lastLineWidth) + lastLineWidth / 2;
+      y1 = alignScalePixel(chart, this.top, width) - width / 2;
+      y2 = alignScalePixel(chart, this.bottom, lastLineWidth) + lastLineWidth / 2;
       x1 = x2 = borderValue;
     }
     return {x1, y1, x2, y2, color: borderOpts.color, width, borderDash: borderOpts.dash, borderDashOffset: borderOpts.dashOffset};

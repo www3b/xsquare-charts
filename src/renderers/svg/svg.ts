@@ -138,8 +138,7 @@ function getOrCreateSvgDefs(chart) {
 }
 
 function syncSvgRoot(chart, root) {
-  const {canvas, host, width, height} = chart;
-  const parent = host || canvas && canvas.parentNode;
+  const {width, height} = chart;
 
   root.setAttribute('width', width);
   root.setAttribute('height', height);
@@ -147,23 +146,6 @@ function syncSvgRoot(chart, root) {
   root.style.width = `${width}px`;
   root.style.height = `${height}px`;
 
-  // Legacy helper callers can still mount an SVG next to a supplied canvas.
-  // Renderer-owned SVG roots are normal host children and do not borrow canvas geometry.
-  if (!chart._renderer && canvas) {
-    root.style.left = `${canvas.offsetLeft}px`;
-    root.style.top = `${canvas.offsetTop}px`;
-  }
-
-  if (!chart._renderer && parent && parent.style && !root.hasAttribute('data-positioned-parent')) {
-    const position = parent.style.position;
-    const view = canvas.ownerDocument.defaultView;
-    const computedPosition = view && view.getComputedStyle ? view.getComputedStyle(parent).position : position;
-    if (!computedPosition || computedPosition === 'static') {
-      parent.style.position = 'relative';
-      root.setAttribute('data-positioned-parent', 'true');
-      root.setAttribute('data-parent-position', position);
-    }
-  }
 }
 
 /**
@@ -186,10 +168,7 @@ export function getOrCreateSvgRoot(chart) {
     root.style.pointerEvents = 'none';
     root.style.overflow = 'visible';
 
-    const host = chart.host || chart.canvas && chart.canvas.parentNode;
-    if (host) {
-      host.appendChild(root);
-    }
+    chart.host.appendChild(root);
     chart.$chartjsSvgRoot = root;
   }
   svgCharts.set(root, chart);

@@ -3,7 +3,10 @@ import {mergeIf, resolveObjectKey, isArray, isFunction, valueOrDefault, isObject
 import {_attachContext, _createResolver, _descriptors} from '../shared/config.js';
 
 export function normalizeChartData(data = {}) {
-  const series = data.series || data.datasets || [];
+  if (data.datasets !== undefined) {
+    throw new TypeError('Use data.series; data.datasets is not supported.');
+  }
+  const series = data.series || [];
   return {
     labels: data.labels || [],
     datasets: series.map(({name, ...item}) => ({...item, name, label: name === undefined ? item.label : name}))
@@ -11,15 +14,17 @@ export function normalizeChartData(data = {}) {
 }
 
 export function normalizeChartConfig(config = {}) {
-  const legacyOptions = config.options || {};
+  if (config.options !== undefined) {
+    throw new TypeError('Use top-level chart options; config.options is not supported.');
+  }
   const data = config.data || {};
-  const plugins = {...(legacyOptions.plugins || {})};
+  const plugins = {};
   for (const name of ['legend', 'title', 'subtitle', 'tooltip']) {
     if (config[name] !== undefined) {
       plugins[name] = config[name];
     }
   }
-  const options = {...legacyOptions, plugins, renderer: config.renderer || legacyOptions.renderer || 'svg'};
+  const options = {plugins, renderer: config.renderer || 'svg'};
   for (const name of ['animation', 'responsive', 'maintainAspectRatio', 'aspectRatio', 'resizeDelay', 'devicePixelRatio', 'locale', 'events', 'interaction', 'hover', 'layout', 'font', 'indexAxis', 'onResize', 'onHover', 'onClick']) {
     if (config[name] !== undefined) {
       options[name] = config[name];

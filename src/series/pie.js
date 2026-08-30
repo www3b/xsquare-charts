@@ -1,7 +1,7 @@
-import DoughnutController from './doughnut.js';
+import DoughnutSeries from './doughnut.js';
 
 // Pie charts are Doughnut chart with different defaults
-export default class PieController extends DoughnutController {
+export default class PieSeries extends DoughnutSeries {
 
   static id = 'pie';
 

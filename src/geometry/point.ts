@@ -7,7 +7,7 @@ import type {
   PointOptions,
 } from '../shared/types/index.js';
 
-function inRange(el: PointElement, pos: number, axis: 'x' | 'y', useFinalPosition?: boolean) {
+function inRange(el: PointGeometry, pos: number, axis: 'x' | 'y', useFinalPosition?: boolean) {
   const options = el.options;
   const {[axis]: value} = el.getProps([axis], useFinalPosition);
 
@@ -16,7 +16,7 @@ function inRange(el: PointElement, pos: number, axis: 'x' | 'y', useFinalPositio
 
 export type PointProps = Point
 
-export default class PointElement extends Element<PointProps, PointOptions & PointHoverOptions> {
+export default class PointGeometry extends Element<PointProps, PointOptions & PointHoverOptions> {
 
   static id = 'point';
 
@@ -85,7 +85,7 @@ export default class PointElement extends Element<PointProps, PointOptions & Poi
     return (radius + borderWidth) * 2;
   }
 
-  draw(renderer: {drawElement: (element: PointElement, context: any) => void}, context: any) {
+  draw(renderer: {drawElement: (element: PointGeometry, context: any) => void}, context: any) {
     renderer.drawElement(this, context);
   }
 

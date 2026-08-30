@@ -27,12 +27,8 @@ export default class SvgRenderer implements Renderer {
   private readonly chart: RendererCreateOptions['chart'];
   private readonly measureNode: SVGTextElement;
 
-  constructor({chart, host, canvas}: RendererCreateOptions) {
+  constructor({chart, host}: RendererCreateOptions) {
     this.chart = chart;
-    const seed = canvas as HTMLCanvasElement | null;
-    if (seed && seed.parentNode) {
-      seed.remove();
-    }
     const document = host.ownerDocument;
     this.root = document.createElementNS(SVG_NS, 'svg');
     this.root.setAttribute('data-chart-svg', 'true');

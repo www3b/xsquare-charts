@@ -1,10 +1,11 @@
 import animator from '../animation/animator.js';
-import defaults from './chart.defaults.js';
 import Interaction from './chart.interaction.js';
 import layouts from './chart.layout.js';
 import {_detectPlatform} from '../platform/platform.create.js';
-import PluginService from './chart.lifecycle.js';
-import catalog from './chart.catalog.js';
+import ChartLifecycle from './chart.lifecycle.js';
+import {getScaleType} from '../scales/scale.create.js';
+import {getSeriesType} from '../series/series.create.js';
+import {initializeBuiltinDefaults} from './chart.builtins.js';
 import {createRenderer} from '../renderers/renderer.create.js';
 import Config, {determineAxis, getIndexAxis, normalizeChartConfig, normalizeChartData} from './chart.options.js';
 import {each, callback as callCallback, uid, valueOrDefault, _elementsEqual, isNullOrUndef, setsEqual, defined, isFunction, _isClickEvent} from '../shared/core.js';
@@ -91,6 +92,7 @@ class Chart {
     if (!host || host.nodeType !== 1 || isCanvasLike(host)) {
       throw new TypeError('Chart host must be an HTMLElement container, not a canvas, context, selector, or collection');
     }
+    initializeBuiltinDefaults();
     const config = this.config = new Config(normalizeChartConfig(userConfig));
     const initialItem = host;
     const existingChart = getChart(host);
@@ -106,14 +108,12 @@ class Chart {
 
     this.id = uid();
     this.host = host;
-    this._canvasSeed = null;
     this._renderer = null;
     this.canvas = null;
     this.ctx = null;
     this.width = 0;
     this.height = 0;
     this._options = config.createResolver(config.chartOptionScopes(), this.getContext());
-    this._validateRenderer(this._options.renderer);
     this._createRenderer(this._options.renderer);
     // Store the previously used aspect ratio to determine if a resize
     // is needed during updates. Do this after _options is set since
@@ -132,7 +132,7 @@ class Chart {
     this._responsiveListeners = undefined;
     this._sortedMetasets = [];
     this.scales = {};
-    this._plugins = new PluginService();
+    this._plugins = new ChartLifecycle();
     this.$proxies = {};
     this._hiddenIndices = {};
     this.attached = false;
@@ -235,17 +235,10 @@ class Chart {
     this.setActiveElements(items);
   }
 
-  _validateRenderer(type) {
-    if (type === 'svg' && this._canvasSeed && (!this._canvasSeed.parentNode || isCanvasLike(this.host))) {
-      throw new Error('SVG renderer requires a supplied canvas with a parent container');
-    }
-  }
-
   _createRenderer(type) {
     const renderer = createRenderer(type, {
       chart: this,
-      host: this.host,
-      canvas: this._canvasSeed
+      host: this.host
     });
     if (!renderer.initialize(this.options.aspectRatio)) {
       renderer.destroy();
@@ -266,7 +259,6 @@ class Chart {
     if (this._renderer && this._renderer.type === type) {
       return true;
     }
-    this._validateRenderer(type);
     const width = this.width;
     const height = this.height;
     this.unbindEvents();
@@ -415,7 +407,7 @@ class Chart {
       if (id in scales && scales[id].type === scaleType) {
         scale = scales[id];
       } else {
-        const scaleClass = catalog.getScale(scaleType);
+        const scaleClass = getScaleType(scaleType);
         scale = new scaleClass({
           id,
           type: scaleType,
@@ -499,13 +491,8 @@ class Chart {
         meta.controller.updateIndex(i);
         meta.controller.linkScales();
       } else {
-        const ControllerClass = catalog.getController(type);
-        const {datasetElementType, dataElementType} = defaults.datasets[type];
-        Object.assign(ControllerClass, {
-          dataElementType: catalog.getElement(dataElementType),
-          datasetElementType: datasetElementType && catalog.getElement(datasetElementType)
-        });
-        meta.controller = new ControllerClass(this, i);
+        const SeriesType = getSeriesType(type);
+        meta.controller = new SeriesType(this, i);
         newControllers.push(meta.controller);
       }
     }
@@ -1004,14 +991,8 @@ class Chart {
     this._stop();
     this.config.clearCache();
     this.unbindEvents();
-    const wasSvg = this._renderer && this._renderer.type === 'svg';
     if (this._renderer) {
       this._renderer.destroy();
-    }
-    // Legacy `new Chart(canvas, {renderer: 'svg'})` callers keep ownership of
-    // their supplied canvas after destroy; a host-based SVG chart has no seed.
-    if (wasSvg && this._canvasSeed && !this._canvasSeed.parentNode) {
-      this.host.appendChild(this._canvasSeed);
     }
     this._renderer = null;
     this.root = null;

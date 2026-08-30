@@ -1,9 +1,11 @@
-import DatasetController from './series.js';
+import Series from './series.js';
+import PointGeometry from '../geometry/point.js';
 import {valueOrDefault} from '../shared/core.js';
 
-export default class BubbleController extends DatasetController {
+export default class BubbleSeries extends Series {
 
   static id = 'bubble';
+  static dataElementType = PointGeometry;
 
   /**
    * @type {any}

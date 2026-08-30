@@ -4,7 +4,7 @@
  * @see https://github.com/chartjs/Chart.js/issues/2440#issuecomment-256461897
  */
 
-import LineElement from '../../geometry/line.js';
+import LineGeometry from '../../geometry/line.js';
 import {_shouldApplyFill} from './filler.helper.js';
 import {buildFillDrawModel} from './filler.model.js';
 import {_decodeFill, _resolveTarget} from './filler.options.js';
@@ -39,7 +39,7 @@ export default {
       line = meta.dataset;
       source = null;
 
-      if (line && line.options && line instanceof LineElement) {
+      if (line && line.options && line instanceof LineGeometry) {
         source = {
           visible: chart.isDatasetVisible(i),
           index: i,

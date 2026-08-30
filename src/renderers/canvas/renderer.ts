@@ -48,16 +48,12 @@ export default class CanvasRenderer implements Renderer {
   readonly root: HTMLCanvasElement;
   readonly canvas: HTMLCanvasElement;
   context: CanvasRenderingContext2D | null = null;
-  private readonly created: boolean;
+  private readonly created = true;
 
-  constructor({host, canvas}: RendererCreateOptions) {
-    const supplied = canvas && typeof canvas.getContext === 'function' ? canvas as HTMLCanvasElement : null;
-    this.created = !supplied;
-    this.canvas = supplied || host.ownerDocument.createElement('canvas');
+  constructor({host}: RendererCreateOptions) {
+    this.canvas = host.ownerDocument.createElement('canvas');
     this.root = this.canvas;
-    if (!this.canvas.parentNode && host !== this.canvas) {
-      host.appendChild(this.canvas);
-    }
+    host.appendChild(this.canvas);
   }
 
   initialize(aspectRatio?: number): boolean {

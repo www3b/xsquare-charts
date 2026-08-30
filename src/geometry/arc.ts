@@ -5,7 +5,7 @@ import {_readValueToProps} from '../shared/options.js';
 import type {ArcOptions, Chart, Point} from '../shared/types/index.js';
 type PathContext = {arc: Function; moveTo: Function; lineTo: Function; closePath: Function; rect: Function};
 
-export function traceSelfClip(ctx: PathContext, chart: Chart, element: ArcElement, endAngle: number) {
+export function traceSelfClip(ctx: PathContext, chart: Chart, element: ArcGeometry, endAngle: number) {
   const {startAngle, x, y, outerRadius, innerRadius, options} = element;
   const {borderWidth, borderJoinStyle} = options;
   const outerAngleClip = Math.min(borderWidth / outerRadius, _normalizeAngle(startAngle - endAngle));
@@ -38,7 +38,7 @@ function toRadiusCorners(value) {
 /**
  * Parse border radius from the provided options
  */
-function parseBorderRadius(arc: ArcElement, innerRadius: number, outerRadius: number, angleDelta: number) {
+function parseBorderRadius(arc: ArcGeometry, innerRadius: number, outerRadius: number, angleDelta: number) {
   const o = toRadiusCorners(arc.options.borderRadius);
   const halfThickness = (outerRadius - innerRadius) / 2;
   const innerLimit = Math.min(halfThickness, angleDelta * innerRadius / 2);
@@ -75,7 +75,7 @@ function rThetaToXY(r: number, theta: number, x: number, y: number) {
 
 function pathFullCircle(
   ctx: PathContext,
-  element: ArcElement,
+  element: ArcGeometry,
   offset: number,
   spacing: number,
 ) {
@@ -111,7 +111,7 @@ function pathFullCircle(
  */
 export function pathArc(
   ctx: PathContext,
-  element: ArcElement,
+  element: ArcGeometry,
   offset: number,
   spacing: number,
   end: number,
@@ -266,7 +266,7 @@ export interface ArcProps extends Point {
   circumference: number;
 }
 
-export default class ArcElement extends Element<ArcProps, ArcOptions> {
+export default class ArcGeometry extends Element<ArcProps, ArcOptions> {
 
   static id = 'arc';
 
@@ -363,7 +363,7 @@ export default class ArcElement extends Element<ArcProps, ArcOptions> {
     return this.getCenterPoint(useFinalPosition);
   }
 
-  draw(renderer: {drawElement: (element: ArcElement, context?: any) => void}, context?: any) {
+  draw(renderer: {drawElement: (element: ArcGeometry, context?: any) => void}, context?: any) {
     renderer.drawElement(this, context);
   }
 }

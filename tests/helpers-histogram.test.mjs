@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {createHistogramBins} from '../helpers/helpers.js';
+import {createHistogramBins} from '../dist/utils.js';
 
 test('createHistogramBins selects and validates binning strategies', () => {
   const values = [0, 0.5, 1, 1.5, 2, NaN, Infinity];

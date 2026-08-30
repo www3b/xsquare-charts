@@ -231,7 +231,7 @@ const cloneIfNotShared = (cached, shared) => shared ? cached : Object.assign({},
 const createStack = (canStack, meta, chart) => canStack && !meta.hidden && meta._stacked
   && {keys: getSortedDatasetIndices(chart, true), values: null};
 
-export default class DatasetController {
+export default class Series {
 
   /**
    * @type {any}
@@ -239,12 +239,12 @@ export default class DatasetController {
   static defaults = {};
 
   /**
-   * Element type used to generate a meta dataset (e.g. Chart.element.LineElement).
+   * Element type used to generate a meta dataset (e.g. Chart.element.LineGeometry).
    */
   static datasetElementType = null;
 
   /**
-   * Element type used to generate a meta data (e.g. Chart.element.PointElement).
+   * Element type used to generate a meta data (e.g. Chart.element.PointGeometry).
    */
   static dataElementType = null;
 

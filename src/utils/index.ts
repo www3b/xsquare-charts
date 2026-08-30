@@ -57,3 +57,5 @@ export * from './observer.js';
 export * from './command.js';
 export * from './id.js';
 export * from './async.js';
+export {createHistogramBins} from '../series/histogram.helpers.js';
+export type {HistogramBin, HistogramBinOptions} from '../series/histogram.helpers.js';

@@ -1,4 +1,10 @@
-import catalog from './chart.catalog.js';
+import Colors from '../series/colors.js';
+import Decimation from '../series/decimation.js';
+import Filler from '../series/filler/index.js';
+import Legend from './legend.js';
+import SubTitle from './subtitle.js';
+import Title from './title.js';
+import Tooltip from './tooltip.js';
 import {callback as callCallback, isNullOrUndef, valueOrDefault} from '../shared/core.js';
 
 /**
@@ -17,7 +23,7 @@ import {callback as callCallback, isNullOrUndef, valueOrDefault} from '../shared
  */
 
 
-export default class PluginService {
+export default class ChartLifecycle {
   constructor() {
     this._init = undefined;
   }
@@ -101,7 +107,7 @@ export default class PluginService {
   _createDescriptors(chart, all) {
     const config = chart && chart.config;
     const options = valueOrDefault(config.options && config.options.plugins, {});
-    const plugins = allPlugins(config);
+    const plugins = builtInParticipants();
     // options === false => all plugins are disabled
     return options === false && !all ? [] : createDescriptors(chart, plugins, options, all);
   }
@@ -119,28 +125,11 @@ export default class PluginService {
   }
 }
 
-/**
- * @param {import('./chart.options.js').default} config
- */
-function allPlugins(config) {
-  const localIds = {};
-  const plugins = [];
-  const keys = Object.keys(catalog.plugins.items);
-  for (let i = 0; i < keys.length; i++) {
-    plugins.push(catalog.getPlugin(keys[i]));
-  }
-
-  const local = config.plugins || [];
-  for (let i = 0; i < local.length; i++) {
-    const plugin = local[i];
-
-    if (plugins.indexOf(plugin) === -1) {
-      plugins.push(plugin);
-      localIds[plugin.id] = true;
-    }
-  }
-
-  return {plugins, localIds};
+function builtInParticipants() {
+  return {
+    plugins: [Colors, Decimation, Filler, Legend, SubTitle, Title, Tooltip],
+    localIds: Object.create(null)
+  };
 }
 
 function getOpts(options, all) {

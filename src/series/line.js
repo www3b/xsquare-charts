@@ -1,11 +1,15 @@
-import DatasetController from './series.js';
+import Series from './series.js';
+import LineGeometry from '../geometry/line.js';
+import PointGeometry from '../geometry/point.js';
 import {isNullOrUndef} from '../shared/index.js';
 import {isNumber} from '../shared/math.js';
 import {_getStartAndCountOfVisiblePoints, _scaleRangesChanged} from '../shared/extras.js';
 
-export default class LineController extends DatasetController {
+export default class LineSeries extends Series {
 
   static id = 'line';
+  static datasetElementType = LineGeometry;
+  static dataElementType = PointGeometry;
 
   /**
    * @type {any}

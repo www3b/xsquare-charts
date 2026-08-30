@@ -26,7 +26,7 @@ import {
   TimeSeriesScale,
   _adapters,
 } from '/dist/chart.js';
-import {createHistogramBins} from '/helpers/helpers.js';
+import {createHistogramBins} from '/dist/utils.js';
 
 Chart.register(
   ArcElement,

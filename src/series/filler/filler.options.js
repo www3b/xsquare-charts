@@ -3,7 +3,7 @@ import {isObject, isFinite, valueOrDefault} from '../../shared/core.js';
 
 /**
  * @typedef { import('../../scales/scale.js').default } Scale
- * @typedef { import('../../geometry/line.js').default } LineElement
+ * @typedef { import('../../geometry/line.js').default } LineGeometry
  * @typedef { import('../../shared/types/index.js').FillTarget } FillTarget
  * @typedef { import('../../shared/types/index.js').ComplexFillTarget } ComplexFillTarget
  */
@@ -40,7 +40,7 @@ export function _resolveTarget(sources, index, propagate) {
 }
 
 /**
- * @param {LineElement} line
+ * @param {LineGeometry} line
  * @param {number} index
  * @param {number} count
  */
@@ -116,7 +116,7 @@ export function _getTargetValue(fill, scale, startValue) {
 }
 
 /**
- * @param {LineElement} line
+ * @param {LineGeometry} line
  */
 function parseFillOption(line) {
   const options = line.options;

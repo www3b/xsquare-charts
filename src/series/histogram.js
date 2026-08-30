@@ -1,12 +1,12 @@
-import BarController from './bar.js';
+import BarSeries from './bar.js';
 import {resolveObjectKey} from '../shared/index.js';
 
-export default class HistogramController extends BarController {
+export default class HistogramSeries extends BarSeries {
 
   static id = 'histogram';
 
   static defaults = {
-    ...BarController.defaults,
+    ...BarSeries.defaults,
     categoryPercentage: 1,
     barPercentage: 1,
     grouped: false,

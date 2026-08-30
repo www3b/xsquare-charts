@@ -1,16 +1,16 @@
 /**
  * @typedef { import('../../components/chart.js').default } Chart
  * @typedef { import('../../scales/scale.js').default } Scale
- * @typedef { import('../../geometry/point.js').default } PointElement
+ * @typedef { import('../../geometry/point.js').default } PointGeometry
  */
 
-import {LineElement} from '../../geometry/geometry.create.js';
+import LineGeometry from '../../geometry/line.js';
 import {_isBetween} from '../../shared/index.js';
 import {_createBoundaryLine} from './filler.helper.js';
 
 /**
- * @param {{ chart: Chart; scale: Scale; index: number; line: LineElement; }} source
- * @return {LineElement}
+ * @param {{ chart: Chart; scale: Scale; index: number; line: LineGeometry; }} source
+ * @return {LineGeometry}
  */
 export function _buildStackLine(source) {
   const {scale, index, line} = source;
@@ -26,13 +26,13 @@ export function _buildStackLine(source) {
       addPointsBelow(points, sourcePoints[j], linesBelow);
     }
   }
-  return new LineElement({points, options: {}});
+  return new LineGeometry({points, options: {}});
 }
 
 /**
  * @param {Scale} scale
  * @param {number} index
- * @return {LineElement[]}
+ * @return {LineGeometry[]}
  */
 function getLinesBelow(scale, index) {
   const below = [];
@@ -51,9 +51,9 @@ function getLinesBelow(scale, index) {
 }
 
 /**
- * @param {PointElement[]} points
- * @param {PointElement} sourcePoint
- * @param {LineElement[]} linesBelow
+ * @param {PointGeometry[]} points
+ * @param {PointGeometry} sourcePoint
+ * @param {LineGeometry[]} linesBelow
  */
 function addPointsBelow(points, sourcePoint, linesBelow) {
   const postponed = [];
@@ -79,10 +79,10 @@ function addPointsBelow(points, sourcePoint, linesBelow) {
 }
 
 /**
- * @param {LineElement} line
- * @param {PointElement} sourcePoint
+ * @param {LineGeometry} line
+ * @param {PointGeometry} sourcePoint
  * @param {string} property
- * @returns {{point?: PointElement, first?: boolean, last?: boolean}}
+ * @returns {{point?: PointGeometry, first?: boolean, last?: boolean}}
  */
 function findPoint(line, sourcePoint, property) {
   const point = line.interpolate(sourcePoint, property);

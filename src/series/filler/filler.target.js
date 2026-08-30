@@ -7,7 +7,7 @@ import {simpleArc} from './simpleArc.js';
 /**
  * @typedef { import('../../components/chart.js').default } Chart
  * @typedef { import('../../scales/scale.js').default } Scale
- * @typedef { import('../../geometry/point.js').default } PointElement
+ * @typedef { import('../../geometry/point.js').default } PointGeometry
  */
 
 export function _getTarget(source) {

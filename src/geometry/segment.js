@@ -3,8 +3,8 @@ import {createContext} from '../shared/options.js';
 import {isPatternOrGradient} from '../shared/color.js';
 
 /**
- * @typedef { import('./line.js').default } LineElement
- * @typedef { import('./point.js').default } PointElement
+ * @typedef { import('./line.js').default } LineGeometry
+ * @typedef { import('./point.js').default } PointGeometry
  * @typedef {{start: number, end: number, loop: boolean, style?: any}} Segment
  */
 
@@ -67,9 +67,9 @@ function getSegment(segment, points, bounds) {
  * @param {number} segment.end - end index of the segment, referring the points array
  * @param {boolean} segment.loop - indicates that the segment is a loop
  * @param {object} [segment.style] - segment style
- * @param {PointElement[]} points - the points that this segment refers to
+ * @param {PointGeometry[]} points - the points that this segment refers to
  * @param {object} [bounds]
- * @param {string} bounds.property - the property of a `PointElement` we are bounding. `x`, `y` or `angle`.
+ * @param {string} bounds.property - the property of a `PointGeometry` we are bounding. `x`, `y` or `angle`.
  * @param {number} bounds.start - start value of the property
  * @param {number} bounds.end - end value of the property
  * @private
@@ -131,7 +131,7 @@ export function _boundSegment(segment, points, bounds) {
 
 /**
  * Returns the segments of the line that are inside given bounds
- * @param {LineElement} line
+ * @param {LineGeometry} line
  * @param {object} [bounds]
  * @param {string} bounds.property - the property we are bounding with. `x`, `y` or `angle`.
  * @param {number} bounds.start - start value of the `property`
@@ -190,7 +190,7 @@ function findStartAndEnd(points, count, loop, spanGaps) {
 
 /**
  * Compute solid segments from Points, when spanGaps === false
- * @param {PointElement[]} points - the points
+ * @param {PointGeometry[]} points - the points
  * @param {number} start - start index
  * @param {number} max - max index (can go past count on a loop)
  * @param {boolean} loop - boolean indicating that this would be a loop if no gaps are found
@@ -230,7 +230,7 @@ function solidSegments(points, start, max, loop) {
 /**
  * Compute the continuous segments that define the whole line
  * There can be skipped points within a segment, if spanGaps is true.
- * @param {LineElement} line
+ * @param {LineGeometry} line
  * @param {object} [segmentOptions]
  * @return {Segment[]}
  * @private
@@ -258,7 +258,7 @@ export function _computeSegments(line, segmentOptions) {
 
 /**
  * @param {Segment[]} segments
- * @param {PointElement[]} points
+ * @param {PointGeometry[]} points
  * @param {object} [segmentOptions]
  * @return {Segment[]}
  */
@@ -270,9 +270,9 @@ function splitByStyles(line, segments, points, segmentOptions) {
 }
 
 /**
- * @param {LineElement} line
+ * @param {LineGeometry} line
  * @param {Segment[]} segments
- * @param {PointElement[]} points
+ * @param {PointGeometry[]} points
  * @param {object} [segmentOptions]
  * @return {Segment[]}
  */

@@ -1,9 +1,13 @@
-import DatasetController from './series.js';
+import Series from './series.js';
+import LineGeometry from '../geometry/line.js';
+import PointGeometry from '../geometry/point.js';
 import {_parseObjectDataRadialScale} from '../shared/index.js';
 
-export default class RadarController extends DatasetController {
+export default class RadarSeries extends Series {
 
   static id = 'radar';
+  static datasetElementType = LineGeometry;
+  static dataElementType = PointGeometry;
 
   /**
    * @type {any}

@@ -2,10 +2,9 @@ import Element from './geometry.js';
 import {_bezierInterpolation, _pointInLine, _steppedInterpolation} from './interpolation.js';
 import {_computeSegments, _boundSegments} from './segment.js';
 import {_updateBezierControlPoints} from './curve.js';
-import {valueOrDefault} from '../shared/index.js';
 
 /**
- * @typedef { import('./point.js').default } PointElement
+ * @typedef { import('./point.js').default } PointGeometry
  */
 
 function lineTo(ctx, previous, target) {
@@ -47,7 +46,7 @@ function pathVars(points, segment, params = {}) {
  * Create path from points, grouping by truncated x-coordinate
  * Points need to be in order by x-coordinate for this to work efficiently
  * @param {CanvasRenderingContext2D|Path2D} ctx - Context
- * @param {LineElement} line
+ * @param {LineGeometry} line
  * @param {object} segment
  * @param {number} segment.start - start index of the segment, referring the points array
  * @param {number} segment.end - end index of the segment, referring the points array
@@ -94,7 +93,7 @@ function pathSegment(ctx, line, segment, params) {
  * Create path from points, grouping by truncated x-coordinate
  * Points need to be in order by x-coordinate for this to work efficiently
  * @param {CanvasRenderingContext2D|Path2D} ctx - Context
- * @param {LineElement} line
+ * @param {LineGeometry} line
  * @param {object} segment
  * @param {number} segment.start - start index of the segment, referring the points array
  * @param {number} segment.end - end index of the segment, referring the points array
@@ -168,7 +167,7 @@ function fastPathSegment(ctx, line, segment, params) {
 }
 
 /**
- * @param {LineElement} line - the line
+ * @param {LineGeometry} line - the line
  * @returns {function}
  * @private
  */
@@ -215,7 +214,7 @@ function bezierCurveTo(ctx, previous, target, reverse) {
   }
 }
 
-export default class LineElement extends Element {
+export default class LineGeometry extends Element {
 
   static id = 'line';
 
@@ -297,7 +296,7 @@ export default class LineElement extends Element {
 
   /**
 	 * First non-skipped point on this line
-	 * @returns {PointElement|undefined}
+	 * @returns {PointGeometry|undefined}
 	 */
   first() {
     const segments = this.segments;
@@ -307,7 +306,7 @@ export default class LineElement extends Element {
 
   /**
 	 * Last non-skipped point on this line
-	 * @returns {PointElement|undefined}
+	 * @returns {PointGeometry|undefined}
 	 */
   last() {
     const segments = this.segments;
@@ -319,9 +318,9 @@ export default class LineElement extends Element {
   /**
 	 * Interpolate a point in this line at the same value on `property` as
 	 * the reference `point` provided
-	 * @param {PointElement} point - the reference point
+	 * @param {PointGeometry} point - the reference point
 	 * @param {string} property - the property to match on
-	 * @returns {PointElement|undefined}
+	 * @returns {PointGeometry|undefined}
 	 */
   interpolate(point, property) {
     const options = this.options;

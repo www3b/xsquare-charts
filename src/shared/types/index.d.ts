@@ -2,7 +2,7 @@
 import {DeepPartial, DistributiveArray, UnionToIntersection} from './utils.js';
 
 import {TimeUnit} from '../../scales/time.adapter.js';
-import PointElement from '../../geometry/point.js';
+import PointGeometry from '../../geometry/point.js';
 import {EasingFunction} from '../easing.js';
 import {AnimationEvent} from './animation.js';
 import {AnyObject, EmptyObject} from './basic.js';
@@ -13,8 +13,8 @@ import {LayoutItem, LayoutPosition} from './layout.js';
 import {ColorsPluginOptions} from '../../series/colors.js';
 
 export {EasingFunction} from '../easing.js';
-export {default as ArcElement, ArcProps} from '../../geometry/arc.js';
-export {default as PointElement, PointProps} from '../../geometry/point.js';
+export {default as ArcGeometry, ArcProps} from '../../geometry/arc.js';
+export {default as PointGeometry, PointProps} from '../../geometry/point.js';
 export {Animation, Animations, Animator, AnimationEvent} from './animation.js';
 export {Color} from './color.js';
 export {ChartArea, Point, TRBL} from './geometric.js';
@@ -34,8 +34,8 @@ export interface ScriptableContext<TType extends ChartType> {
 
 export interface ScriptableLineSegmentContext {
   type: 'segment',
-  p0: PointElement,
-  p1: PointElement,
+  p0: PointGeometry,
+  p1: PointGeometry,
   p0DataIndex: number,
   p1DataIndex: number,
   datasetIndex: number
@@ -93,7 +93,7 @@ export interface ControllerDatasetOptions extends ParsingOptions {
   hidden: boolean;
 }
 
-export interface BarControllerDatasetOptions
+export interface BarSeriesDatasetOptions
   extends ControllerDatasetOptions,
   ScriptableAndArrayOptions<BarOptions, ScriptableContext<'bar'>>,
   ScriptableAndArrayOptions<CommonHoverOptions, ScriptableContext<'bar'>>,
@@ -146,17 +146,17 @@ export interface BarControllerDatasetOptions
   grouped: boolean;
 }
 
-export interface BarControllerChartOptions {
+export interface BarSeriesChartOptions {
   /**
    * Should null or undefined values be omitted from drawing
    */
   skipNull?: boolean;
 }
 
-export type BarController = DatasetController
-export declare const BarController: ChartComponent & {
-  prototype: BarController;
-  new (chart: Chart, datasetIndex: number): BarController;
+export type BarSeries = Series
+export declare const BarSeries: ChartComponent & {
+  prototype: BarSeries;
+  new (chart: Chart, datasetIndex: number): BarSeries;
 };
 
 /** A vertical histogram bin. Its x boundaries are mapped directly to pixels. */
@@ -173,17 +173,17 @@ export interface HorizontalHistogramDataPoint {
   x: number;
 }
 
-export interface HistogramControllerDatasetOptions extends BarControllerDatasetOptions {}
+export interface HistogramSeriesDatasetOptions extends BarSeriesDatasetOptions {}
 
-export interface HistogramControllerChartOptions extends BarControllerChartOptions {}
+export interface HistogramSeriesChartOptions extends BarSeriesChartOptions {}
 
-export type HistogramController = BarController
-export declare const HistogramController: ChartComponent & {
-  prototype: HistogramController;
-  new (chart: Chart, datasetIndex: number): HistogramController;
+export type HistogramSeries = BarSeries
+export declare const HistogramSeries: ChartComponent & {
+  prototype: HistogramSeries;
+  new (chart: Chart, datasetIndex: number): HistogramSeries;
 };
 
-export interface BubbleControllerDatasetOptions
+export interface BubbleSeriesDatasetOptions
   extends ControllerDatasetOptions,
   ScriptableAndArrayOptions<PointOptions, ScriptableContext<'bubble'>>,
   ScriptableAndArrayOptions<PointHoverOptions, ScriptableContext<'bubble'>> {
@@ -204,13 +204,13 @@ export interface BubbleDataPoint extends Point {
   r?: number;
 }
 
-export type BubbleController = DatasetController
-export declare const BubbleController: ChartComponent & {
-  prototype: BubbleController;
-  new (chart: Chart, datasetIndex: number): BubbleController;
+export type BubbleSeries = Series
+export declare const BubbleSeries: ChartComponent & {
+  prototype: BubbleSeries;
+  new (chart: Chart, datasetIndex: number): BubbleSeries;
 };
 
-export interface LineControllerDatasetOptions
+export interface LineSeriesDatasetOptions
   extends ControllerDatasetOptions,
   ScriptableAndArrayOptions<PointPrefixedOptions, ScriptableContext<'line'>>,
   ScriptableAndArrayOptions<PointPrefixedHoverOptions, ScriptableContext<'line'>>,
@@ -237,7 +237,7 @@ export interface LineControllerDatasetOptions
   showLine: boolean;
 }
 
-export interface LineControllerChartOptions {
+export interface LineSeriesChartOptions {
   /**
    * If true, lines will be drawn between points with no or null data. If false, points with NaN data will create a break in the line. Can also be a number specifying the maximum gap length to span. The unit of the value depends on the scale used.
    * @default false
@@ -250,25 +250,25 @@ export interface LineControllerChartOptions {
   showLine: boolean;
 }
 
-export type LineController = DatasetController
-export declare const LineController: ChartComponent & {
-  prototype: LineController;
-  new (chart: Chart, datasetIndex: number): LineController;
+export type LineSeries = Series
+export declare const LineSeries: ChartComponent & {
+  prototype: LineSeries;
+  new (chart: Chart, datasetIndex: number): LineSeries;
 };
 
-export type ScatterControllerDatasetOptions = LineControllerDatasetOptions;
+export type ScatterSeriesDatasetOptions = LineSeriesDatasetOptions;
 
 export type ScatterDataPoint = Point
 
-export type ScatterControllerChartOptions = LineControllerChartOptions;
+export type ScatterSeriesChartOptions = LineSeriesChartOptions;
 
-export type ScatterController = LineController
-export declare const ScatterController: ChartComponent & {
-  prototype: ScatterController;
-  new (chart: Chart, datasetIndex: number): ScatterController;
+export type ScatterSeries = LineSeries
+export declare const ScatterSeries: ChartComponent & {
+  prototype: ScatterSeries;
+  new (chart: Chart, datasetIndex: number): ScatterSeries;
 };
 
-export interface DoughnutControllerDatasetOptions
+export interface DoughnutSeriesDatasetOptions
   extends ControllerDatasetOptions,
   ScriptableAndArrayOptions<ArcOptions, ScriptableContext<'doughnut'>>,
   ScriptableAndArrayOptions<ArcHoverOptions, ScriptableContext<'doughnut'>>,
@@ -328,7 +328,7 @@ export interface DoughnutAnimationOptions extends AnimationSpec<'doughnut'> {
   animateScale: boolean;
 }
 
-export interface DoughnutControllerChartOptions {
+export interface DoughnutSeriesChartOptions {
   /**
    * Sweep to allow arcs to cover.
    * @default 360
@@ -379,7 +379,7 @@ export interface DoughnutControllerChartOptions {
 
 export type DoughnutDataPoint = number;
 
-export interface DoughnutController extends DatasetController {
+export interface DoughnutSeries extends Series {
   readonly innerRadius: number;
   readonly outerRadius: number;
   readonly offsetX: number;
@@ -389,29 +389,29 @@ export interface DoughnutController extends DatasetController {
   calculateCircumference(value: number): number;
 }
 
-export declare const DoughnutController: ChartComponent & {
-  prototype: DoughnutController;
-  new (chart: Chart, datasetIndex: number): DoughnutController;
+export declare const DoughnutSeries: ChartComponent & {
+  prototype: DoughnutSeries;
+  new (chart: Chart, datasetIndex: number): DoughnutSeries;
 };
 
 export interface DoughnutMetaExtensions {
   total: number;
 }
 
-export type PieControllerDatasetOptions = DoughnutControllerDatasetOptions;
-export type PieControllerChartOptions = DoughnutControllerChartOptions;
+export type PieSeriesDatasetOptions = DoughnutSeriesDatasetOptions;
+export type PieSeriesChartOptions = DoughnutSeriesChartOptions;
 export type PieAnimationOptions = DoughnutAnimationOptions;
 
 export type PieDataPoint = DoughnutDataPoint;
 export type PieMetaExtensions = DoughnutMetaExtensions;
 
-export type PieController = DoughnutController
-export declare const PieController: ChartComponent & {
-  prototype: PieController;
-  new (chart: Chart, datasetIndex: number): PieController;
+export type PieSeries = DoughnutSeries
+export declare const PieSeries: ChartComponent & {
+  prototype: PieSeries;
+  new (chart: Chart, datasetIndex: number): PieSeries;
 };
 
-export interface PolarAreaControllerDatasetOptions extends DoughnutControllerDatasetOptions {
+export interface PolarAreaSeriesDatasetOptions extends DoughnutSeriesDatasetOptions {
   /**
    * Arc angle to cover. - for polar only
    * @default circumference / (arc count)
@@ -421,7 +421,7 @@ export interface PolarAreaControllerDatasetOptions extends DoughnutControllerDat
 
 export type PolarAreaAnimationOptions = DoughnutAnimationOptions;
 
-export interface PolarAreaControllerChartOptions {
+export interface PolarAreaSeriesChartOptions {
   /**
    * Starting angle to draw arcs for the first item in a dataset. In degrees, 0 is at top.
    * @default 0
@@ -443,15 +443,15 @@ export interface PolarAreaControllerChartOptions {
   animation: false | PolarAreaAnimationOptions;
 }
 
-export interface PolarAreaController extends DoughnutController {
+export interface PolarAreaSeries extends DoughnutSeries {
   countVisibleElements(): number;
 }
-export declare const PolarAreaController: ChartComponent & {
-  prototype: PolarAreaController;
-  new (chart: Chart, datasetIndex: number): PolarAreaController;
+export declare const PolarAreaSeries: ChartComponent & {
+  prototype: PolarAreaSeries;
+  new (chart: Chart, datasetIndex: number): PolarAreaSeries;
 };
 
-export interface RadarControllerDatasetOptions
+export interface RadarSeriesDatasetOptions
   extends ControllerDatasetOptions,
   ScriptableAndArrayOptions<PointOptions & PointHoverOptions & PointPrefixedOptions & PointPrefixedHoverOptions, ScriptableContext<'radar'>>,
   ScriptableAndArrayOptions<LineOptions & LineHoverOptions, ScriptableContext<'radar'>>,
@@ -476,12 +476,12 @@ export interface RadarControllerDatasetOptions
   showLine: boolean;
 }
 
-export type RadarControllerChartOptions = LineControllerChartOptions;
+export type RadarSeriesChartOptions = LineSeriesChartOptions;
 
-export type RadarController = DatasetController
-export declare const RadarController: ChartComponent & {
-  prototype: RadarController;
-  new (chart: Chart, datasetIndex: number): RadarController;
+export type RadarSeries = Series
+export declare const RadarSeries: ChartComponent & {
+  prototype: RadarSeries;
+  new (chart: Chart, datasetIndex: number): RadarSeries;
 };
 
 interface ChartMetaClip {
@@ -494,7 +494,7 @@ interface ChartMetaClip {
 
 interface ChartMetaCommon<TElement extends Element = Element, TDatasetElement extends Element = Element> {
   type: string;
-  controller: DatasetController;
+  controller: Series;
   order: number;
 
   label: string;
@@ -663,7 +663,7 @@ export declare enum UpdateModeEnum {
 
 export type UpdateMode = keyof typeof UpdateModeEnum;
 
-export declare class DatasetController<
+export declare class Series<
   TType extends ChartType = ChartType,
   TElement extends Element = Element,
   TDatasetElement extends Element = Element,
@@ -677,7 +677,7 @@ export declare class DatasetController<
   enableOptionSharing: boolean;
   // If true, the controller supports the decimation
   // plugin. Defaults to `false` for all controllers
-  // except the LineController
+  // except the LineSeries
   supportsDecimation: boolean;
 
   linkScales(): void;
@@ -740,7 +740,7 @@ export declare class DatasetController<
   protected getMinMax(scale: Scale, canStack?: boolean): { min: number; max: number };
 }
 
-export interface DatasetControllerChartComponent extends ChartComponent {
+export interface SeriesChartComponent extends ChartComponent {
   defaults: {
     datasetElementType?: string | null | false;
     dataElementType?: string | null | false;
@@ -2032,7 +2032,7 @@ export interface LineHoverOptions extends CommonHoverOptions {
   hoverBorderJoinStyle: CanvasLineJoin;
 }
 
-export interface LineElement<T extends LineProps = LineProps, O extends LineOptions = LineOptions>
+export interface LineGeometry<T extends LineProps = LineProps, O extends LineOptions = LineOptions>
   extends Element<T, O>,
   VisualElement {
   updateControlPoints(chartArea: ChartArea, indexAxis?: 'x' | 'y'): void;
@@ -2045,9 +2045,9 @@ export interface LineElement<T extends LineProps = LineProps, O extends LineOpti
   path(ctx: CanvasRenderingContext2D): boolean;
 }
 
-export declare const LineElement: ChartComponent & {
-  prototype: LineElement;
-  new (cfg: AnyObject): LineElement;
+export declare const LineGeometry: ChartComponent & {
+  prototype: LineGeometry;
+  new (cfg: AnyObject): LineGeometry;
 };
 
 export type PointStyle =
@@ -2201,14 +2201,14 @@ export interface BarHoverOptions extends CommonHoverOptions {
   hoverBorderRadius: number | BorderRadius;
 }
 
-export interface BarElement<
+export interface BarGeometry<
   T extends BarProps = BarProps,
   O extends BarOptions = BarOptions
 > extends Element<T, O>, VisualElement {}
 
-export declare const BarElement: ChartComponent & {
-  prototype: BarElement;
-  new (cfg: AnyObject): BarElement;
+export declare const BarGeometry: ChartComponent & {
+  prototype: BarGeometry;
+  new (cfg: AnyObject): BarGeometry;
 };
 
 export interface ElementOptionsByType<TType extends ChartType> {
@@ -3757,32 +3757,32 @@ export interface RadialParsedData {
 
 export interface ChartTypeRegistry {
   bar: {
-    chartOptions: BarControllerChartOptions;
-    datasetOptions: BarControllerDatasetOptions;
+    chartOptions: BarSeriesChartOptions;
+    datasetOptions: BarSeriesDatasetOptions;
     defaultDataPoint: number | [number, number] | null;
     metaExtensions: {};
     parsedDataType: BarParsedData,
     scales: keyof CartesianScaleTypeRegistry;
   };
   histogram: {
-    chartOptions: HistogramControllerChartOptions;
-    datasetOptions: HistogramControllerDatasetOptions;
+    chartOptions: HistogramSeriesChartOptions;
+    datasetOptions: HistogramSeriesDatasetOptions;
     defaultDataPoint: HistogramDataPoint | HorizontalHistogramDataPoint;
     metaExtensions: {};
     parsedDataType: HistogramParsedData;
     scales: keyof CartesianScaleTypeRegistry;
   };
   line: {
-    chartOptions: LineControllerChartOptions;
-    datasetOptions: LineControllerDatasetOptions & FillerControllerDatasetOptions;
+    chartOptions: LineSeriesChartOptions;
+    datasetOptions: LineSeriesDatasetOptions & FillerControllerDatasetOptions;
     defaultDataPoint: ScatterDataPoint | number | null;
     metaExtensions: {};
     parsedDataType: CartesianParsedData;
     scales: keyof CartesianScaleTypeRegistry;
   };
   scatter: {
-    chartOptions: ScatterControllerChartOptions;
-    datasetOptions: ScatterControllerDatasetOptions;
+    chartOptions: ScatterSeriesChartOptions;
+    datasetOptions: ScatterSeriesDatasetOptions;
     defaultDataPoint: ScatterDataPoint | number | null;
     metaExtensions: {};
     parsedDataType: CartesianParsedData;
@@ -3790,39 +3790,39 @@ export interface ChartTypeRegistry {
   };
   bubble: {
     chartOptions: unknown;
-    datasetOptions: BubbleControllerDatasetOptions;
+    datasetOptions: BubbleSeriesDatasetOptions;
     defaultDataPoint: BubbleDataPoint;
     metaExtensions: {};
     parsedDataType: BubbleParsedData;
     scales: keyof CartesianScaleTypeRegistry;
   };
   pie: {
-    chartOptions: PieControllerChartOptions;
-    datasetOptions: PieControllerDatasetOptions;
+    chartOptions: PieSeriesChartOptions;
+    datasetOptions: PieSeriesDatasetOptions;
     defaultDataPoint: PieDataPoint;
     metaExtensions: PieMetaExtensions;
     parsedDataType: number;
     scales: keyof CartesianScaleTypeRegistry;
   };
   doughnut: {
-    chartOptions: DoughnutControllerChartOptions;
-    datasetOptions: DoughnutControllerDatasetOptions;
+    chartOptions: DoughnutSeriesChartOptions;
+    datasetOptions: DoughnutSeriesDatasetOptions;
     defaultDataPoint: DoughnutDataPoint;
     metaExtensions: DoughnutMetaExtensions;
     parsedDataType: number;
     scales: keyof CartesianScaleTypeRegistry;
   };
   polarArea: {
-    chartOptions: PolarAreaControllerChartOptions;
-    datasetOptions: PolarAreaControllerDatasetOptions;
+    chartOptions: PolarAreaSeriesChartOptions;
+    datasetOptions: PolarAreaSeriesDatasetOptions;
     defaultDataPoint: number;
     metaExtensions: {};
     parsedDataType: RadialParsedData;
     scales: keyof RadialScaleTypeRegistry;
   };
   radar: {
-    chartOptions: RadarControllerChartOptions;
-    datasetOptions: RadarControllerDatasetOptions & FillerControllerDatasetOptions;
+    chartOptions: RadarSeriesChartOptions;
+    datasetOptions: RadarSeriesDatasetOptions & FillerControllerDatasetOptions;
     defaultDataPoint: number | null;
     metaExtensions: {};
     parsedDataType: RadialParsedData;

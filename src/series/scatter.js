@@ -1,12 +1,14 @@
-import DatasetController from './series.js';
-import catalog from '../components/chart.catalog.js';
+import Series from './series.js';
+import LineGeometry from '../geometry/line.js';
+import PointGeometry from '../geometry/point.js';
 import {isNullOrUndef} from '../shared/index.js';
 import {isNumber} from '../shared/math.js';
 import {_getStartAndCountOfVisiblePoints, _scaleRangesChanged} from '../shared/extras.js';
 
-export default class ScatterController extends DatasetController {
+export default class ScatterSeries extends Series {
 
   static id = 'scatter';
+  static dataElementType = PointGeometry;
 
   /**
    * @type {any}
@@ -105,7 +107,7 @@ export default class ScatterController extends DatasetController {
     const {showLine} = this.options;
 
     if (!this.datasetElementType && showLine) {
-        this.datasetElementType = catalog.getElement('line');
+        this.datasetElementType = LineGeometry;
     }
 
     super.addElements();

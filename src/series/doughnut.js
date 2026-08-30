@@ -1,4 +1,5 @@
-import DatasetController from './series.js';
+import Series from './series.js';
+import ArcGeometry from '../geometry/arc.js';
 import {isObject, resolveObjectKey, toPercentage, toDimension, valueOrDefault} from '../shared/core.js';
 import {formatNumber} from '../shared/intl.js';
 import {toRadians, PI, TAU, HALF_PI, _angleBetween} from '../shared/math.js';
@@ -34,9 +35,10 @@ function getRatioAndOffset(rotation, circumference, cutout) {
   return {ratioX, ratioY, offsetX, offsetY};
 }
 
-export default class DoughnutController extends DatasetController {
+export default class DoughnutSeries extends Series {
 
   static id = 'doughnut';
+  static dataElementType = ArcGeometry;
 
   /**
    * @type {any}

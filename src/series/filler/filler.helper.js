@@ -1,17 +1,17 @@
 /**
  * @typedef { import('../../components/chart.js').default } Chart
  * @typedef { import('../../scales/scale.js').default } Scale
- * @typedef { import('../../geometry/point.js').default } PointElement
+ * @typedef { import('../../geometry/point.js').default } PointGeometry
  */
 
-import {LineElement} from '../../geometry/geometry.create.js';
+import LineGeometry from '../../geometry/line.js';
 import {isArray} from '../../shared/index.js';
 import {_pointsFromSegments} from './filler.segment.js';
 
 /**
- * @param {PointElement[] | { x: number; y: number; }} boundary
- * @param {LineElement} line
- * @return {LineElement?}
+ * @param {PointGeometry[] | { x: number; y: number; }} boundary
+ * @param {LineGeometry} line
+ * @return {LineGeometry?}
  */
 export function _createBoundaryLine(boundary, line) {
   let points = [];
@@ -25,7 +25,7 @@ export function _createBoundaryLine(boundary, line) {
     points = _pointsFromSegments(boundary, line);
   }
 
-  return points.length ? new LineElement({
+  return points.length ? new LineGeometry({
     points,
     options: {tension: 0},
     _loop,
