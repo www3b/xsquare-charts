@@ -284,7 +284,7 @@ export default class Series {
     this.addElements();
 
     if (this.options.fill && !this.chart.isPluginEnabled('filler')) {
-      console.warn("Tried to use the 'fill' option without the 'Filler' plugin enabled. Please import and register the 'Filler' plugin and make sure it is not disabled in the options");
+      console.warn('Filler is disabled while a series requests fill.');
     }
   }
 

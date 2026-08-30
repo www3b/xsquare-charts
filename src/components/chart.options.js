@@ -19,7 +19,7 @@ export function normalizeChartConfig(config = {}) {
   }
   const data = config.data || {};
   const plugins = {};
-  for (const name of ['legend', 'title', 'subtitle', 'tooltip']) {
+  for (const name of ['colors', 'decimation', 'filler', 'legend', 'title', 'subtitle', 'tooltip']) {
     if (config[name] !== undefined) {
       plugins[name] = config[name];
     }

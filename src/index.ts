@@ -35,7 +35,7 @@ export interface ChartConstructor {
 export const Chart = ChartImplementation as unknown as ChartConstructor;
 export type {
   BarSeriesConfig, BubbleSeriesConfig, CategoryScaleConfig, ChartConfig, ChartData, ChartType,
-  DoughnutSeriesConfig, InteractionOptions, LayoutOptions, LegendOptions, LinearScaleConfig,
+  ColorsOptions, DecimationOptions, DoughnutSeriesConfig, FillOptions, FillTarget, FillerOptions, InteractionOptions, LayoutOptions, LegendOptions, LinearScaleConfig,
   LineSeriesConfig, PaintDescriptor, RadialScaleConfig, RadarSeriesConfig, RendererType,
   ScaleConfig, ScalesConfig, ScatterSeriesConfig, SeriesConfig, TitleOptions, TooltipOptions
 } from './components/chart.types.js';

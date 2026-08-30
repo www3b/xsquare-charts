@@ -25,7 +25,10 @@ export class Node {
 
 export function createCanvasContext(canvas, record) {
   const context = {canvas, measureText: (text) => ({width: String(text).length * 8}), clearRect: () => record && record.push('clearRect')};
-  return new Proxy(context, {get: (target, property) => property in target ? target[property] : () => {}});
+  return new Proxy(context, {
+    get: (target, property) => property in target ? target[property] : (...args) => record && record.push([property, ...args]),
+    set: (target, property, value) => { if (record) record.push(['set', property, value]); target[property] = value; return true; }
+  });
 }
 
 export function createDocument(record) {

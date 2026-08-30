@@ -114,7 +114,9 @@ class Chart {
     this.width = 0;
     this.height = 0;
     this._options = config.createResolver(config.chartOptionScopes(), this.getContext());
-    this._createRenderer(this._options.renderer);
+    if (!this._createRenderer(this._options.renderer)) {
+      throw new Error(`Failed to initialize the ${this._options.renderer} renderer`);
+    }
     // Store the previously used aspect ratio to determine if a resize
     // is needed during updates. Do this after _options is set since
     // aspectRatio uses a getter
@@ -143,11 +145,6 @@ class Chart {
 
     // Add the chart instance to the global namespace
     instances[this.id] = this;
-
-    if (!this._renderer) {
-      console.error("Failed to create chart: can't initialize renderer");
-      return;
-    }
 
     animator.listen(this, 'complete', onAnimationsComplete);
     animator.listen(this, 'progress', onAnimationProgress);

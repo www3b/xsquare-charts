@@ -50,14 +50,15 @@ test('clear delegates to each renderer without changing ownership', () => {
   svgChart.destroy();
 });
 
-test('renderer initialization failure leaves the chart destroyable', () => {
+test('renderer initialization failure rejects construction and leaves the host reusable', () => {
   const document = createDocument();
   const host = createHost(document);
   document.createElement = (name) => name === 'canvas' ? Object.assign(new Node(document, name), {getContext: () => null}) : new Node(document, name);
-  const chart = new Chart(host, chartConfig('canvas'));
-  assert.equal(chart.renderer, null);
-  assert.doesNotThrow(() => chart.destroy());
+  assert.throws(() => new Chart(host, chartConfig('canvas')), /Failed to initialize the canvas renderer/);
   assert.equal(host.children.length, 0);
+  document.createElement = (name) => new Node(document, name);
+  const chart = new Chart(host, chartConfig('svg'));
+  chart.destroy();
 });
 
 test('same-size resize notifies once for both renderer backends', () => {
