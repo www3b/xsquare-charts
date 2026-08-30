@@ -27,6 +27,35 @@ test('Canvas and SVG visual raw baseline', {skip:!hasChrome() && 'VISUAL PARITY 
       await Promise.all([writeFile(join(artifacts,`${fixture}-canvas.png`),PNG.sync.write(canvasPng)),writeFile(join(artifacts,`${fixture}-svg.png`),PNG.sync.write(svgPng)),writeFile(join(artifacts,`${fixture}-diff.png`),PNG.sync.write(diff))]);
       console.log(`${fixture.padEnd(24)} ${count.toString().padStart(6)} ${(ratio*100).toFixed(2)}% layout Δ ${layoutDelta.toFixed(3)}`);
     }
+    const {diagnostics}=result;
+    assert.ok(diagnostics,'TEST ENVIRONMENT FAILURE: visual fixture did not return diagnostics');
+    assert.equal(diagnostics.fontStatus,'loaded','TEST ENVIRONMENT FAILURE: diagnostics ran before fonts were ready');
+    assert.ok(diagnostics.text.some(probe=>probe.name==='line-straight:x'&&probe.text==='A'),'TEST ENVIRONMENT FAILURE: missing Cartesian text probe');
+    assert.ok(diagnostics.text.some(probe=>probe.name==='legend-title:Parity title'),'TEST ENVIRONMENT FAILURE: missing title text probe');
+    console.log('font readiness / cache locality');
+    console.table([...diagnostics.fontReadiness,...diagnostics.cacheLocality]);
+    console.log('text measurement diagnostics');
+    console.table(diagnostics.text.map(probe=>({
+      probe:probe.name,
+      text:probe.text,
+      font:probe.font,
+      canvas:probe.canvas,
+      svgMeasure:probe.svgMeasure,
+      painted:probe.painted?.length,
+      bbox:probe.painted?.bbox,
+      difference:Number((probe.canvas-probe.svgMeasure).toFixed(4)),
+      measureFontAttribute:probe.svgMeasureNode.font,
+      measureFamily:probe.svgMeasureNode.computedFamily,
+      paintedStyleFont:probe.painted?.styleFont,
+      paintedFamily:probe.painted?.computedFamily,
+      probeA:probe.probes['attribute-font'].length,
+      probeB:probe.probes['style-font'].length,
+      probeC:probe.probes['presentation-font'].length
+    })));
+    console.log('layout side deltas (SVG - Canvas)');
+    console.table(diagnostics.layoutDeltas);
+    console.log('Cartesian isolation diagnostics');
+    console.table(diagnostics.isolation);
     console.log(`raw artifacts: ${artifacts}`);
   } finally { await new Promise(resolve=>server.close(resolve)); await rm(profile,{recursive:true,force:true}); }
 });
