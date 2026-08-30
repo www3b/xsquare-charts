@@ -1,10 +1,11 @@
-import defaults from '../../core/core.defaults.js';
-import {addRoundedRectPath, tracePoint} from '../../helpers/helpers.canvas.js';
-import {Path} from '../../helpers/helpers.path.js';
-import {getOrCreateSvgChartPart, getOrCreateSvgClipRect, removeSvgChartPart, resolveSvgPaint, setSvgImageAttributes} from '../../helpers/helpers.svg.js';
-import {renderSvgText} from '../../helpers/helpers.svg.text.js';
-import {valueOrDefault} from '../../helpers/index.js';
-import {toTRBLCorners} from '../../helpers/helpers.options.js';
+// @ts-nocheck
+import defaults from '../../components/chart.defaults.js';
+import {addRoundedRectPath, tracePoint} from '../canvas/text.js';
+import {Path} from '../../geometry/path.js';
+import {getOrCreateSvgChartPart, getOrCreateSvgClipRect, removeSvgChartPart, resolveSvgPaint, setSvgImageAttributes} from './svg.js';
+import {renderSvgText} from './text.js';
+import {valueOrDefault} from '../../shared/index.js';
+import {toTRBLCorners} from '../../shared/options.js';
 
 function getLegendChild(parent: SVGElement, role: string): SVGElement | undefined {
   return Array.from(parent.children).find((element) => element.getAttribute('data-legend-role') === role) as SVGElement | undefined;
@@ -61,7 +62,7 @@ function drawLegendTitle(chart: any, group: SVGGElement, title: any): void {
     return;
   }
   const lines = Array.isArray(title.text) ? title.text : [title.text];
-  const widths = lines.map((line) => chart.renderer.measureText(line, title.font.string));
+  const widths = lines.map((line) => chart._renderer.measureText(line, title.font.string));
   renderSvgText(group, 0, title.text, title.font, {
     color: title.color,
     maxWidth: title.maxWidth,

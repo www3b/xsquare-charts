@@ -1,8 +1,8 @@
-import defaults from '../../core/core.defaults.js';
-import {addRoundedRectPath, drawPointLegend, renderText} from '../../helpers/helpers.canvas.js';
-import {resolveCanvasPaint} from '../../helpers/helpers.paint.js';
-import {clipArea, getRtlAdapter, overrideTextDirection, restoreTextDirection, unclipArea, valueOrDefault} from '../../helpers/index.js';
-import {toTRBLCorners} from '../../helpers/helpers.options.js';
+import defaults from '../../components/chart.defaults.js';
+import {addRoundedRectPath, drawPointLegend, renderText} from './text.js';
+import {resolveCanvasPaint} from '../paint.js';
+import {clipArea, getRtlAdapter, overrideTextDirection, restoreTextDirection, unclipArea, valueOrDefault} from '../../shared/index.js';
+import {toTRBLCorners} from '../../shared/options.js';
 
 function drawLegendTitle(ctx: CanvasRenderingContext2D, title: any): void {
   if (!title) return;

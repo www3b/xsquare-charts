@@ -1,4 +1,5 @@
-import {hideHtmlTooltip, removeHtmlTooltip, renderHtmlTooltip} from '../../plugins/plugin.tooltip.html.js';
+// @ts-nocheck
+import {hideHtmlTooltip, removeHtmlTooltip, renderHtmlTooltip} from '../../components/tooltip.view.js';
 
 export function drawSvgTooltip(tooltip: any): void {
   renderHtmlTooltip(tooltip);

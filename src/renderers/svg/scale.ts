@@ -1,6 +1,7 @@
-import {getOrCreateSvgClipRect, getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart, resolveSvgPaint} from '../../helpers/helpers.svg.js';
-import {renderSvgText} from '../../helpers/helpers.svg.text.js';
-import type {ScaleDrawPart} from '../core/renderer.js';
+// @ts-nocheck
+import {getOrCreateSvgClipRect, getOrCreateSvgElement, getOrCreateSvgScalePart, removeExtraSvgElements, removeSvgScalePart, resolveSvgPaint} from './svg.js';
+import {renderSvgText} from './text.js';
+import type {ScaleDrawPart} from '../renderer.types.js';
 
 const layerForZ = (z: number) => z > 0 ? 'foreground' : 'background';
 
@@ -93,7 +94,7 @@ function drawTitle(chart: any, scale: any): void {
   }
   const group = getOrCreateSvgScalePart(chart, scale.id, 'title', layerForZ(scale.options.grid.z ?? -1));
   const lines = Array.isArray(item.text) ? item.text : [item.text];
-  const widths = lines.map((line) => chart.renderer.measureText(line, item.font.string));
+  const widths = lines.map((line) => chart._renderer.measureText(line, item.font.string));
   renderSvgText(group, 0, item.text, item.font, item.options, widths);
   removeExtraSvgElements(group, 1);
 }

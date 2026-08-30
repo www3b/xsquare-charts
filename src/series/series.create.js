@@ -1,0 +1,9 @@
+export {default as BarController} from './bar.js';
+export {default as BubbleController} from './bubble.js';
+export {default as DoughnutController} from './doughnut.js';
+export {default as HistogramController} from './histogram.js';
+export {default as LineController} from './line.js';
+export {default as PolarAreaController} from './polar-area.js';
+export {default as PieController} from './pie.js';
+export {default as RadarController} from './radar.js';
+export {default as ScatterController} from './scatter.js';

@@ -78,7 +78,7 @@ export default [
   {
     input: {
       'dist/chart': 'src/index.ts',
-      'dist/helpers': 'src/helpers/index.ts'
+      'dist/utils': 'src/utils/index.ts'
     },
     plugins: plugins(),
     output: {
@@ -98,7 +98,7 @@ export default [
   {
     input: {
       'dist/chart': 'src/index.ts',
-      'dist/helpers': 'src/helpers/index.ts'
+      'dist/utils': 'src/utils/index.ts'
     },
     plugins: plugins(),
     external: _ => (/node_modules/).test(_),

@@ -17,21 +17,7 @@
     document.querySelector('#result').textContent = JSON.stringify({error: event.message});
     document.body.dataset.svgReady = 'true';
   });
-  import {
-    ArcElement, BarController, BarElement, CategoryScale, Chart, DoughnutController, HistogramController,
-    BubbleController, Filler, Legend, LineController, LineElement, LinearScale, LogarithmicScale, PieController, PointElement, PolarAreaController, RadialLinearScale, RadarController, ScatterController, TimeScale, TimeSeriesScale, Tooltip, _adapters,
-    Title,
-  } from '/dist/chart.js';
-
-  Chart.register(ArcElement, BarController, BarElement, BubbleController, CategoryScale, DoughnutController, Filler, HistogramController, Legend, LineController, LineElement, LinearScale, LogarithmicScale, PieController, PointElement, PolarAreaController, RadialLinearScale, RadarController, ScatterController, TimeScale, TimeSeriesScale, Title, Tooltip);
-  _adapters._date.override({
-    formats: () => ({datetime: 'x', millisecond: 'x', second: 'x', minute: 'x', hour: 'x', day: 'x', week: 'x', month: 'x', quarter: 'x', year: 'x'}),
-    parse: (value) => value instanceof Date ? +value : typeof value === 'number' ? value : Date.parse(value),
-    format: (value) => new Date(value).toISOString().slice(0, 10),
-    add: (value, amount, unit) => value + amount * ({millisecond: 1, second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 6048e5, month: 2592e6, quarter: 7776e6, year: 31536e6}[unit] || 1),
-    diff: (a, b, unit) => (a - b) / ({millisecond: 1, second: 1e3, minute: 6e4, hour: 36e5, day: 864e5, week: 6048e5, month: 2592e6, quarter: 7776e6, year: 31536e6}[unit] || 1),
-    startOf: (value) => value, endOf: (value) => value,
-  });
+  import {Chart} from '/dist/chart.js';
 
   const common = {
     animation: false,
@@ -40,24 +26,24 @@
   };
 
   const fixtures = [
-    ['line', 'line', {labels: ['Январь & <2026>', 'February 🚀', 'March', 'April'], datasets: [{label: 'Revenue & Profit <2026>', data: [2, 5, 3, 6], borderColor: '#2563eb', borderWidth: 3, pointRadius: 3}]}, {
+    ['line', 'line', {labels: ['Январь & <2026>', 'February 🚀', 'March', 'April'], series: [{name: 'Revenue & Profit <2026>', data: [2, 5, 3, 6], borderColor: '#2563eb', borderWidth: 3, pointRadius: 3}]}, {
       scales: {x: {ticks: {minRotation: 45, maxRotation: 45}, title: {display: true, text: 'Month'}}, y: {title: {display: true, text: 'Revenue'}}},
     }],
-    ['area', 'line', {labels: ['One', 'Two', 'Three', 'Four'], datasets: [{label: 'Area', data: [2, 6, 3, 7], borderColor: '#0f766e', backgroundColor: 'rgba(20, 184, 166, .35)', fill: true, tension: .35}]}, {}],
-    ['bar', 'bar', {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Orders', data: [4, 7, 5], backgroundColor: '#f59e0b', borderColor: '#b45309', borderWidth: 2}]}, {}],
-    ['histogram', 'histogram', {datasets: [{label: 'Variable bins', data: [{xMin: 0, xMax: 1, y: 2}, {xMin: 1, xMax: 4, y: 5}, {xMin: 4, xMax: 10, y: 3}], backgroundColor: '#38bdf8', borderColor: '#0369a1', borderWidth: 1}]}, {}],
-    ['scatter', 'scatter', {datasets: [{label: 'Samples', showLine: true, fill: true, data: [{x: 1, y: 2}, {x: 3, y: 5}, {x: 7, y: -2}], borderColor: '#7c3aed', backgroundColor: 'rgba(124, 58, 237, .2)', pointBackgroundColor: '#c4b5fd', pointRadius: [4, 7, 5], pointStyle: ['circle', 'triangle', 'star']}]}, {}],
-    ['bubble', 'bubble', {datasets: [{label: 'Sizes', data: [{x: 1, y: 2, r: 5}, {x: 3, y: 4, r: 14}, {x: 5, y: 1, r: 24}], backgroundColor: 'rgba(16, 185, 129, .55)', borderColor: '#047857'}]}, {}],
-    ['log', 'line', {datasets: [{label: 'Log', data: [{x: 1, y: 1}, {x: 2, y: 10}, {x: 5, y: 100}, {x: 10, y: 1000}], borderColor: '#ea580c'}]}, {scales: {x: {type: 'logarithmic'}, y: {type: 'logarithmic'}}}],
-    ['time', 'line', {datasets: [{label: 'Time', data: [{x: '2026-01-01', y: 2}, {x: '2026-01-05', y: 5}, {x: '2026-01-20', y: 3}], borderColor: '#0891b2'}]}, {scales: {x: {type: 'time', time: {unit: 'day'}, title: {display: true, text: 'Date'}}, y: {type: 'linear'}}}],
-    ['timeseries', 'line', {datasets: [{label: 'Series', data: [{x: '2026-01-01', y: 2}, {x: '2026-01-02', y: 5}, {x: '2026-01-20', y: 3}, {x: '2026-04-10', y: 6}], borderColor: '#be123c'}]}, {scales: {x: {type: 'timeseries', time: {unit: 'day'}}, y: {type: 'linear'}}}],
-    ['radar', 'radar', {labels: ['North', 'East', 'South', 'West', 'Center'], datasets: [{label: 'Actual', data: [4, 7, 5, 8, 6], backgroundColor: 'rgba(37, 99, 235, .25)', borderColor: '#2563eb', borderWidth: 2, pointBackgroundColor: '#fff', pointRadius: 4}]}, {
+    ['area', 'line', {labels: ['One', 'Two', 'Three', 'Four'], series: [{name: 'Area', data: [2, 6, 3, 7], borderColor: '#0f766e', backgroundColor: 'rgba(20, 184, 166, .35)', fill: true, tension: .35}]}, {}],
+    ['bar', 'bar', {labels: ['One', 'Two', 'Three'], series: [{name: 'Orders', data: [4, 7, 5], backgroundColor: '#f59e0b', borderColor: '#b45309', borderWidth: 2}]}, {}],
+    ['histogram', 'histogram', {series: [{name: 'Variable bins', data: [{xMin: 0, xMax: 1, y: 2}, {xMin: 1, xMax: 4, y: 5}, {xMin: 4, xMax: 10, y: 3}], backgroundColor: '#38bdf8', borderColor: '#0369a1', borderWidth: 1}]}, {}],
+    ['scatter', 'scatter', {series: [{name: 'Samples', showLine: true, fill: true, data: [{x: 1, y: 2}, {x: 3, y: 5}, {x: 7, y: -2}], borderColor: '#7c3aed', backgroundColor: 'rgba(124, 58, 237, .2)', pointBackgroundColor: '#c4b5fd', pointRadius: [4, 7, 5], pointStyle: ['circle', 'triangle', 'star']}]}, {}],
+    ['bubble', 'bubble', {series: [{name: 'Sizes', data: [{x: 1, y: 2, r: 5}, {x: 3, y: 4, r: 14}, {x: 5, y: 1, r: 24}], backgroundColor: 'rgba(16, 185, 129, .55)', borderColor: '#047857'}]}, {}],
+    ['log', 'line', {series: [{name: 'Log', data: [{x: 1, y: 1}, {x: 2, y: 10}, {x: 5, y: 100}, {x: 10, y: 1000}], borderColor: '#ea580c'}]}, {scales: {x: {type: 'logarithmic'}, y: {type: 'logarithmic'}}}],
+    ['time', 'line', {series: [{name: 'Time', data: [{x: '2026-01-01', y: 2}, {x: '2026-01-05', y: 5}, {x: '2026-01-20', y: 3}], borderColor: '#0891b2'}]}, {scales: {x: {type: 'time', time: {unit: 'day'}, title: {display: true, text: 'Date'}}, y: {type: 'linear'}}}],
+    ['timeseries', 'line', {series: [{name: 'Series', data: [{x: '2026-01-01', y: 2}, {x: '2026-01-02', y: 5}, {x: '2026-01-20', y: 3}, {x: '2026-04-10', y: 6}], borderColor: '#be123c'}]}, {scales: {x: {type: 'timeseries', time: {unit: 'day'}}, y: {type: 'linear'}}}],
+    ['radar', 'radar', {labels: ['North', 'East', 'South', 'West', 'Center'], series: [{name: 'Actual', data: [4, 7, 5, 8, 6], backgroundColor: 'rgba(37, 99, 235, .25)', borderColor: '#2563eb', borderWidth: 2, pointBackgroundColor: '#fff', pointRadius: 4}]}, {
       plugins: {title: {display: true, text: 'Radar overview'}}, scales: {r: {backgroundColor: '#f8fafc', pointLabels: {backdropColor: '#fff', backdropPadding: 2}, ticks: {backdropColor: '#fff'}}},
     }],
-    ['polar', 'polarArea', {labels: ['North', 'East', 'South', 'West'], datasets: [{data: [4, 7, 3, 6], backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ec4899'], borderColor: '#fff', borderWidth: 2}]}, {}],
-    ['pie', 'pie', {labels: ['North', 'South', 'West'], datasets: [{data: [4, 3, 5], backgroundColor: ['#2563eb', '#10b981', '#f59e0b'], borderColor: '#fff', borderWidth: 2}]}, {}],
-    ['doughnut', 'doughnut', {labels: ['North', 'South', 'West'], datasets: [{data: [4, 3, 5], backgroundColor: ['#7c3aed', '#ec4899', '#22c55e'], borderColor: '#fff', borderWidth: 2}]}, {}],
-    ['legend', 'line', {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Ellipse marker', data: [2, 4, 3], borderColor: '#1d4ed8', pointStyle: 'circle', pointRadius: 5}]}, {
+    ['polar', 'polarArea', {labels: ['North', 'East', 'South', 'West'], series: [{data: [4, 7, 3, 6], backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ec4899'], borderColor: '#fff', borderWidth: 2}]}, {}],
+    ['pie', 'pie', {labels: ['North', 'South', 'West'], series: [{data: [4, 3, 5], backgroundColor: ['#2563eb', '#10b981', '#f59e0b'], borderColor: '#fff', borderWidth: 2}]}, {}],
+    ['doughnut', 'doughnut', {labels: ['North', 'South', 'West'], series: [{data: [4, 3, 5], backgroundColor: ['#7c3aed', '#ec4899', '#22c55e'], borderColor: '#fff', borderWidth: 2}]}, {}],
+    ['legend', 'line', {labels: ['One', 'Two', 'Three'], series: [{name: 'Ellipse marker', data: [2, 4, 3], borderColor: '#1d4ed8', pointStyle: 'circle', pointRadius: 5}]}, {
       plugins: {legend: {labels: {pointStyleWidth: 30, usePointStyle: true}}},
     }],
   ];
@@ -72,7 +58,8 @@
     host.style.height = '250px';
     card.appendChild(host);
     document.querySelector('#fixtures').appendChild(card);
-    return new Chart(host, {type, data, options: {...common, ...options, renderer}});
+    const {plugins = {}, ...chartOptions} = options;
+    return new Chart(host, {type, data, renderer, ...common, ...chartOptions, ...plugins});
   }
 
   const charts = new Map();
@@ -86,13 +73,13 @@
     card.className = 'fixture';
     card.dataset.case = `${name}-${renderer}`;
     card.innerHTML = `<h2>${name} (${renderer})</h2>`;
-    const canvas = document.createElement('canvas');
-    canvas.width = 420;
-    canvas.height = 250;
-    card.appendChild(canvas);
+    const host = document.createElement('div');
+    host.style.width = '420px';
+    host.style.height = '250px';
+    card.appendChild(host);
     document.querySelector('#fixtures').appendChild(card);
     const linear = {
-      type: 'linear-gradient', x0: 0, y0: 0, x1: canvas.width, y1: 0,
+      type: 'linear-gradient', x0: 0, y0: 0, x1: 420, y1: 0,
       colorStops: [{offset: 0, color: 'rgba(37, 99, 235, .15)'}, {offset: .5, color: '#8b5cf6'}, {offset: 1, color: '#ec4899'}]
     };
     const radial = {
@@ -112,14 +99,15 @@
     iconContext.fillRect(3, 3, 12, 6);
     const commonPaint = {animation: false, plugins: {legend: {labels: {usePointStyle: true}}}, renderer, responsive: false};
     const config = type === 'line'
-      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], datasets: [
-        {label: 'Neutral paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7, pointStyle: icon},
-        {label: 'Pattern points', borderColor: linear, data: [4, 3, 5, 2], pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 5},
+      ? {data: {labels: ['One', 'Two', 'Three', 'Four'], series: [
+        {name: 'Neutral paints', backgroundColor: radial, borderColor: linear, borderWidth: 5, data: [2, 6, 3, 7], fill: true, pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 7, pointStyle: icon},
+        {name: 'Pattern points', borderColor: linear, data: [4, 3, 5, 2], pointBackgroundColor: pattern, pointBorderColor: linear, pointRadius: 5},
       ]}}
       : type === 'bar'
-        ? {data: {labels: ['One', 'Two', 'Three'], datasets: [{label: 'Pattern bars', backgroundColor: pattern, borderColor: linear, borderWidth: 3, data: [4, 7, 5]}]}}
-        : {data: {labels: ['One', 'Two', 'Three'], datasets: [{backgroundColor: [linear, pattern, radial], borderColor: linear, borderWidth: 3, data: [4, 3, 5]}]}};
-    const chart = new Chart(canvas, {type, ...config, options: commonPaint});
+        ? {data: {labels: ['One', 'Two', 'Three'], series: [{name: 'Pattern bars', backgroundColor: pattern, borderColor: linear, borderWidth: 3, data: [4, 7, 5]}]}}
+        : {data: {labels: ['One', 'Two', 'Three'], series: [{backgroundColor: [linear, pattern, radial], borderColor: linear, borderWidth: 3, data: [4, 3, 5]}]}};
+    const {plugins = {}, ...chartOptions} = commonPaint;
+    const chart = new Chart(host, {type, ...config, ...chartOptions, ...plugins});
     chart.$paint = {linear, pattern, radial};
     return chart;
   }
@@ -153,9 +141,9 @@
 
   const htmlTooltipChart = mount('html-tooltip', 'line', {
     labels: ['One', 'Two', 'Three'],
-    datasets: [
-      {label: 'Revenue', data: [2, 5, 3], borderColor: '#2563eb', pointStyle: 'circle'},
-      {label: 'Cost', data: [4, 2, 6], borderColor: '#dc2626'},
+    series: [
+      {name: 'Revenue', data: [2, 5, 3], borderColor: '#2563eb', pointStyle: 'circle'},
+      {name: 'Cost', data: [4, 2, 6], borderColor: '#dc2626'},
     ],
   }, {
     plugins: {
@@ -188,12 +176,10 @@
   htmlTooltipChart.tooltip.setActiveElements([{datasetIndex: 0, index: 1}], {x: 210, y: 100});
   htmlTooltipChart.draw();
   const tooltipReused = document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]') === tooltipRoot;
-  htmlTooltipChart.options.renderer = 'canvas';
-  htmlTooltipChart.update('none');
+  htmlTooltipChart.setRenderer('canvas');
   htmlTooltipChart.draw();
   const tooltipRemovedForCanvas = !document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]');
-  htmlTooltipChart.options.renderer = 'svg';
-  htmlTooltipChart.update('none');
+  htmlTooltipChart.setRenderer('svg');
   htmlTooltipChart.tooltip.setActiveElements([{datasetIndex: 0, index: 1}], {x: 210, y: 100});
   htmlTooltipChart.draw();
   const tooltipRestoredForSvg = document.querySelector('[data-case="html-tooltip-svg"] [data-chart-tooltip]')?.getAttribute('aria-hidden') === 'false';
@@ -231,29 +217,30 @@
         colorStops: [{offset: 0, color: '#2563eb'}, {offset: 1, color: '#ec4899'}]
       };
       const strictCases = [
-        ['line', {labels: ['A', 'B', 'C'], datasets: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {plugins: {title: {display: true, text: 'Strict'}, legend: {display: true}}}],
-        ['bar', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: paint}]}, {}],
-        ['histogram', {datasets: [{data: [{xMin: 0, xMax: 2, y: 1}, {xMin: 2, xMax: 5, y: 3}], backgroundColor: paint}]}, {}],
-        ['doughnut', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: paint}]}, {}],
-        ['pie', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: paint}]}, {}],
-        ['scatter', {datasets: [{data: [{x: 1, y: 2}, {x: 3, y: 4}], showLine: true, borderColor: paint, backgroundColor: paint, fill: true}]}, {}],
-        ['bubble', {datasets: [{data: [{x: 1, y: 2, r: 4}, {x: 3, y: 4, r: 8}], backgroundColor: paint}]}, {}],
-        ['radar', {labels: ['A', 'B', 'C'], datasets: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {}],
-        ['polarArea', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: paint}]}, {}],
-        ['line', {datasets: [{data: [{x: 1, y: 1}, {x: 10, y: 10}], borderColor: paint}]}, {scales: {x: {type: 'logarithmic'}, y: {type: 'logarithmic'}}}],
-        ['line', {datasets: [{data: [{x: '2026-01-01', y: 1}, {x: '2026-01-02', y: 2}], borderColor: paint}]}, {scales: {x: {type: 'time', time: {unit: 'day'}}}}],
-        ['line', {datasets: [{data: [{x: '2026-01-01', y: 1}, {x: '2026-01-02', y: 2}], borderColor: paint}]}, {scales: {x: {type: 'timeseries', time: {unit: 'day'}}}}],
+        ['line', {labels: ['A', 'B', 'C'], series: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {plugins: {title: {display: true, text: 'Strict'}, legend: {display: true}}}],
+        ['bar', {labels: ['A', 'B'], series: [{data: [1, 3], backgroundColor: paint}]}, {}],
+        ['histogram', {series: [{data: [{xMin: 0, xMax: 2, y: 1}, {xMin: 2, xMax: 5, y: 3}], backgroundColor: paint}]}, {}],
+        ['doughnut', {labels: ['A', 'B'], series: [{data: [1, 3], backgroundColor: paint}]}, {}],
+        ['pie', {labels: ['A', 'B'], series: [{data: [1, 3], backgroundColor: paint}]}, {}],
+        ['scatter', {series: [{data: [{x: 1, y: 2}, {x: 3, y: 4}], showLine: true, borderColor: paint, backgroundColor: paint, fill: true}]}, {}],
+        ['bubble', {series: [{data: [{x: 1, y: 2, r: 4}, {x: 3, y: 4, r: 8}], backgroundColor: paint}]}, {}],
+        ['radar', {labels: ['A', 'B', 'C'], series: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {}],
+        ['polarArea', {labels: ['A', 'B'], series: [{data: [1, 3], backgroundColor: paint}]}, {}],
+        ['line', {series: [{data: [{x: 1, y: 1}, {x: 10, y: 10}], borderColor: paint}]}, {scales: {x: {type: 'logarithmic'}, y: {type: 'logarithmic'}}}],
+        ['line', {series: [{data: [{x: '2026-01-01', y: 1}, {x: '2026-01-02', y: 2}], borderColor: paint}]}, {scales: {x: {type: 'time', time: {unit: 'day'}}}}],
+        ['line', {series: [{data: [{x: '2026-01-01', y: 1}, {x: '2026-01-02', y: 2}], borderColor: paint}]}, {scales: {x: {type: 'timeseries', time: {unit: 'day'}}}}],
       ];
       const charts = strictCases.map(([type, data, options]) => {
         const target = document.createElement('div');
         target.style.width = '320px';
         target.style.height = '180px';
         host.appendChild(target);
-        return new Chart(target, {type, data, options: {animation: false, renderer: 'svg', responsive: false, ...options}});
+        const {plugins = {}, ...chartOptions} = options;
+        return new Chart(target, {type, data, animation: false, renderer: 'svg', responsive: false, ...chartOptions, ...plugins});
       });
       const line = charts[0];
       line.resize(320, 180);
-      line.data.datasets[0].data[1] = 4;
+      line.data.series[0].data[1] = 4;
       line.update('none');
       const point = line.getDatasetMeta(0).data[1];
       const interaction = line.getElementsAtEventForMode({type: 'mousemove', x: point.x, y: point.y, native: null}, 'nearest', {intersect: true}, false);
@@ -281,28 +268,27 @@
       colorStops: [{offset: 0, color: '#2563eb'}, {offset: 1, color: '#ec4899'}]
     };
     const cases = [
-      ['line', {labels: ['A', 'B', 'C'], datasets: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {plugins: {title: {display: true, text: 'Switch'}, legend: {display: true}}}],
-      ['bar', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: '#2563eb'}]}, {}],
-      ['histogram', {datasets: [{data: [{xMin: 0, xMax: 2, y: 1}, {xMin: 2, xMax: 5, y: 3}], backgroundColor: '#2563eb'}]}, {}],
-      ['doughnut', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
-      ['pie', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
-      ['radar', {labels: ['A', 'B', 'C'], datasets: [{data: [1, 3, 2], backgroundColor: '#2563eb'}]}, {}],
-      ['polarArea', {labels: ['A', 'B'], datasets: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
-      ['scatter', {datasets: [{data: [{x: 1, y: 2}, {x: 3, y: 4}], showLine: true, backgroundColor: '#2563eb'}]}, {}],
-      ['bubble', {datasets: [{data: [{x: 1, y: 2, r: 4}, {x: 3, y: 4, r: 8}], backgroundColor: '#2563eb'}]}, {}],
+      ['line', {labels: ['A', 'B', 'C'], series: [{data: [1, 3, 2], borderColor: paint, backgroundColor: paint, fill: true}]}, {plugins: {title: {display: true, text: 'Switch'}, legend: {display: true}}}],
+      ['bar', {labels: ['A', 'B'], series: [{data: [1, 3], backgroundColor: '#2563eb'}]}, {}],
+      ['histogram', {series: [{data: [{xMin: 0, xMax: 2, y: 1}, {xMin: 2, xMax: 5, y: 3}], backgroundColor: '#2563eb'}]}, {}],
+      ['doughnut', {labels: ['A', 'B'], series: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
+      ['pie', {labels: ['A', 'B'], series: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
+      ['radar', {labels: ['A', 'B', 'C'], series: [{data: [1, 3, 2], backgroundColor: '#2563eb'}]}, {}],
+      ['polarArea', {labels: ['A', 'B'], series: [{data: [1, 3], backgroundColor: ['#2563eb', '#ec4899']}]}, {}],
+      ['scatter', {series: [{data: [{x: 1, y: 2}, {x: 3, y: 4}], showLine: true, backgroundColor: '#2563eb'}]}, {}],
+      ['bubble', {series: [{data: [{x: 1, y: 2, r: 4}, {x: 3, y: 4, r: 8}], backgroundColor: '#2563eb'}]}, {}],
     ];
     const valid = cases.every(([type, data, options]) => {
       const target = document.createElement('div');
       target.style.width = '320px';
       target.style.height = '180px';
       host.appendChild(target);
-      const chart = new Chart(target, {type, data, options: {animation: false, renderer: 'canvas', responsive: false, ...options}});
+      const {plugins = {}, ...chartOptions} = options;
+      const chart = new Chart(target, {type, data, animation: false, renderer: 'canvas', responsive: false, ...chartOptions, ...plugins});
       const canvasOnly = target.querySelectorAll('canvas').length === 1 && target.querySelectorAll('svg').length === 0;
-      chart.options.renderer = 'svg';
-      chart.update('none');
+      chart.setRenderer('svg');
       const svgOnly = target.querySelectorAll('canvas').length === 0 && target.querySelectorAll('svg').length === 1;
-      chart.options.renderer = 'canvas';
-      chart.update('none');
+      chart.setRenderer('canvas');
       const canvasAgain = target.querySelectorAll('canvas').length === 1 && target.querySelectorAll('svg').length === 0;
       chart.destroy();
       return canvasOnly && svgOnly && canvasAgain;
@@ -311,8 +297,58 @@
     return valid;
   }
 
+  function assertPublicApi() {
+    const host = document.createElement('div');
+    host.style.width = '320px';
+    host.style.height = '180px';
+    document.body.appendChild(host);
+    const config = {
+      type: 'line',
+      data: {labels: ['A', 'B'], series: [{name: 'Revenue', data: [1, 2], borderColor: '#2563eb'}]},
+      animation: false,
+      responsive: false,
+      scales: {x: {type: 'category'}, y: {type: 'linear'}},
+      legend: {display: true},
+      title: {display: true, text: 'Revenue'},
+      tooltip: {enabled: true},
+      interaction: {mode: 'nearest'}
+    };
+    const chart = new Chart(host, config);
+    const defaultSvg = chart.renderer === 'svg' && chart.surface?.localName === 'svg'
+      && chart.data.series[0].name === 'Revenue';
+    chart.hideSeries(0);
+    const hidden = !chart.isSeriesVisible(0);
+    chart.showSeries(0);
+    chart.setActiveItems([{datasetIndex: 0, index: 1}]);
+    const active = chart.getActiveItems().length === 1;
+    chart.setRenderer('canvas');
+    const canvas = chart.renderer === 'canvas' && chart.surface?.localName === 'canvas';
+    chart.setRenderer('svg');
+    const svgAgain = chart.renderer === 'svg' && host.querySelectorAll('svg').length === 1 && host.querySelectorAll('canvas').length === 0;
+    const legacyCanvas = document.createElement('canvas');
+    const rejectsLegacyInputs = [legacyCanvas, legacyCanvas.getContext('2d'), '#chart', [host]].every((input) => {
+      try {
+        new Chart(input, config);
+        return false;
+      } catch {
+        return true;
+      }
+    });
+    let duplicateRejected = false;
+    try {
+      new Chart(host, config);
+    } catch {
+      duplicateRejected = true;
+    }
+    chart.destroy();
+    const cleaned = host.querySelectorAll('svg, canvas').length === 0;
+    host.remove();
+    return defaultSvg && hidden && active && canvas && svgAgain && rejectsLegacyInputs && duplicateRejected && cleaned;
+  }
+
   const svgNoCanvas = assertSvgNoCanvas();
   const rendererSurfaceSwitch = assertRendererSurfaceSwitch();
+  const publicApi = assertPublicApi();
   const svgCharts = document.querySelectorAll('[data-case$="-svg"] svg[data-chart-svg]');
   const line = document.querySelector('[data-case="line-svg"] [data-svg-part="line"] path');
   const fill = document.querySelector('[data-case="area-svg"] [data-svg-part="fill"] path');
@@ -358,6 +394,7 @@
     svgCharts: svgCharts.length,
     svgNoCanvas,
     rendererSurfaceSwitch,
+    publicApi,
     paintDefinitions: paintDefinitions >= 3,
     canvasPointStyle,
     canvasPointExport: /data-svg-part="points"[\s\S]*?<image[^>]+href="data:image\/png;base64,/.test(paintExport),

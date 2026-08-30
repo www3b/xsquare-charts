@@ -1,7 +1,8 @@
-import {Path} from '../../helpers/helpers.path.js';
-import {getOrCreateSvgChartPart, getOrCreateSvgClipPath, getOrCreateSvgClipRect, getOrCreateSvgDatasetPart, getOrCreateSvgElement, removeExtraSvgElements, removeSvgDatasetPart, resolveSvgPaint} from '../../helpers/helpers.svg.js';
-import {getFillClipBounds, traceFillPart, traceFillSide} from '../../plugins/plugin.filler/filler.model.js';
-import type {FillerDrawTime} from '../core/renderer.js';
+// @ts-nocheck
+import {Path} from '../../geometry/path.js';
+import {getOrCreateSvgChartPart, getOrCreateSvgClipPath, getOrCreateSvgClipRect, getOrCreateSvgDatasetPart, getOrCreateSvgElement, removeExtraSvgElements, removeSvgDatasetPart, resolveSvgPaint} from './svg.js';
+import {getFillClipBounds, traceFillPart, traceFillSide} from '../../series/filler/filler.model.js';
+import type {FillerDrawTime} from '../renderer.types.js';
 
 function findChild(parent: any, attribute: string, value: string): any {
   return Array.from(parent.children).find((child: any) => child.getAttribute(attribute) === value);

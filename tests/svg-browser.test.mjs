@@ -50,6 +50,7 @@ test('SVG fixtures render in actual Chromium', {skip: !existsSync(chrome), timeo
     assert.equal(result.svgCharts, 18);
     assert.equal(result.svgNoCanvas, true);
     assert.equal(result.rendererSurfaceSwitch, true);
+    assert.equal(result.publicApi, true);
     assert.equal(result.line, true);
     assert.equal(result.fill, true);
     assert.equal(result.exportsValid, true);

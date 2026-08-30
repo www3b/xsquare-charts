@@ -1,6 +1,6 @@
-import {clipArea, renderText, unclipArea} from '../../helpers/helpers.canvas.js';
-import type {ScaleDrawPart} from '../core/renderer.js';
-import {resolveCanvasPaint} from '../../helpers/helpers.paint.js';
+import {clipArea, renderText, unclipArea} from './text.js';
+import type {ScaleDrawPart} from '../renderer.types.js';
+import {resolveCanvasPaint} from '../paint.js';
 
 function drawLine(ctx: CanvasRenderingContext2D, p1: any, p2: any, style: any): void {
   if (!style.width || !style.color) return;

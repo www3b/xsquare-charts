@@ -1,7 +1,7 @@
-import {clipArea, unclipArea} from '../../helpers/helpers.canvas.js';
-import {getFillClipBounds, traceFillPart, traceFillSide} from '../../plugins/plugin.filler/filler.model.js';
-import type {FillerDrawTime} from '../core/renderer.js';
-import {resolveCanvasPaint} from '../../helpers/helpers.paint.js';
+import {clipArea, unclipArea} from './text.js';
+import {getFillClipBounds, traceFillPart, traceFillSide} from '../../series/filler/filler.model.js';
+import type {FillerDrawTime} from '../renderer.types.js';
+import {resolveCanvasPaint} from '../paint.js';
 
 function clipBounds(ctx: CanvasRenderingContext2D, model: any, bounds: any): void {
   if (!bounds || (bounds.property !== 'x' && bounds.property !== 'y')) return;

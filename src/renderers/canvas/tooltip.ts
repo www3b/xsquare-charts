@@ -1,8 +1,8 @@
-import {addRoundedRectPath, drawPoint} from '../../helpers/helpers.canvas.js';
-import {each, isObject} from '../../helpers/helpers.core.js';
-import {resolveCanvasPaint} from '../../helpers/helpers.paint.js';
-import {toFont, toPadding, toTRBLCorners} from '../../helpers/helpers.options.js';
-import {getRtlAdapter, overrideTextDirection, restoreTextDirection} from '../../helpers/helpers.rtl.js';
+import {addRoundedRectPath, drawPoint} from './text.js';
+import {each, isObject} from '../../shared/core.js';
+import {resolveCanvasPaint} from '../paint.js';
+import {toFont, toPadding, toTRBLCorners} from '../../shared/options.js';
+import {getRtlAdapter, overrideTextDirection, restoreTextDirection} from '../../shared/rtl.js';
 
 function getAlignedX(tooltip: any, align: string, options: any): number {
   const padding = toPadding(options.padding);

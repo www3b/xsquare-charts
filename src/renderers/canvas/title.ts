@@ -1,6 +1,6 @@
-import {renderText} from '../../helpers/helpers.canvas.js';
-import {_toLeftRightCenter} from '../../helpers/helpers.extras.js';
-import {toFont} from '../../helpers/index.js';
+import {renderText} from './text.js';
+import {_toLeftRightCenter} from '../../shared/extras.js';
+import {toFont} from '../../shared/index.js';
 
 export function drawCanvasTitle(ctx: CanvasRenderingContext2D, title: any): void {
   const opts = title.options;

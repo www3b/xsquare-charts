@@ -4,8 +4,6 @@
     "version": "0.0.0-beta",
     "type": "module",
     "sideEffects": [
-        "./auto/auto.js",
-        "./auto/auto.cjs",
         "./dist/chart.umd.min.js",
         "./dist/chart.umd.js"
     ],
@@ -15,33 +13,26 @@
     "module": "./dist/chart.js",
     "exports": {
         ".": {
-            "types": "./dist/types.d.ts",
+            "types": "./dist/index.d.ts",
             "import": "./dist/chart.js",
             "require": "./dist/chart.cjs"
         },
-        "./auto": {
-            "types": "./auto/auto.d.ts",
-            "import": "./auto/auto.js",
-            "require": "./auto/auto.cjs"
-        },
-        "./helpers": {
-            "types": "./helpers/helpers.d.ts",
-            "import": "./helpers/helpers.js",
-            "require": "./helpers/helpers.cjs"
+        "./utils": {
+            "types": "./dist/utils/index.d.ts",
+            "import": "./dist/utils.js",
+            "require": "./dist/utils.cjs"
         }
     },
-    "types": "./dist/types.d.ts",
+    "types": "./dist/index.d.ts",
     "files": [
-        "auto/**",
-        "dist/**",
-        "helpers/**"
+        "dist/**"
     ],
     "scripts": {
         "dev": "node scripts/dev-server.mjs",
         "test:svg": "pnpm build && node --test tests/*.test.mjs",
         "test:visual": "pnpm build && node --test tests/visual-parity.test.mjs",
         "autobuild": "rollup -c -w",
-        "copyDeclarations": "node -e \"fs.cpSync('./src/types/', './dist/types/', {recursive:true})\"",
+        "copyDeclarations": "node -e \"fs.cpSync('./src/shared/types/', './dist/shared/types/', {recursive:true})\"",
         "emitDeclarations": "tsc --emitDeclarationOnly && pnpm copyDeclarations",
         "build": "rollup -c && pnpm emitDeclarations",
         "lint-js": "eslint \"src/**/*.{js,ts}\" --cache",
