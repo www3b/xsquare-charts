@@ -1,6 +1,7 @@
 export class Node {
   constructor(document, name = 'div') {
     this.ownerDocument = document;
+    this.localName = name;
     this.nodeName = name.toUpperCase();
     this.nodeType = 1;
     this.children = [];
@@ -15,7 +16,14 @@ export class Node {
   appendChild(node) { node.remove(); node.parentNode = this; this.children.push(node); return node; }
   insertBefore(node, before) { node.remove(); node.parentNode = this; const index = before ? this.children.indexOf(before) : -1; this.children.splice(index < 0 ? this.children.length : index, 0, node); return node; }
   remove() { if (this.parentNode) { this.parentNode.children.splice(this.parentNode.children.indexOf(this), 1); this.parentNode = null; } }
+  get nextSibling() {
+    return this.parentNode && this.parentNode.children[this.parentNode.children.indexOf(this) + 1];
+  }
+  get lastElementChild() {
+    return this.children[this.children.length - 1];
+  }
   setAttribute(name, value) { this.attributes.set(name, String(value)); }
+  removeAttribute(name) { this.attributes.delete(name); }
   getAttribute(name) { return this.attributes.get(name) || null; }
   hasAttribute(name) { return this.attributes.has(name); }
   addEventListener() {}

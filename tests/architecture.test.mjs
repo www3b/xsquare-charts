@@ -15,7 +15,7 @@ test('series, geometry, scales and component models remain renderer-neutral', ()
 
 test('active source contains no legacy registry or controller/element architecture', () => {
   const active = ['components', 'series', 'geometry', 'scales', 'renderers', 'animation', 'platform', 'shared', 'utils'].flatMap(files).filter((name) => /\.(?:js|ts)$/.test(name)).map(source).join('\n');
-  assert.doesNotMatch(active, /ComponentCatalog|ComponentStore|PluginService|Chart\.register|registerables|RendererRegistry/);
+  assert.doesNotMatch(active, /ComponentCatalog|ComponentStore|PluginService|Chart\.register|registerables|RendererRegistry|initializeBuiltinDefaults/);
   assert.doesNotMatch(active, /\b(?:DatasetController|LineController|BarController|BubbleController|DoughnutController|HistogramController|PieController|PolarAreaController|RadarController|ScatterController|ArcElement|BarElement|LineElement|PointElement)\b/);
 });
 

@@ -5,7 +5,7 @@ import {_detectPlatform} from '../platform/platform.create.js';
 import ChartLifecycle from './chart.lifecycle.js';
 import {getScaleType} from '../scales/scale.create.js';
 import {getSeriesType} from '../series/series.create.js';
-import {initializeBuiltinDefaults} from './chart.builtins.js';
+import './chart.builtins.js';
 import {createRenderer} from '../renderers/renderer.create.js';
 import Config, {determineAxis, getIndexAxis, normalizeChartConfig, normalizeChartData} from './chart.options.js';
 import {each, callback as callCallback, uid, valueOrDefault, _elementsEqual, isNullOrUndef, setsEqual, defined, isFunction, _isClickEvent} from '../shared/core.js';
@@ -92,7 +92,6 @@ class Chart {
     if (!host || host.nodeType !== 1 || isCanvasLike(host)) {
       throw new TypeError('Chart host must be an HTMLElement container, not a canvas, context, selector, or collection');
     }
-    initializeBuiltinDefaults();
     const config = this.config = new Config(normalizeChartConfig(userConfig));
     const initialItem = host;
     const existingChart = getChart(host);
@@ -204,8 +203,18 @@ class Chart {
     if (type !== 'svg' && type !== 'canvas') {
       throw new TypeError(`Unsupported renderer: ${type}`);
     }
-    this.config._config.options.renderer = type;
-    this.update('none');
+    const options = this.config._config.options;
+    const previous = options.renderer;
+    if (previous === type) {
+      return;
+    }
+    options.renderer = type;
+    try {
+      this.update('none');
+    } catch (error) {
+      options.renderer = previous;
+      throw error;
+    }
   }
 
   isSeriesVisible(index) {
@@ -232,15 +241,27 @@ class Chart {
     this.setActiveElements(items);
   }
 
-  _createRenderer(type) {
-    const renderer = createRenderer(type, {
-      chart: this,
-      host: this.host
-    });
-    if (!renderer.initialize(this.options.aspectRatio)) {
-      renderer.destroy();
-      return false;
+  _createRendererCandidate(type) {
+    let renderer;
+    try {
+      renderer = createRenderer(type, {
+        chart: this,
+        host: this.host
+      });
+      if (!renderer.initialize(this.options.aspectRatio)) {
+        renderer.destroy();
+        return null;
+      }
+      return renderer;
+    } catch (error) {
+      if (renderer) {
+        renderer.destroy();
+      }
+      throw error;
     }
+  }
+
+  _commitRenderer(renderer) {
     this._renderer = renderer;
     this.root = renderer.root;
     this.canvas = renderer.canvas;
@@ -249,6 +270,14 @@ class Chart {
       this.width = this.width || renderer.canvas.width;
       this.height = this.height || renderer.canvas.height;
     }
+  }
+
+  _createRenderer(type) {
+    const renderer = this._createRendererCandidate(type);
+    if (!renderer) {
+      return false;
+    }
+    this._commitRenderer(renderer);
     return true;
   }
 
@@ -256,19 +285,15 @@ class Chart {
     if (this._renderer && this._renderer.type === type) {
       return true;
     }
+    const candidate = this._createRendererCandidate(type);
+    if (!candidate) {
+      throw new Error(`Failed to initialize the ${type} renderer`);
+    }
     const width = this.width;
     const height = this.height;
     this.unbindEvents();
-    if (this._renderer) {
-      this._renderer.destroy(true);
-    }
-    this._renderer = null;
-    this.root = null;
-    this.canvas = null;
-    this.ctx = null;
-    if (!this._createRenderer(type)) {
-      return false;
-    }
+    this._renderer.destroy(true);
+    this._commitRenderer(candidate);
     this._resize(width, height);
     return true;
   }

@@ -17,8 +17,6 @@ import SubTitle from './subtitle.js';
 import Title from './title.js';
 import Tooltip from './tooltip.js';
 
-let initialized = false;
-
 function applyDefaults(scope, Type, parentDefaults, applyOverride) {
   const itemDefaults = merge(Object.create(null), [parentDefaults, defaults.get(scope), Type.defaults || {}]);
   defaults.set(scope, itemDefaults);
@@ -38,14 +36,14 @@ function applyDefaults(scope, Type, parentDefaults, applyOverride) {
   }
 }
 
-export function initializeBuiltinDefaults() {
-  if (initialized) {
-    return;
-  }
-  initialized = true;
+function configureBuiltinDefaults() {
   const seriesTypes = ['bar', 'bubble', 'doughnut', 'histogram', 'line', 'pie', 'polarArea', 'radar', 'scatter'];
   seriesTypes.forEach((type) => applyDefaults(`datasets.${type}`, getSeriesType(type), Series.defaults, true));
   [ArcGeometry, BarGeometry, LineGeometry, PointGeometry].forEach((Type) => applyDefaults(`elements.${Type.id}`, Type, Element.defaults));
   ['category', 'linear', 'logarithmic', 'radialLinear', 'time', 'timeseries'].forEach((type) => applyDefaults(`scales.${type}`, getScaleType(type), Scale.defaults));
   [Colors, Decimation, Filler, Legend, SubTitle, Title, Tooltip].forEach((Type) => applyDefaults(`plugins.${Type.id}`, Type));
 }
+
+// Built-ins are a fixed module graph. Establish their defaults when that graph
+// loads, rather than making the first Chart construction mutate global state.
+configureBuiltinDefaults();

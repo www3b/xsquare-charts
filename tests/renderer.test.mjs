@@ -61,6 +61,30 @@ test('renderer initialization failure rejects construction and leaves the host r
   chart.destroy();
 });
 
+test('a failed renderer replacement preserves the running chart until a candidate succeeds', () => {
+  const document = createDocument();
+  const host = createHost(document);
+  const chart = new Chart(host, chartConfig('svg'));
+  const svg = chart.root;
+  const createElement = document.createElement;
+  document.createElement = (name) => name === 'canvas'
+    ? Object.assign(new Node(document, name), {getContext: () => null})
+    : createElement(name);
+
+  assert.throws(() => chart.setRenderer('canvas'), /Failed to initialize the canvas renderer/);
+  assert.equal(chart.renderer, 'svg');
+  assert.equal(chart.root, svg);
+  assert.deepEqual(host.children, [svg]);
+  chart.update('none');
+  chart.draw();
+
+  document.createElement = createElement;
+  chart.setRenderer('canvas');
+  assert.equal(chart.renderer, 'canvas');
+  assert.equal(host.children.length, 1);
+  chart.destroy();
+});
+
 test('same-size resize notifies once for both renderer backends', () => {
   for (const renderer of ['svg', 'canvas']) {
     const document = createDocument();
