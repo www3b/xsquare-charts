@@ -177,7 +177,7 @@ export function drawPoint(
   y: number
 ) {
   // eslint-disable-next-line @typescript-eslint/no-use-before-define
-  drawPointLegend(ctx, options, x, y, null);
+  drawPointLegend(ctx, options, x, y);
 }
 
 // eslint-disable-next-line complexity
@@ -311,7 +311,7 @@ export function drawPointLegend(
   options: DrawPointOptions,
   x: number,
   y: number,
-  w: number
+  w?: number
 ) {
   let type: string;
   const style = options.pointStyle;
