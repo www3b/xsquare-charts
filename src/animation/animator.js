@@ -1,5 +1,9 @@
 import {requestAnimFrame} from '../shared/extras.js';
 
+const now = () => typeof performance !== 'undefined' && typeof performance.now === 'function'
+  ? performance.now()
+  : Date.now();
+
 /**
  * @typedef { import('./animation.js').default } Animation
  * @typedef { import('../components/chart.js').default } Chart
@@ -41,8 +45,8 @@ export class Animator {
     }
     this._running = true;
 
-    this._request = requestAnimFrame.call(window, () => {
-      this._update();
+    this._request = requestAnimFrame.call(window, (date) => {
+      this._update(date);
       this._request = null;
 
       if (this._running) {
@@ -54,7 +58,7 @@ export class Animator {
   /**
 	 * @private
 	 */
-  _update(date = Date.now()) {
+  _update(date = now()) {
     let remaining = 0;
 
     this._charts.forEach((anims, chart) => {
@@ -166,7 +170,7 @@ export class Animator {
       return;
     }
     anims.running = true;
-    anims.start = Date.now();
+    anims.start = now();
     anims.duration = anims.items.reduce((acc, cur) => Math.max(acc, cur._duration), 0);
     this._refresh();
   }
@@ -198,7 +202,7 @@ export class Animator {
       items[i].cancel();
     }
     anims.items = [];
-    this._notify(chart, anims, Date.now(), 'complete');
+    this._notify(chart, anims, now(), 'complete');
   }
 
   /**

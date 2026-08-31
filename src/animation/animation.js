@@ -3,6 +3,9 @@ import {resolve} from '../shared/options.js';
 import {color as helpersColor} from '../shared/color.js';
 
 const transparent = 'transparent';
+const now = () => typeof performance !== 'undefined' && typeof performance.now === 'function'
+  ? performance.now()
+  : Date.now();
 const interpolators = {
   boolean(from, to, factor) {
     return factor > 0.5 ? to : from;
@@ -34,7 +37,7 @@ export default class Animation {
     this._active = true;
     this._fn = cfg.fn || interpolators[cfg.type || typeof from];
     this._easing = effects[cfg.easing] || effects.linear;
-    this._start = Math.floor(Date.now() + (cfg.delay || 0));
+    this._start = Math.floor(now() + (cfg.delay || 0));
     this._duration = this._total = Math.floor(cfg.duration);
     this._loop = !!cfg.loop;
     this._target = target;
@@ -67,7 +70,7 @@ export default class Animation {
   cancel() {
     if (this._active) {
       // update current evaluated value, for smoother animations
-      this.tick(Date.now());
+      this.tick(now());
       this._active = false;
       this._notify(false);
     }
