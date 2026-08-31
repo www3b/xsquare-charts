@@ -9,7 +9,7 @@ export function normalizeChartData(data = {}) {
   const series = data.series || [];
   return {
     labels: data.labels || [],
-    datasets: series.map(({name, ...item}) => ({...item, name, label: name === undefined ? item.label : name}))
+    datasets: series.map(({name, ...item}) => ({...item, name, label: name}))
   };
 }
 

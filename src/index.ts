@@ -12,12 +12,8 @@ export interface Chart {
   update(mode?: string): void;
   resize(width?: number, height?: number): void;
   clear(): this;
-  stop(): this;
-  reset(): void;
-  render(): void;
-  draw(): void;
   destroy(): void;
-  toBase64Image(...args: unknown[]): string;
+  toDataURL(type?: string, quality?: number): string;
   toSVG(): string;
   isSeriesVisible(index: number): boolean;
   setSeriesVisibility(index: number, visible: boolean): void;
@@ -29,13 +25,13 @@ export interface Chart {
 
 export interface ChartConstructor {
   new(host: HTMLElement, config: ChartConfig): Chart;
-  getChart(item: HTMLElement | SVGSVGElement): Chart | undefined;
 }
 
 export const Chart = ChartImplementation as unknown as ChartConstructor;
 export type {
   BarSeriesConfig, BubbleSeriesConfig, CategoryScaleConfig, ChartConfig, ChartData, ChartType,
   ColorsOptions, DecimationOptions, DoughnutSeriesConfig, FillOptions, FillTarget, FillerOptions, InteractionOptions, LayoutOptions, LegendOptions, LinearScaleConfig,
-  LineSeriesConfig, PaintDescriptor, RadialScaleConfig, RadarSeriesConfig, RendererType,
-  ScaleConfig, ScalesConfig, ScatterSeriesConfig, SeriesConfig, TitleOptions, TooltipOptions
+  LineSeriesConfig, LogarithmicScaleConfig, PaintDescriptor, PointStyle, RadialScaleConfig, RadarSeriesConfig, RendererType,
+  ScaleConfig, ScalesConfig, ScatterSeriesConfig, SeriesConfig, TimeScaleConfig, TimeSeriesScaleConfig,
+  TimeUnit, TitleOptions, TooltipOptions
 } from './components/chart.types.js';

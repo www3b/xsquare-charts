@@ -637,7 +637,7 @@ export declare class Chart<
   setActiveElements(active: ActiveDataPoint[]): void;
 
   destroy(): void;
-  toBase64Image(type?: string, quality?: unknown): string;
+  toDataURL(type?: string, quality?: number): string;
   toSVG(): string;
   bindEvents(): void;
   unbindEvents(): void;

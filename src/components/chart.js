@@ -234,11 +234,17 @@ class Chart {
   }
 
   getActiveItems() {
-    return this.getActiveElements();
+    return this.getActiveElements().map(({datasetIndex, index}) => ({
+      seriesIndex: datasetIndex,
+      index
+    }));
   }
 
   setActiveItems(items) {
-    this.setActiveElements(items);
+    this.setActiveElements(items.map(({seriesIndex, index}) => ({
+      datasetIndex: seriesIndex,
+      index
+    })));
   }
 
   _createRendererCandidate(type) {
@@ -1026,15 +1032,11 @@ class Chart {
     this.notifyPlugins('afterDestroy');
   }
 
-  toBase64Image(...args) {
+  toDataURL(...args) {
     if (!this.canvas) {
-      throw new Error("toBase64Image() is available only when renderer is 'canvas'");
+      throw new Error("toDataURL() is available only when renderer is 'canvas'");
     }
     return this.canvas.toDataURL(...args);
-  }
-
-  toDataURL(...args) {
-    return this.toBase64Image(...args);
   }
 
   toSVG() {

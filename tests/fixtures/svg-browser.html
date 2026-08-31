@@ -366,7 +366,7 @@
       && document.querySelector(`${root} [data-svg-part="labels"] text`);
   });
   const paintChart = charts.get('paint-line-svg');
-  const canvasExport = charts.get('paint-line-canvas').toBase64Image();
+  const canvasExport = charts.get('paint-line-canvas').toDataURL();
   const paintRoot = document.querySelector('[data-case="paint-line-svg"] svg[data-chart-svg]');
   const paintDefinitions = paintRoot?.querySelectorAll('defs [data-svg-paint]').length || 0;
   const canvasPointStyle = document.querySelectorAll('[data-case="paint-line-svg"] [data-svg-part="points"] image').length === 4
