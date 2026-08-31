@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<body>
+<output id="result"></output>
+<script type="module">
+  import {Chart} from '/dist/chart.js';
+
+  const errors = [];
+  window.addEventListener('error', (event) => errors.push(event.message));
+  window.addEventListener('unhandledrejection', (event) => errors.push(String(event.reason)));
+
+  const invalid = /NaN|Infinity|undefined/;
+  const values = [11, 16, 8, 13, 6];
+  const colors = ['#60a5fa', '#34d399', '#fbbf24', '#f472b6', '#a78bfa'];
+
+  function create(type, renderer) {
+    const host = document.createElement('div');
+    host.style.cssText = 'display:inline-block;width:320px;height:240px';
+    document.body.appendChild(host);
+    return new Chart(host, {
+      type,
+      renderer,
+      responsive: false,
+      animation: true,
+      legend: false,
+      tooltip: false,
+      data: {labels: ['North', 'East', 'South', 'West', 'Central'], series: [{data: values, backgroundColor: colors}]}
+    });
+  }
+
+  function inspect(chart) {
+    const arcs = chart.getDatasetMeta(0).data;
+    const finite = arcs.every((arc) => [
+      arc.x, arc.y, arc.startAngle, arc.endAngle, arc.circumference, arc.innerRadius, arc.outerRadius
+    ].every(Number.isFinite));
+    const paths = [...chart.$chartjsSvgRoot?.querySelectorAll('path') || []].map((path) => path.getAttribute('d') || '');
+    return {
+      finite,
+      pathCount: paths.length,
+      validPaths: paths.every((path) => !invalid.test(path)),
+      animationEnabled: chart.options.animation !== false
+    };
+  }
+
+  const svgPie = create('pie', 'svg');
+  const svgDoughnut = create('doughnut', 'svg');
+  const canvasPie = create('pie', 'canvas');
+  const canvasDoughnut = create('doughnut', 'canvas');
+  const charts = [svgPie, svgDoughnut, canvasPie, canvasDoughnut];
+  const result = {errors};
+
+  requestAnimationFrame(() => {
+    result.initial = {
+      svgPie: inspect(svgPie),
+      svgDoughnut: inspect(svgDoughnut),
+      canvasPie: inspect(canvasPie),
+      canvasDoughnut: inspect(canvasDoughnut)
+    };
+    requestAnimationFrame(() => {
+      result.during = {
+        svgPie: inspect(svgPie),
+        svgDoughnut: inspect(svgDoughnut),
+        canvasPie: inspect(canvasPie),
+        canvasDoughnut: inspect(canvasDoughnut)
+      };
+      charts.forEach((chart) => {
+        chart.stop();
+        chart.update('none');
+      });
+      result.final = {
+        svgPie: inspect(svgPie),
+        svgDoughnut: inspect(svgDoughnut),
+        canvasPie: inspect(canvasPie),
+        canvasDoughnut: inspect(canvasDoughnut)
+      };
+      document.querySelector('#result').textContent = JSON.stringify(result);
+      document.body.dataset.animatedArcReady = 'true';
+    });
+  });
+</script>
+</body>
+</html>

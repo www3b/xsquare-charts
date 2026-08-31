@@ -17,8 +17,23 @@ import SubTitle from './subtitle.js';
 import Title from './title.js';
 import Tooltip from './tooltip.js';
 
-function applyDefaults(scope, Type, parentDefaults, applyOverride) {
-  const itemDefaults = merge(Object.create(null), [parentDefaults, defaults.get(scope), Type.defaults || {}]);
+function inheritedDefaults(Type, Base) {
+  const Parent = Object.getPrototypeOf(Type);
+  if (!Parent || Parent === Base) {
+    return {};
+  }
+  return merge(Object.create(null), [inheritedDefaults(Parent, Base), Parent.defaults || {}]);
+}
+
+function applyDefaults(scope, Type, parentDefaults, applyOverride, Base) {
+  const itemDefaults = merge(Object.create(null), [
+    parentDefaults,
+    // Some built-ins (notably PieSeries) extend another concrete component.
+    // Their parent defaults must be registered before the child overrides them.
+    Base ? inheritedDefaults(Type, Base) : {},
+    defaults.get(scope),
+    Type.defaults || {}
+  ]);
   defaults.set(scope, itemDefaults);
   if (applyOverride && Type.overrides) {
     defaults.override(Type.id, Type.overrides);
@@ -38,9 +53,9 @@ function applyDefaults(scope, Type, parentDefaults, applyOverride) {
 
 function configureBuiltinDefaults() {
   const seriesTypes = ['bar', 'bubble', 'doughnut', 'histogram', 'line', 'pie', 'polarArea', 'radar', 'scatter'];
-  seriesTypes.forEach((type) => applyDefaults(`datasets.${type}`, getSeriesType(type), Series.defaults, true));
-  [ArcGeometry, BarGeometry, LineGeometry, PointGeometry].forEach((Type) => applyDefaults(`elements.${Type.id}`, Type, Element.defaults));
-  ['category', 'linear', 'logarithmic', 'radialLinear', 'time', 'timeseries'].forEach((type) => applyDefaults(`scales.${type}`, getScaleType(type), Scale.defaults));
+  seriesTypes.forEach((type) => applyDefaults(`datasets.${type}`, getSeriesType(type), Series.defaults, true, Series));
+  [ArcGeometry, BarGeometry, LineGeometry, PointGeometry].forEach((Type) => applyDefaults(`elements.${Type.id}`, Type, Element.defaults, false, Element));
+  ['category', 'linear', 'logarithmic', 'radialLinear', 'time', 'timeseries'].forEach((type) => applyDefaults(`scales.${type}`, getScaleType(type), Scale.defaults, false, Scale));
   [Colors, Decimation, Filler, Legend, SubTitle, Title, Tooltip].forEach((Type) => applyDefaults(`plugins.${Type.id}`, Type));
 }
 

@@ -20,12 +20,6 @@
       .chart-card p { margin: 0 0 10px; font-size: 14px; }
       .chart-frame { position: relative; height: 300px; padding: 18px; border: 1px solid #344054; border-radius: 12px; background: #182230; }
       .chart-card.wide .chart-frame { height: 390px; }
-      .editor { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; margin: 28px 0; padding: 18px; border: 1px solid #344054; border-radius: 12px; background: #182230; }
-      .editor h2 { margin: 0 0 8px; font-size: 17px; }
-      select, textarea { width: 100%; box-sizing: border-box; border: 1px solid #44546a; border-radius: 6px; background: #101828; color: inherit; padding: 9px; font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
-      textarea { min-height: 240px; resize: vertical; }
-      .editor-actions { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
-      #editor-error { color: #fda4af; }
       .chart-host { width: 100%; height: 100%; position: relative; }
       code { color: #93c5fd; }
       @media (max-width: 700px) { body { padding: 20px; } .charts { grid-template-columns: 1fr; } .chart-card.wide { grid-column: auto; } .chart-card.wide .chart-frame { height: 300px; } }
@@ -34,15 +28,15 @@
   <body>
     <main>
       <h1>XSQUARE Charts: Canvas ↔ SVG</h1>
-      <p>Переключатель меняет Canvas/SVG renderer всей диаграммы. Series, шкалы, легенды и tooltip используют единый public API.</p>
+      <p>Галерея использует публичный API: переключатель пересоздаёт графики в выбранном renderer, а все примеры запускаются с включённой анимацией.</p>
       <div class="toolbar" aria-label="Renderer">
         <button class="active" data-renderer="canvas">Canvas</button>
         <button data-renderer="svg">SVG</button>
       </div>
       <div class="charts">
         <section class="chart-card wide">
-          <h2>Bezier + stepped area</h2>
-          <p>Две заливки, point-style legend с title, global multiline title/subtitle, rotated labels и y1 scale.</p>
+          <h2>Line: actual vs plan</h2>
+          <p>Две серии, заливка и сглаживание.</p>
           <div class="chart-frame"><div class="chart-host" id="area-chart"></div></div>
         </section>
         <section class="chart-card">
@@ -51,23 +45,23 @@
           <div class="chart-frame"><div class="chart-host" id="chart"></div></div>
         </section>
         <section class="chart-card">
-          <h2>Bar (Canvas)</h2>
-          <p>Контрольный Canvas-пример для сравнения с SVG.</p>
+          <h2>Bar: positive and negative values</h2>
+          <p>Две серии с округлёнными столбцами.</p>
           <div class="chart-frame"><div class="chart-host" id="bar-chart"></div></div>
         </section>
         <section class="chart-card">
-          <h2>Grouped bar (SVG)</h2>
-          <p>Rounded bars, разные border width, borderSkipped и положительные/отрицательные значения.</p>
+          <h2>Grouped bar</h2>
+          <p>Сравнение факта и плана по кварталам.</p>
           <div class="chart-frame"><div class="chart-host" id="bar-svg-chart"></div></div>
         </section>
         <section class="chart-card">
-          <h2>Stacked bar (SVG)</h2>
-          <p>Stack с <code>borderSkipped: 'middle'</code> и vertical legend.</p>
+          <h2>Stacked bar</h2>
+          <p>Состав выручки по кварталам.</p>
           <div class="chart-frame"><div class="chart-host" id="bar-stack-svg-chart"></div></div>
         </section>
         <section class="chart-card">
-          <h2>Horizontal floating bar (SVG)</h2>
-          <p>Horizontal bars, floating ranges и radius по углам.</p>
+          <h2>Horizontal floating bar</h2>
+          <p>Диапазоны значений с горизонтальной осью.</p>
           <div class="chart-frame"><div class="chart-host" id="bar-horizontal-svg-chart"></div></div>
         </section>
         <section class="chart-card">
@@ -131,16 +125,7 @@
           <div class="chart-frame"><div class="chart-host" id="timeseries-chart"></div></div>
         </section>
       </div>
-      <section class="editor" aria-labelledby="editor-heading">
-        <div>
-          <h2 id="editor-heading">Редактор данных примера</h2>
-          <p>Выберите любой график, измените его <code>data</code> в JSON и примените изменения. Конфигурация и renderer сохраняются.</p>
-          <label>График <select id="chart-picker"></select></label>
-          <div class="editor-actions"><button id="apply-data">Применить JSON</button><button id="reset-data">Сбросить</button><output id="editor-error" aria-live="polite"></output></div>
-        </div>
-        <label>Данные <textarea id="data-editor" spellcheck="false"></textarea></label>
-      </section>
-      <p>Resize the page or hover points to verify XSQUARE Charts interactions.</p>
+      <p>Измените размер страницы, наведите указатель на точки и переключите Canvas/SVG, чтобы проверить интерактивность и жизненный цикл графиков.</p>
     </main>
     <script type="module" src="/demo/main.js"></script>
   </body>
